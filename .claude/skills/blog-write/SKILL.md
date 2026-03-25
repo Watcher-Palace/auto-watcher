@@ -48,7 +48,7 @@ Follow `source/_drafts/template.md` for structure. Use published posts in `sourc
 ```
 ---
 title: [post title]
-date: [YYYY-MM-DD HH:MM:SS]
+date: [YYYY-MM-DD]
 categories: [A/B/C/D/N]
 tags:
 - [tag]
@@ -68,7 +68,9 @@ use bold dates: **YYYY年M月D日**：...]
 [Optional: follow-up. Format: （年）月日：...]
 
 ## 舆论
-[Optional: public reaction]
+[Optional: public reaction. Include only descriptions backed by concrete statistics —
+read counts, share counts, comment counts, poll results, etc. Omit vague characterisations
+such as "网友纷纷表示" or "引发热议" with no supporting numbers.]
 ### 微博词条
 [#词条名# 访问日期：年.月.日。阅读量：N万。]
 
