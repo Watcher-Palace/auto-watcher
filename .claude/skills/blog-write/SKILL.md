@@ -24,7 +24,12 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
 **Initial mode:** Read the research file. Use WebSearch + WebFetch for additional sources or missing details not covered in research. Write the first draft.
 
-**Revision mode:** Read the current draft and review file together. Apply every `<!-- [REVIEWER]: ... -->` suggestion. Preserve every `<!-- [USER]: ... -->` annotation exactly as written — if a reviewer suggestion conflicts with a user annotation, follow the user annotation. Use WebSearch + WebFetch to verify or supplement facts if needed.
+**Revision mode:** Read the current draft and review file together. For each `<!-- [REVIEWER]: ... -->` suggestion:
+- Apply it if it is factually correct and well-supported.
+- Reject it (leave the original text unchanged and add `<!-- [WRITER-REJECTED]: <reason> -->` inline) if you have valid reasoning — e.g., the suggestion is factually wrong, contradicted by a source, or introduces imprecision.
+- Preserve every `<!-- [USER]: ... -->` annotation exactly as written — if a reviewer suggestion conflicts with a user annotation, follow the user annotation.
+
+Use WebSearch + WebFetch to verify disputed facts before accepting or rejecting a suggestion.
 
 ## Output Path
 

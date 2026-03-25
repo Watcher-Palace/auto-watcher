@@ -59,12 +59,19 @@ STATUS: ISSUES
 
 ## Inline Annotations
 
-Annotate the **draft file itself** (at `draft_path`) for issues that require the writer's attention:
+**Do NOT edit the draft file.** All annotations go in the review file only.
 
-- `<!-- [REVIEWER]: ... -->` — suggested correction or question; writer must address in revision
-- Do NOT remove or alter any `<!-- [USER]: ... -->` annotations already present
+For each issue, reproduce the exact passage from the draft, then attach your suggestion:
 
-After annotating the draft, write the review file with the status and a summary of issues.
+```
+## 问题 N
+
+原文：`<exact passage from draft>`
+<!-- [REVIEWER]: <suggested correction or question> -->
+[Description of the issue and what the writer should do]
+```
+
+The writer will read the review file and apply or reject each suggestion in their revision.
 
 ## Style Notes
 
