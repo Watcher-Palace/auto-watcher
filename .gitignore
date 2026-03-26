@@ -1,0 +1,20 @@
+# Python
+src/venv/
+src/__pycache__/
+src/utils/__pycache__/
+src/tests/__pycache__/
+src/tests/utils/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Hexo
+node_modules/
+public/
+.deploy_git/
+db.json
+
+# Pipeline secrets
+src/.env
+
+# Misc
+*.log
