@@ -36,8 +36,8 @@ git push                            # push source changes
 ```
 
 ```bash
-cd src && source venv/bin/activate
-python src/tracker.py --date YYMMDD   # track events for a date
+source src/venv/bin/activate
+python src/tracker.py YYMMDD          # track events for a date
 python src/publisher.py YYMMDD N      # publish approved draft
 pytest src/tests/                     # run tests
 ```
