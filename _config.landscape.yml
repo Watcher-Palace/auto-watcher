@@ -1,3 +1,8 @@
+menu:
+  Home: /
+  About: /about/
+  Archives: /archives
+
 widgets:
 - category
 - tagcloud

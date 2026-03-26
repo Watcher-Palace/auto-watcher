@@ -9,17 +9,34 @@ hexo.extend.generator.register('calendar-index', function (locals) {
   const CAT_PRIORITY = { S: 0, A: 1, B: 2, C: 3, D: 4, N: 5 };
   const root = hexo.config.root || '/';
 
-  // Build date map: 'YYMMDD' -> { cat, urlPath, title }
+  // Build date map: 'YYMMDD' -> [{ cat, urlPath, title }, ...] sorted by priority
   const dateMap = {};
   locals.posts.each(post => {
     const cat = (post.categories.first() || { name: 'N' }).name;
-    if (!AC_CATS.has(cat)) return; // only track A-C for calendar display
+    if (!AC_CATS.has(cat)) return;
     const key = post.date.format('YYMMDD');
-    if (!dateMap[key] || CAT_PRIORITY[cat] < CAT_PRIORITY[dateMap[key].cat]) {
-      const urlPath = root + post.path.replace(/\/index\.html$/, '/');
-      dateMap[key] = { cat, urlPath, title: post.title };
-    }
+    const urlPath = root + post.path.replace(/\/index\.html$/, '/');
+    if (!dateMap[key]) dateMap[key] = [];
+    dateMap[key].push({ cat, urlPath, title: post.title });
   });
+  Object.values(dateMap).forEach(posts =>
+    posts.sort((a, b) => CAT_PRIORITY[a.cat] - CAT_PRIORITY[b.cat])
+  );
+
+  // Split '挑战失败' into n parts (max 4), distributing chars front-heavy
+  function splitLabel(n) {
+    const chars = ['挑', '战', '失', '败'];
+    n = Math.min(n, 4);
+    if (n === 1) return ['挑战失败'];
+    const parts = [];
+    let rem = 4;
+    for (let i = 0; i < n; i++) {
+      const size = Math.ceil(rem / (n - i));
+      parts.push(chars.splice(0, size).join(''));
+      rem -= size;
+    }
+    return parts;
+  }
 
   // Sorted list of A-C event dates (moment objects)
   const acDates = Object.keys(dateMap)
@@ -41,13 +58,17 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     if (date.isAfter(today, 'day')) return String(day);
 
     const key = date.format('YYMMDD');
-    const post = dateMap[key];
+    const posts = dateMap[key];
 
-    if (post) {
-      const color = CAT_COLOR[post.cat];
-      const bold = CAT_BOLD.has(post.cat) ? 'font-weight:bold;' : '';
-      const safeTitle = post.title.replace(/"/g, '&quot;');
-      return `${day}<br><a style="color:${color};${bold}" href="${post.urlPath}" title="${safeTitle}">挑战失败</a>`;
+    if (posts) {
+      const labels = splitLabel(posts.length);
+      const links = posts.slice(0, 4).map((post, i) => {
+        const color = CAT_COLOR[post.cat];
+        const bold = CAT_BOLD.has(post.cat) ? 'font-weight:bold;' : '';
+        const safeTitle = post.title.replace(/"/g, '&quot;');
+        return `<a style="color:${color};${bold}" href="${post.urlPath}" title="${safeTitle}">${labels[i]}</a>`;
+      });
+      return `${day}<br>${links.join('')}`;
     }
 
     const lastAC = lastACBefore(date);
