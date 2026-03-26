@@ -1,7 +1,7 @@
 menu:
-  Home: /
-  About: /about/
-  Archives: /archives
+  首页: /
+  关于: /about/
+  归档: /archives
 
 widgets:
 - category
