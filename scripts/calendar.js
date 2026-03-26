@@ -71,6 +71,11 @@ hexo.extend.generator.register('calendar-index', function (locals) {
       return `${day}<br>${links.join('')}`;
     }
 
+    // Untracked gap: leave blank
+    const gapStart = moment('2026-01-28');
+    const gapEnd = moment('2026-03-20');
+    if (date.isBetween(gapStart, gapEnd, 'day', '[]')) return String(day);
+
     const lastAC = lastACBefore(date);
     if (lastAC) {
       const dayN = date.diff(lastAC, 'days');

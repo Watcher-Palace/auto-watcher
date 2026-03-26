@@ -4,7 +4,7 @@
 hexo.extend.injector.register('head_end', () => {
   return `<style>
 #banner {
-  background: linear-gradient(135deg, #1c1c2e 0%, #4a0e2e 100%) !important;
+  background: linear-gradient(to bottom, #0a0814 0%, #4a1535 100%) !important;
 }
 </style>`;
 });
