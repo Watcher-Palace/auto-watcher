@@ -13,7 +13,6 @@ from src.utils.web import WebClient
 from src.utils.pipeline import events_path, set_state
 
 WEIBO_API = "https://m.weibo.cn/api/container/getIndex"
-TRACKED_UIDS = ["1114030772"]
 FEMINIST_KEYWORDS = ["女性", "女权", "性别", "婚姻", "家暴", "性侵", "拐卖", "生育", "就业歧视"]
 
 
@@ -95,9 +94,10 @@ def format_events(date_str: str, events: list[dict]) -> str:
 
 
 def run_tracker(date_str: str, api_key: str, model: str, cookie: str) -> None:
+    tracked_uids = [u.strip() for u in os.environ.get("TRACKED_UIDS", "").split(",") if u.strip()]
     web = WebClient(cookie=cookie)
     all_posts = []
-    for uid in TRACKED_UIDS:
+    for uid in tracked_uids:
         try:
             all_posts.extend(fetch_weibo_posts(web, uid))
         except WebClient.FetchError as e:
