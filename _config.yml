@@ -103,5 +103,6 @@ theme: landscape
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
   type: git
-  repo: git@github.com:jshu039-maker/blog.git
+  repo: git@git_personal:Watcher-Palace/blog.git
   branch: main
+

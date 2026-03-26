@@ -30,7 +30,7 @@ Human gates: **approve events** (after Stage 1) · **annotate drafts** (after St
 ```python
 import sys
 sys.path.insert(0, '/home/jc/Projects/auto-watcher')
-from scripts.utils.pipeline import pipeline_summary, get_untracked_dates
+from src.utils.pipeline import pipeline_summary, get_untracked_dates
 print(pipeline_summary())
 untracked = get_untracked_dates()
 ```
@@ -48,7 +48,7 @@ For each confirmed date, run:
 ```bash
 cd /home/jc/Projects/auto-watcher
 source .venv/bin/activate
-python scripts/tracker.py --date YYMMDD
+python src/tracker.py --date YYMMDD
 ```
 
 The tracker reads `WEIBO_COOKIE` and `OPENROUTER_API_KEY` from environment or `.env`.
@@ -63,7 +63,7 @@ After running, display the events file contents so the user can review.
 Write approved indexes to `_pipeline/events/YYMMDD-approved.txt`, one per line.
 
 ```python
-from scripts.utils.pipeline import approved_path
+from src.utils.pipeline import approved_path
 approved_path(date_str).write_text("\n".join(str(i) for i in approved_indexes) + "\n")
 ```
 
@@ -127,7 +127,7 @@ draft_path: _pipeline/draft/YYMMDD-N-title-vN.md
 **4b-ii. Check review status:**
 
 ```python
-from scripts.utils.pipeline import latest_review
+from src.utils.pipeline import latest_review
 review, v = latest_review(date_str, n)
 first_line = review.read_text().splitlines()[0]
 # STATUS: CLEAN or STATUS: ISSUES
@@ -168,7 +168,7 @@ Show the user a summary of all clean drafts ready to publish. Ask:
 ```bash
 cd /home/jc/Projects/auto-watcher
 source .venv/bin/activate
-python scripts/publisher.py --date YYMMDD
+python src/publisher.py --date YYMMDD
 ```
 
 The publisher copies drafts to `source/_posts/`, moves assets, updates the calendar in `source/index.md`, and runs `pnpm deploy`.

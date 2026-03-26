@@ -36,7 +36,7 @@ Use WebSearch + WebFetch to verify disputed facts before accepting or rejecting 
 ```python
 import sys
 sys.path.insert(0, '/home/jc/Projects/auto-watcher')
-from scripts.utils.pipeline import next_draft_path
+from src.utils.pipeline import next_draft_path
 path, v = next_draft_path(date, index, title)
 # Write draft to str(path)
 ```

@@ -33,7 +33,7 @@ Repo root: `/home/jc/Projects/auto-watcher`
 ```python
 import sys
 sys.path.insert(0, '/home/jc/Projects/auto-watcher')
-from scripts.utils.pipeline import next_review_path
+from src.utils.pipeline import next_review_path
 path, v = next_review_path(date, index, title)
 # Write review to str(path)
 ```
