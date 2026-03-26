@@ -6,7 +6,8 @@ tags:
 # 元信息
 title: 就是title
 date：就是date
-categories: A, B, C, D, N - 严重程度
+categories: S, A, B, C, D, N - 严重程度
+    S: 政府/国家层面；
     A：刑事案件；影响极为恶劣的舆论事件
     B：民事案件；影响较大的舆论事件
     C：非官方组织；影响较小的舆论事件
