@@ -3,9 +3,10 @@
 hexo.extend.generator.register('calendar-index', function (locals) {
   const moment = require('moment');
 
-  const CAT_COLOR = { A: 'red', B: 'yellow', C: 'orange' };
-  const AC_CATS = new Set(['A', 'B', 'C']);
-  const CAT_PRIORITY = { A: 1, B: 2, C: 3, D: 4, N: 5 };
+  const CAT_COLOR = { S: 'darkred', A: 'red', B: 'yellow', C: 'orange' };
+  const CAT_BOLD = new Set(['S']);
+  const AC_CATS = new Set(['S', 'A', 'B', 'C']);
+  const CAT_PRIORITY = { S: 0, A: 1, B: 2, C: 3, D: 4, N: 5 };
   const root = hexo.config.root || '/';
 
   // Build date map: 'YYMMDD' -> { cat, urlPath, title }
@@ -44,8 +45,9 @@ hexo.extend.generator.register('calendar-index', function (locals) {
 
     if (post) {
       const color = CAT_COLOR[post.cat];
+      const bold = CAT_BOLD.has(post.cat) ? 'font-weight:bold;' : '';
       const safeTitle = post.title.replace(/"/g, '&quot;');
-      return `${day}<br><a style="color:${color};" href="${post.urlPath}" title="${safeTitle}">挑战失败</a>`;
+      return `${day}<br><a style="color:${color};${bold}" href="${post.urlPath}" title="${safeTitle}">挑战失败</a>`;
     }
 
     const lastAC = lastACBefore(date);
