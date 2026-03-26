@@ -38,7 +38,7 @@ Published posts go to `source/_posts/YYMMDD.md` with assets in `source/_posts/YY
 ---
 title: Post title
 date: 2026-01-23 20:20:39
-categories: A   # A=刑事/极恶劣, B=民事/较大, C=非官方/较小, D=个人, N=中立/待续
+categories: A   # S=政府/国家层面, A=刑事/极恶劣, B=民事/较大, C=非官方/较小, D=个人, N=中立/待续
 tags:
 - PING          # PING=待续跟进, TODO=待查证
 ---
@@ -75,7 +75,7 @@ tags:
 ```html
 <a style="color: red;" href="{{ site.root }}2026/YYMMDD/" title="Post title">link text</a>
 ```
-Color convention: red = category A, yellow = B, orange = C/mixed, black = N/PING.
+Color convention: darkred bold = S, red = A, yellow = B, orange = C/mixed, black = N/PING.
 
 ## Stage Details
 
@@ -97,7 +97,7 @@ Read research file, write draft to `_pipeline/draft/YYMMDD-N-title-v1.md`. Downl
 Read draft independently, fact-check against sources. Annotate suggestions as `<!-- [REVIEWER]: ... -->`. User annotates disagreements as `<!-- [USER]: ... -->` before revision.
 
 ### Stage 5 — Publish (Python script)
-Copy approved draft to `source/_posts/YYMMDD.md`, move assets, update `source/index.md` calendar, run `pnpm deploy`.
+Copy approved draft to `source/_posts/YYMMDD.md`, move assets, run `pnpm deploy`. Calendar is auto-generated from post metadata by `scripts/calendar.js`.
 
 ## Environment Variables
 

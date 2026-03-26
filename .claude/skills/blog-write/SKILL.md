@@ -95,6 +95,7 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 
 ## Categories
 
+- `S` — 政府/国家层面政策或法律（最高级别）
 - `A` — 刑事案件；影响极为恶劣的舆论事件
 - `B` — 民事案件；影响较大的舆论事件
 - `C` — 非官方组织；影响较小的舆论事件
