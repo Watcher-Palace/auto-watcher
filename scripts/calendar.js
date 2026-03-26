@@ -95,24 +95,6 @@ ${rows}  </tbody>
 
   const calendarHtml = months.map(m => monthTable(m)).join('\n');
 
-  // Build tag cloud (exclude pipeline-only special tags)
-  const SKIP_TAGS = new Set(['PING', 'TODO']);
-  const tagCounts = {};
-  locals.posts.each(post => {
-    post.tags.each(tag => {
-      if (!SKIP_TAGS.has(tag.name)) tagCounts[tag.name] = (tagCounts[tag.name] || 0) + 1;
-    });
-  });
-  const tagEntries = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
-  const maxCount = tagEntries.length ? tagEntries[0][1] : 1;
-  const minCount = tagEntries.length ? tagEntries[tagEntries.length - 1][1] : 1;
-  const tagCloudHtml = tagEntries.map(([name, count]) => {
-    const t = maxCount === minCount ? 0.5 : (count - minCount) / (maxCount - minCount);
-    const size = (0.85 + t * 1.4).toFixed(2); // 0.85em – 2.25em
-    const tagPath = root + 'tags/' + encodeURIComponent(name) + '/';
-    return `<a href="${tagPath}" style="font-size:${size}em; margin:0.3em; display:inline-block;">${name}</a>`;
-  }).join('\n');
-
   const css = `<style>
   .calendar-table {
     width: 100%;
@@ -129,14 +111,10 @@ ${rows}  </tbody>
   }
   .calendar-table th { background-color: #f2f2f2; font-weight: bold; }
   .calendar-table a { text-decoration: none; }
-  .tag-cloud { line-height: 2.2; }
-  .tag-cloud a { text-decoration: none; }
 </style>`;
 
-  const tagCloudSection = `\n## 标签\n\n<div class="tag-cloud">\n${tagCloudHtml}\n</div>`;
-
-  // Render markdown intro + CSS + calendar HTML + tag cloud
-  const md = `骗你的，没有不愤怒的义务（动感夹心，2026）。\n\n${css}\n${calendarHtml}${tagCloudSection}`;
+  // Render markdown intro + CSS + calendar HTML
+  const md = `骗你的，没有不愤怒的义务（动感夹心，2026）。\n\n${css}\n${calendarHtml}`;
 
   return hexo.render.render({ text: md, engine: 'markdown' }).then(renderedContent => {
     return {

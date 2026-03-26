@@ -41,6 +41,9 @@ importers:
       hexo-theme-fluid:
         specifier: ^1.9.9
         version: 1.9.9(nunjucks@3.2.4(chokidar@3.6.0))
+      hexo-theme-landscape:
+        specifier: ^1.1.0
+        version: 1.1.0
 
 packages:
 
@@ -474,6 +477,9 @@ packages:
     engines: {node: '>=8.10.0'}
     peerDependencies:
       nunjucks: ^3.0.0
+
+  hexo-theme-landscape@1.1.0:
+    resolution: {integrity: sha512-nszjixBEiEDZjf7glAGbHg0nKGHZdUDwzFVVdRDeu4FeHfGcY5CZNl9sF4vSligjnD8IwFXpDfx5E+GRmNKvWg==}
 
   hexo-util@2.7.0:
     resolution: {integrity: sha512-hQM3h34nhDg0bSe/Tg1lnpODvNkz7h2u0+lZGzlKL0Oufp+5KCAEUX9wal7/xC7ax3/cwEn8IuoU75kNpZLpJQ==}
@@ -1439,6 +1445,8 @@ snapshots:
   hexo-theme-fluid@1.9.9(nunjucks@3.2.4(chokidar@3.6.0)):
     dependencies:
       nunjucks: 3.2.4(chokidar@3.6.0)
+
+  hexo-theme-landscape@1.1.0: {}
 
   hexo-util@2.7.0:
     dependencies:
