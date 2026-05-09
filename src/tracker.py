@@ -26,6 +26,10 @@ PAGINATION_DELAY_SEC = 0.5   # base; actual = uniform(base, base*3)
 INTER_UID_DELAY_SEC = 2.0    # base; actual = uniform(base, base*3)
 
 
+class RateLimited(Exception):
+    """Weibo per-cookie throttle hit (ok:-100 captcha challenge)."""
+
+
 def parse_created_at(raw: str) -> datetime | None:
     if not raw:
         return None
@@ -60,6 +64,8 @@ def parse_weibo_cards(cards: list[dict], uid: str) -> list[dict]:
 def fetch_weibo_posts(web: WebClient, uid: str, page: int = 1) -> list[dict]:
     url = f"{WEIBO_API}?type=uid&value={uid}&containerid=107603{uid}&page={page}"
     data = web.fetch_json(url)
+    if data.get("ok") == -100 and "captcha" in (data.get("url") or ""):
+        raise RateLimited()
     cards = data.get("data", {}).get("cards", [])
     return parse_weibo_cards(cards, uid)
 
@@ -290,13 +296,23 @@ def main() -> None:
     api_key = os.environ["OPENROUTER_API_KEY"]
     cookie = os.environ.get("WEIBO_COOKIE", "")
 
-    if args.days:
-        end_date = _parse_yymmdd(args.end) if args.end else (date.today() - timedelta(days=1))
-        uids = [u.strip() for u in args.uids.split(",") if u.strip()] if args.uids else None
-        run_tracker_range(end_date, args.days, api_key, model, cookie, uids=uids, merge=args.merge)
-    else:
-        date_arg = args.date or (date.today() - timedelta(days=1)).strftime("%y%m%d")
-        run_tracker(date_arg, api_key, model, cookie)
+    try:
+        if args.days:
+            end_date = _parse_yymmdd(args.end) if args.end else (date.today() - timedelta(days=1))
+            uids = [u.strip() for u in args.uids.split(",") if u.strip()] if args.uids else None
+            run_tracker_range(end_date, args.days, api_key, model, cookie, uids=uids, merge=args.merge)
+        else:
+            date_arg = args.date or (date.today() - timedelta(days=1)).strftime("%y%m%d")
+            run_tracker(date_arg, api_key, model, cookie)
+    except RateLimited:
+        print(
+            "\nRATE LIMITED. Weibo throttle is per-cookie and persists 6–24h.\n"
+            "Wait, then re-run with: python src/tracker.py [args] --merge\n"
+            "Do not retry now — additional requests extend the window.\n"
+            "If you need to continue immediately, get a fresh WEIBO_COOKIE from another browser session.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
 
 if __name__ == "__main__":

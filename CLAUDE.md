@@ -110,11 +110,10 @@ OPENROUTER_API_KEY=sk-or-...   # only needed for tracker (tencent/hy3-preview:fr
 
 | Problem | Fix |
 |---------|-----|
-| Tracker returns nothing | Include `mblog.retweeted_status.text` (retweet body) |
 | Weibo fetch fails silently | Cookie must be from `weibo.cn`, not `weibo.com` |
 | Weibo fetch blocked | Use desktop Chrome UA, not mobile |
-| Python import errors in scripts | `sys.path.insert(0, str(Path(__file__).parent.parent))` |
-| Weibo cookie expired (all UIDs fail) | Get fresh cookie from browser — do NOT switch to WebSearch for discovery |
+| Weibo cookie expired (all UIDs fail, no captcha challenge) | Get fresh cookie from browser — do NOT switch to WebSearch for discovery |
+| Tracker exits with `RATE LIMITED` | Per-cookie throttle, persists 6–24h. Wait, then re-run with `--merge`. (Distinct from cookie expiry.) |
 | OpenRouter model 404 | Update `src/config.yaml` tracker_model to a current free model (e.g. `tencent/hy3-preview:free`) |
 
 ## Tracker Blocker Protocol

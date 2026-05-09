@@ -19,7 +19,11 @@ Stage 4 — Review    → _pipeline/review/YYMMDD-N-title-vN.md  (subagent)
 Stage 5 — Publish   → source/_posts/YYMMDD.md
 ```
 
-Human gates: **approve events** (after Stage 1) · **annotate drafts** (after Stage 3) · **confirm publish** (before Stage 5).
+Human gates: **approve events** (after Stage 1) · **annotate drafts** (after Stage 3) · **approve revision** (after each review) · **confirm publish** (before Stage 5).
+
+## Critical: Never Auto-Chain Stages
+
+After any subagent stage completes (research / draft / review / revision), **STOP**. Report the file written and wait for explicit user go-ahead before triggering the next stage. Do not summarise a review and immediately revise. Do not declare a draft clean and immediately publish. The user reads each output file between stages and may choose to edit, annotate, or redirect.
 
 ---
 
@@ -109,9 +113,9 @@ Wait for the write subagent to complete.
 
 Wait for the user to confirm before proceeding.
 
-### 4b. Review → Revise loop (no max iterations)
+### 4b. Review → Revise loop (human-gated; no max iterations)
 
-For each draft, repeat until the review is `STATUS: CLEAN`:
+For each draft:
 
 **4b-i. Review (subagent):**
 
@@ -124,7 +128,7 @@ title: <title>
 draft_path: _pipeline/draft/YYMMDD-N-title-vN.md
 ```
 
-**4b-ii. Check review status:**
+**4b-ii. Stop. Report status to user.**
 
 ```python
 from src.utils.pipeline import latest_review
@@ -133,13 +137,11 @@ first_line = review.read_text().splitlines()[0]
 # STATUS: CLEAN or STATUS: ISSUES
 ```
 
-If `STATUS: CLEAN`: proceed to publish.
+Tell the user: **"Review v{N} written: {STATUS}. Review file: {path}. Approve revision? (y/n / edit-and-continue)"**
 
-If `STATUS: ISSUES`:
+**Do not auto-trigger revision even if STATUS: ISSUES.** The user may want to annotate the review with `<!-- [USER]: ... -->`, edit suggestions, or stop the loop.
 
-**4b-iii. Revise (subagent):**
-
-Dispatch a `blog-write` subagent in `revision` mode:
+**4b-iii. If user approves, dispatch revision (subagent):**
 
 ```
 date: YYMMDD

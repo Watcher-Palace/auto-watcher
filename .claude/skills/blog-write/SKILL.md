@@ -29,7 +29,9 @@ Repo root: `/home/jc/Projects/auto-watcher`
 - Reject it (leave the original text unchanged and add `<!-- [WRITER-REJECTED]: <reason> -->` inline) if you have valid reasoning — e.g., the suggestion is factually wrong, contradicted by a source, or introduces imprecision.
 - Preserve every `<!-- [USER]: ... -->` annotation exactly as written — if a reviewer suggestion conflicts with a user annotation, follow the user annotation.
 
-Use WebSearch + WebFetch to verify disputed facts before accepting or rejecting a suggestion.
+**For "删除或核查" / "verify or remove" suggestions:** always attempt verification first via WebSearch + WebFetch. Only delete if verification actually fails. Do not delete content just because the reviewer flagged it — flagged ≠ wrong. If verification succeeds, keep the content (and optionally cite the new source); if it fails, then remove and note `<!-- [WRITER-REMOVED-UNVERIFIED]: <what was checked> -->`.
+
+Use WebSearch + WebFetch to verify disputed facts before accepting or rejecting any suggestion.
 
 ## Output Path
 
@@ -48,7 +50,7 @@ Follow `source/_drafts/template.md` for structure. Use published posts in `sourc
 ```
 ---
 title: [post title]
-date: [YYYY-MM-DD]
+date: [YYYY-MM-DD]   # latest updated date (most recent factual development), not original event date
 categories: [A/B/C/D/N]
 tags:
 - [tag]
@@ -68,14 +70,16 @@ use bold dates: **YYYY年M月D日**：...]
 [Optional: follow-up. Format: （年）月日：...]
 
 ## 舆论
-[Optional: public reaction. Include only descriptions backed by concrete statistics —
-read counts, share counts, comment counts, poll results, etc. Omit vague characterisations
-such as "网友纷纷表示" or "引发热议" with no supporting numbers.]
+[Optional. **Facts only** — only concrete metrics: read counts, share counts, comment counts,
+poll results. Omit the section entirely if no metrics exist.
+NEVER include: "网友纷纷表示", "引发热议", quoted or paraphrased commentary, your own
+characterisation of public reaction. The blog logs facts, not opinion summaries.]
 ### 微博词条
 [#词条名# 访问日期：年.月.日。阅读量：N万。]
 
 ## 相关内容
-[Optional: related cases, context, documents]
+[Optional. Related cases, context, documents — same facts-only rule as 舆论.
+No commentary, no opinion citations.]
 ```
 
 ## Inline Formatting
