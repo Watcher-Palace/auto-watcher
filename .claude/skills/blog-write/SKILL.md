@@ -92,6 +92,7 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 - No filler phrases: "此事沉寂数月后"、"引发广泛关注" etc. State the fact directly.
 - Concise 概述: 2–4 sentences maximum before the timeline.
 - Sources section: one line per source, format exactly `YYYY.MM.DD，来源。*标题*。URL`
+- **Facts only, no inference:** Every sentence must be directly supported by a source. Do not infer, interpret, or editorialize. Do not draw conclusions from facts even if they seem obvious — let the facts speak. If something is not explicitly stated in a source, do not write it.
 
 ## Categories
 

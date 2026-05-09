@@ -103,7 +103,7 @@ Copy approved draft to `source/_posts/YYMMDD.md`, move assets, run `pnpm deploy`
 
 ```
 WEIBO_COOKIE=_T_WM=...; ALF=...; SSOloginstate=...; SUB=...; SUBP=...
-OPENROUTER_API_KEY=sk-or-...   # only needed for tracker (stepfun/step-3.5-flash:free)
+OPENROUTER_API_KEY=sk-or-...   # only needed for tracker (tencent/hy3-preview:free)
 ```
 
 ## Known Pitfalls
@@ -114,3 +114,9 @@ OPENROUTER_API_KEY=sk-or-...   # only needed for tracker (stepfun/step-3.5-flash
 | Weibo fetch fails silently | Cookie must be from `weibo.cn`, not `weibo.com` |
 | Weibo fetch blocked | Use desktop Chrome UA, not mobile |
 | Python import errors in scripts | `sys.path.insert(0, str(Path(__file__).parent.parent))` |
+| Weibo cookie expired (all UIDs fail) | Get fresh cookie from browser — do NOT switch to WebSearch for discovery |
+| OpenRouter model 404 | Update `src/config.yaml` tracker_model to a current free model (e.g. `tencent/hy3-preview:free`) |
+
+## Tracker Blocker Protocol
+
+When the Stage 1 tracker fails, surface the specific error immediately and wait for the user to resolve it. Do not attempt to replace the tracker with WebSearch or other discovery methods — the Weibo UIDs in `.env` are the authoritative event sources.

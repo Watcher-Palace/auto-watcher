@@ -78,5 +78,6 @@ The writer will read the review file and apply or reject each suggestion in thei
 - Be precise: quote the exact passage being questioned.
 - Flag speculation clearly: "未经证实" or "来源不明" for unverifiable claims.
 - Do not flag stylistic preferences — only factual errors, unverifiable quotes, or structural violations.
+- **No inference:** Flag any claim that is an inference or editorial conclusion rather than a fact directly stated in a source — even if the inference seems reasonable. The blog logs only what sources explicitly say. If a passage interprets, characterises, or draws a conclusion from facts (e.g. "X had influence over Y" inferred from X's position), flag it.
 
 Read `.claude/skills/blog-review/notes.md` before starting — it contains accumulated fact-checking patterns.

@@ -1,4 +1,4 @@
-# Auto Watcher Palace — 自动哨
+# Auto Watcher Palace
 
 A feminist news blog documenting women's rights events in China. Live at [watcher-palace.github.io/auto-watcher](https://watcher-palace.github.io/auto-watcher/).
 
@@ -50,3 +50,24 @@ OPENROUTER_API_KEY=...  # required for tracker (LLM filtering)
 ```
 
 Set in `src/.env`.
+
+### Getting a Weibo Cookie
+
+The cookie must come from the **mobile** Weibo domain (`m.weibo.cn`), not `weibo.com`. The desktop `SUB`/`SUBP` are domain-scoped and won't work.
+
+1. Open https://m.weibo.cn in a desktop browser and log in
+2. Open DevTools (`F12`) → **Application** tab → **Storage → Cookies → https://m.weibo.cn**
+3. Copy the values for these 5 fields:
+   - `_T_WM`
+   - `ALF`
+   - `SSOloginstate`
+   - `SUB`
+   - `SUBP`
+4. Format as one line in `src/.env`:
+   ```
+   WEIBO_COOKIE=_T_WM=xxx; ALF=xxx; SSOloginstate=xxx; SUB=xxx; SUBP=xxx
+   ```
+
+**Faster alternative:** in DevTools' **Network** tab, reload the page, click any `m.weibo.cn` request, and copy the entire `Cookie:` request header value.
+
+Cookies expire — if the tracker logs `failed to fetch uid ...` for every UID, the cookie needs refreshing.
