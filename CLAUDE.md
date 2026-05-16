@@ -79,25 +79,36 @@ Color convention: darkred bold = S, red = A, yellow = B, orange = C/mixed, black
 
 ## Stage Details
 
-### Stage 1 — Track (Python script)
+### Stage 1 — Track (`src/tracker.py`)
+Run:
+```bash
+python src/tracker.py [YYMMDD]            # single date (default: yesterday)
+python src/tracker.py --days N [--end YYMMDD] [--merge]  # date range
+```
+Output: `_pipeline/events/YYMMDD.md` with numbered entries (`## N. 标题`).
+
+Implementation details (for debugging, not for manual reimplementation):
 - Weibo API: `https://m.weibo.cn/api/container/getIndex?type=uid&value={uid}&containerid=107603{uid}`
 - Cookie must be from `weibo.cn` domain (fields: `_T_WM`, `ALF`, `SSOloginstate`, `SUB`, `SUBP`)
 - Use desktop Chrome UA + `Referer: https://m.weibo.cn/` — mobile UA triggers bot detection
 - Extract both `mblog.text` AND `mblog.retweeted_status.text` — feminist content is often in retweets
 - Tracked account UID: `1114030772`
-- Output: `_pipeline/events/YYMMDD.md` with numbered entries (`## N. 标题`)
 
-### Stage 2 — Research (Claude Code)
-Search Chinese, find verbatim quotes from parties, check legal/expert commentary. Output to `_pipeline/research/YYMMDD-N-title.md` with sections: `## Facts`, `## Parties`, `## Sources`.
+### Stage 2 — Research (skill: `blog-research`)
+Invoke the `blog-research` skill before dispatching any research subagent. Output to `_pipeline/research/YYMMDD-N-title.md` with sections: `## Facts`, `## Parties`, `## Sources`.
 
-### Stage 3 — Write (Claude Code)
-Read research file, write draft to `_pipeline/draft/YYMMDD-N-title-v1.md`. Download evidence images to `_pipeline/draft/YYMMDD-N-assets/`. Style: no em dashes (破折号), concise, no filler phrases.
+### Stage 3 — Write (skill: `blog-write`)
+Invoke the `blog-write` skill before dispatching any write subagent. Output to `_pipeline/draft/YYMMDD-N-title-vN.md`. The skill specifies required constraints — section names, URL format in 信息来源, per-section content — that must be embedded in every write-agent prompt.
 
-### Stage 4 — Review (Claude Code)
-Read draft independently, fact-check against sources. Annotate suggestions as `<!-- [REVIEWER]: ... -->`. User annotates disagreements as `<!-- [USER]: ... -->` before revision.
+### Stage 4 — Review (skill: `blog-review`)
+Invoke the `blog-review` skill before dispatching any review subagent. Reviewer annotates suggestions as `<!-- [REVIEWER]: ... -->`. User annotates disagreements as `<!-- [USER]: ... -->` before revision.
 
-### Stage 5 — Publish (Python script)
-Copy approved draft to `source/_posts/YYMMDD.md`, move assets, run `pnpm deploy`. Calendar is auto-generated from post metadata by `scripts/calendar.js`.
+### Stage 5 — Publish (`src/publisher.py`)
+Run:
+```bash
+python src/publisher.py <YYMMDD> <N>
+```
+The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, updates `source/index.md` calendar if present, then runs `pnpm build` + `pnpm deploy`. Do not execute these steps manually.
 
 ## Environment Variables
 
