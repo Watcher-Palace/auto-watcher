@@ -108,16 +108,21 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
     if (posts_dir / date_str).exists():
         print(f"Moved assets → {posts_dir / date_str}")
 
-    inject_calendar_entry(
-        index_path=REPO_ROOT / "source" / "index.md",
-        date_str=date_str,
-        title=fm.get("title", title),
-        category=str(fm.get("categories", "N")),
-        post_slug=post_slug,
-    )
-    print("Updated index.md calendar")
+    index_path = REPO_ROOT / "source" / "index.md"
+    if index_path.exists():
+        inject_calendar_entry(
+            index_path=index_path,
+            date_str=date_str,
+            title=fm.get("title", title),
+            category=str(fm.get("categories", "N")),
+            post_slug=post_slug,
+        )
+        print("Updated index.md calendar")
+    else:
+        print("Skipped index.md calendar (handled by scripts/calendar.js)")
 
     if deploy:
+        subprocess.run(["pnpm", "run", "build"], cwd=REPO_ROOT, check=True)
         subprocess.run(["pnpm", "run", "deploy"], cwd=REPO_ROOT, check=True)
         print("Deployed to GitHub Pages")
 

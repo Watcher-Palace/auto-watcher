@@ -116,6 +116,16 @@ OPENROUTER_API_KEY=sk-or-...   # only needed for tracker (tencent/hy3-preview:fr
 | Tracker exits with `RATE LIMITED` | Per-cookie throttle, persists 6–24h. Wait, then re-run with `--merge`. (Distinct from cookie expiry.) |
 | OpenRouter model 404 | Update `src/config.yaml` tracker_model to a current free model (e.g. `tencent/hy3-preview:free`) |
 
+## Subagent Model Selection
+
+Research files must be written entirely in **Simplified Chinese**. Do not write English prose — Chinese names/terms may appear but all explanatory text must be in Chinese.
+
+Use **Haiku** (`model: haiku`) for research subagents — fetch-search-extract tasks that don't require stylistic judgment.
+
+Use **Sonnet** (`model: sonnet`) for write and review subagents — these require nuanced judgment (e.g. no inference, feminist framing) that Haiku handles unreliably.
+
+When dispatching parallel research agents, run in **batches of 2–3**, not all at once, so a quota hit loses only one batch rather than all work.
+
 ## Tracker Blocker Protocol
 
 When the Stage 1 tracker fails, surface the specific error immediately and wait for the user to resolve it. Do not attempt to replace the tracker with WebSearch or other discovery methods — the Weibo UIDs in `.env` are the authoritative event sources.
