@@ -75,6 +75,20 @@ approved_path(date_str).write_text("\n".join(str(i) for i in approved_indexes) +
 
 ## Stage 2+3+4 — Research → Write → Review loop
 
+### Filter terminal events
+
+Before iterating, read `_pipeline/events/YYMMDD-status.txt` for each date if the file exists. Each non-blank, non-`#` line has the form `N:state` where state is `published` or `aborted`. Remove any matching (date, index) pair from the approved list — these are terminal and must not be re-dispatched.
+
+Example:
+
+```
+$ cat _pipeline/events/260326-status.txt
+1:aborted
+7:published
+```
+
+→ For 260326, skip events 1 and 7. Continue evaluating remaining indexes against file presence in `research/`, `draft/`, `review/`.
+
 For each approved (date, index, title) triple:
 
 ### 2. Research (subagent)
