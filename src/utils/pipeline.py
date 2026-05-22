@@ -83,6 +83,77 @@ def get_event_titles(date_str: str) -> dict[int, str]:
     return titles
 
 
+_STORED_STATES = ("selected", "abort", "published")
+
+
+def _status_path(date_str: str, pipeline_dir: Path) -> Path:
+    return pipeline_dir / "events" / f"{date_str}-status.txt"
+
+
+def _read_status_entries(status_path: Path) -> dict[int, str]:
+    if not status_path.exists():
+        return {}
+    entries: dict[int, str] = {}
+    for raw in status_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        idx_str, _, state = line.partition(":")
+        if not state:
+            raise RuntimeError(f"Malformed status line in {status_path}: {raw!r}")
+        if state not in _STORED_STATES:
+            raise RuntimeError(
+                f"Unknown status value in {status_path}: {raw!r} "
+                f"(allowed: {', '.join(_STORED_STATES)})"
+            )
+        n = int(idx_str)
+        if n in entries:
+            raise RuntimeError(f"Duplicate event index {n} in {status_path}")
+        entries[n] = state
+    return entries
+
+
+def _write_status_entries(status_path: Path, entries: dict[int, str]) -> None:
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [f"{n}:{entries[n]}\n" for n in sorted(entries)]
+    status_path.write_text("".join(lines), encoding="utf-8")
+
+
+def record_selected(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> None:
+    status_path = _status_path(date_str, pipeline_dir)
+    entries = _read_status_entries(status_path)
+    prior = entries.get(n)
+    if prior == "selected":
+        return
+    if prior == "published":
+        raise RuntimeError(
+            f"Event {date_str}-{n} is already published in {status_path}; "
+            "edit the sidecar by hand if you really mean to revert it."
+        )
+    if prior == "abort":
+        raise RuntimeError(
+            f"Event {date_str}-{n} is already marked abort in {status_path}; "
+            "edit the sidecar by hand if you really mean to revert it."
+        )
+    entries[n] = "selected"
+    _write_status_entries(status_path, entries)
+
+
+def record_aborted(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> None:
+    status_path = _status_path(date_str, pipeline_dir)
+    entries = _read_status_entries(status_path)
+    prior = entries.get(n)
+    if prior == "abort":
+        return
+    if prior == "published":
+        raise RuntimeError(
+            f"Event {date_str}-{n} is already published in {status_path}; "
+            "edit the sidecar by hand if you really mean to abort it."
+        )
+    entries[n] = "abort"
+    _write_status_entries(status_path, entries)
+
+
 def get_state() -> str | None:
     if STATE_FILE.exists():
         return STATE_FILE.read_text().strip() or None
