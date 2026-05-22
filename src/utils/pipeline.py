@@ -154,6 +154,42 @@ def record_aborted(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> None
     _write_status_entries(status_path, entries)
 
 
+def event_status(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
+    entries = _read_status_entries(_status_path(date_str, pipeline_dir))
+    stored = entries.get(n)
+    if stored == "abort":
+        return "abort"
+    if stored == "published":
+        return "published"
+    if (pipeline_dir / "review").exists() and any(
+        (pipeline_dir / "review").glob(f"{date_str}-{n}-*-v*.md")
+    ):
+        return "reviewed"
+    if (pipeline_dir / "draft").exists() and any(
+        (pipeline_dir / "draft").glob(f"{date_str}-{n}-*-v*.md")
+    ):
+        return "drafted"
+    if (pipeline_dir / "research").exists() and any(
+        (pipeline_dir / "research").glob(f"{date_str}-{n}-*.md")
+    ):
+        return "researched"
+    if stored == "selected":
+        return "selected"
+    return "candidate"
+
+
+def event_statuses(date_str: str, pipeline_dir: Path = PIPELINE) -> dict[int, str]:
+    events_file = pipeline_dir / "events" / f"{date_str}.md"
+    if not events_file.exists():
+        return {}
+    indexes = []
+    for raw in events_file.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^## (\d+)\.\s", raw)
+        if m:
+            indexes.append(int(m.group(1)))
+    return {n: event_status(date_str, n, pipeline_dir=pipeline_dir) for n in indexes}
+
+
 def get_state() -> str | None:
     if STATE_FILE.exists():
         return STATE_FILE.read_text().strip() or None
