@@ -37,6 +37,31 @@ def move_assets(src: Path, dst: Path) -> None:
     shutil.move(str(src), str(dst))
 
 
+def record_published(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> None:
+    status_path = pipeline_dir / "events" / f"{date_str}-status.txt"
+    existing = {}
+    if status_path.exists():
+        for raw in status_path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            idx_str, _, state = line.partition(":")
+            if not state:
+                raise RuntimeError(f"Malformed status line in {status_path}: {raw!r}")
+            existing[int(idx_str)] = state
+    prior = existing.get(n)
+    if prior == "published":
+        return
+    if prior == "aborted":
+        raise RuntimeError(
+            f"Event {date_str}-{n} is already marked aborted in {status_path}; "
+            "edit the sidecar by hand if you really mean to publish it."
+        )
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    with status_path.open("a", encoding="utf-8") as fh:
+        fh.write(f"{n}:published\n")
+
+
 def inject_calendar_entry(
     index_path: Path, date_str: str, title: str, category: str, post_slug: str
 ) -> None:
