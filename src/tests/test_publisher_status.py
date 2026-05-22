@@ -47,3 +47,11 @@ def test_ignores_blank_and_comment_lines(tmp_path):
     (events / "260326-status.txt").write_text("# notes\n\n3:published\n")
     record_published("260326", 3, pipeline_dir=pipeline)
     assert (events / "260326-status.txt").read_text() == "# notes\n\n3:published\n"
+
+
+def test_raises_on_unknown_state_value(tmp_path):
+    pipeline = tmp_path
+    events = _events_dir(tmp_path)
+    (events / "260326-status.txt").write_text("3:pending\n")
+    with pytest.raises(RuntimeError, match="pending"):
+        record_published("260326", 1, pipeline_dir=pipeline)

@@ -48,6 +48,11 @@ def record_published(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> No
             idx_str, _, state = line.partition(":")
             if not state:
                 raise RuntimeError(f"Malformed status line in {status_path}: {raw!r}")
+            if state not in ("published", "aborted"):
+                raise RuntimeError(
+                    f"Unknown status value in {status_path}: {raw!r} "
+                    "(allowed: published, aborted)"
+                )
             existing[int(idx_str)] = state
     prior = existing.get(n)
     if prior == "published":
