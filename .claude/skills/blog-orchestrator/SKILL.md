@@ -67,8 +67,9 @@ After running, display the events file contents so the user can review.
 Write approved indexes to `_pipeline/events/YYMMDD-approved.txt`, one per line.
 
 ```python
-from src.utils.pipeline import approved_path
-approved_path(date_str).write_text("\n".join(str(i) for i in approved_indexes) + "\n")
+from src.utils.pipeline import record_selected
+for i in approved_indexes:
+    record_selected(date_str, i)
 ```
 
 ---
@@ -77,17 +78,16 @@ approved_path(date_str).write_text("\n".join(str(i) for i in approved_indexes) +
 
 ### Filter terminal events
 
-Before iterating, read `_pipeline/events/YYMMDD-status.txt` for each date if the file exists. Each non-blank, non-`#` line has the form `N:state` where state is `published` or `aborted`. Remove any matching (date, index) pair from the approved list — these are terminal and must not be re-dispatched.
+Before iterating, query `event_statuses(date_str)` from `src.utils.pipeline` for each date. It returns `{index: state}` for every event in the date's events file. Remove any (date, index) where state is `published` or `abort` — these are terminal and must not be re-dispatched. The remaining states (`candidate`, `selected`, `researched`, `drafted`, `reviewed`) all represent in-flight work.
 
 Example:
 
 ```
-$ cat _pipeline/events/260326-status.txt
-1:aborted
-7:published
+>>> event_statuses("260326")
+{1: 'abort', 2: 'candidate', 3: 'abort', 4: 'candidate', 5: 'candidate', 6: 'candidate', 7: 'published', 8: 'candidate', 9: 'candidate', 10: 'published'}
 ```
 
-→ For 260326, skip events 1 and 7. Continue evaluating remaining indexes against file presence in `research/`, `draft/`, `review/`.
+→ For 260326, every event with a stored decision is terminal; only `candidate` events remain (which means: the user has not approved them — do not dispatch).
 
 For each approved (date, index, title) triple:
 
