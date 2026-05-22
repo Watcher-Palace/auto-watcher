@@ -190,6 +190,29 @@ def event_statuses(date_str: str, pipeline_dir: Path = PIPELINE) -> dict[int, st
     return {n: event_status(date_str, n, pipeline_dir=pipeline_dir) for n in indexes}
 
 
+def record_published(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> None:
+    status_path = _status_path(date_str, pipeline_dir)
+    entries = _read_status_entries(status_path)
+    prior = entries.get(n)
+    if prior == "published":
+        return
+    if prior == "abort":
+        raise RuntimeError(
+            f"Event {date_str}-{n} is already marked abort in {status_path}; "
+            "edit the sidecar by hand if you really mean to publish it."
+        )
+    entries[n] = "published"
+    _write_status_entries(status_path, entries)
+
+
+def _post_slug(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
+    entries = _read_status_entries(_status_path(date_str, pipeline_dir))
+    for idx, state in entries.items():
+        if state == "published" and idx != n:
+            return f"{date_str}-{n}"
+    return date_str
+
+
 def get_state() -> str | None:
     if STATE_FILE.exists():
         return STATE_FILE.read_text().strip() or None

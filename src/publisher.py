@@ -8,7 +8,7 @@ import yaml
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.utils.pipeline import REPO_ROOT, PIPELINE
+from src.utils.pipeline import REPO_ROOT, PIPELINE, record_published, _post_slug
 
 CATEGORY_COLORS = {"A": "red", "B": "yellow", "C": "orange", "D": "orange", "N": "black"}
 MONTH_NAMES_ZH = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"]
@@ -35,36 +35,6 @@ def move_assets(src: Path, dst: Path) -> None:
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(src), str(dst))
-
-
-def record_published(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> None:
-    status_path = pipeline_dir / "events" / f"{date_str}-status.txt"
-    existing = {}
-    if status_path.exists():
-        for raw in status_path.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#"):
-                continue
-            idx_str, _, state = line.partition(":")
-            if not state:
-                raise RuntimeError(f"Malformed status line in {status_path}: {raw!r}")
-            if state not in ("published", "aborted"):
-                raise RuntimeError(
-                    f"Unknown status value in {status_path}: {raw!r} "
-                    "(allowed: published, aborted)"
-                )
-            existing[int(idx_str)] = state
-    prior = existing.get(n)
-    if prior == "published":
-        return
-    if prior == "aborted":
-        raise RuntimeError(
-            f"Event {date_str}-{n} is already marked aborted in {status_path}; "
-            "edit the sidecar by hand if you really mean to publish it."
-        )
-    status_path.parent.mkdir(parents=True, exist_ok=True)
-    with status_path.open("a", encoding="utf-8") as fh:
-        fh.write(f"{n}:published\n")
 
 
 def inject_calendar_entry(
@@ -123,20 +93,6 @@ def _append_new_month(content: str, year: int, month: int) -> str:
         "  </tbody>\n</table>\n"
     )
     return content.rstrip() + table
-
-
-def _post_slug(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
-    status_path = pipeline_dir / "events" / f"{date_str}-status.txt"
-    if not status_path.exists():
-        return date_str
-    for raw in status_path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        idx_str, _, state = line.partition(":")
-        if state == "published" and int(idx_str) != n:
-            return f"{date_str}-{n}"
-    return date_str
 
 
 def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = True) -> None:
