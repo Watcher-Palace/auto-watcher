@@ -151,6 +151,9 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
         subprocess.run(["pnpm", "run", "deploy"], cwd=REPO_ROOT, check=True)
         print("Deployed to GitHub Pages")
 
+    record_published(date_str, n)
+    print(f"Recorded {date_str}-{n} as published in events sidecar")
+
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
