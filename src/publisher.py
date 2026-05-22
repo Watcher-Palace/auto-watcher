@@ -125,18 +125,32 @@ def _append_new_month(content: str, year: int, month: int) -> str:
     return content.rstrip() + table
 
 
+def _post_slug(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
+    status_path = pipeline_dir / "events" / f"{date_str}-status.txt"
+    if not status_path.exists():
+        return date_str
+    for raw in status_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        idx_str, _, state = line.partition(":")
+        if state == "published" and int(idx_str) != n:
+            return f"{date_str}-{n}"
+    return date_str
+
+
 def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = True) -> None:
     fm = read_frontmatter(draft_path.read_text(encoding="utf-8"))
     posts_dir = REPO_ROOT / "source" / "_posts"
-    post_slug = date_str
+    post_slug = _post_slug(date_str, n)
 
-    copy_draft(draft_path, posts_dir / f"{date_str}.md")
-    print(f"Copied draft → {posts_dir / f'{date_str}.md'}")
+    copy_draft(draft_path, posts_dir / f"{post_slug}.md")
+    print(f"Copied draft → {posts_dir / f'{post_slug}.md'}")
 
     assets_src = PIPELINE / "draft" / f"{date_str}-{n}-assets"
-    move_assets(assets_src, posts_dir / date_str)
-    if (posts_dir / date_str).exists():
-        print(f"Moved assets → {posts_dir / date_str}")
+    move_assets(assets_src, posts_dir / post_slug)
+    if (posts_dir / post_slug).exists():
+        print(f"Moved assets → {posts_dir / post_slug}")
 
     index_path = REPO_ROOT / "source" / "index.md"
     if index_path.exists():

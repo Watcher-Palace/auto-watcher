@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from src.publisher import record_published
+from src.publisher import _post_slug, record_published
 
 
 def _events_dir(tmp_path: Path) -> Path:
@@ -55,3 +55,26 @@ def test_raises_on_unknown_state_value(tmp_path):
     (events / "260326-status.txt").write_text("3:pending\n")
     with pytest.raises(RuntimeError, match="pending"):
         record_published("260326", 1, pipeline_dir=pipeline)
+
+
+def test_post_slug_no_sidecar_returns_bare(tmp_path):
+    _events_dir(tmp_path)
+    assert _post_slug("260326", 10, pipeline_dir=tmp_path) == "260326"
+
+
+def test_post_slug_only_aborts_returns_bare(tmp_path):
+    events = _events_dir(tmp_path)
+    (events / "260326-status.txt").write_text("1:aborted\n3:aborted\n")
+    assert _post_slug("260326", 10, pipeline_dir=tmp_path) == "260326"
+
+
+def test_post_slug_other_published_returns_suffixed(tmp_path):
+    events = _events_dir(tmp_path)
+    (events / "260503-status.txt").write_text("1:published\n4:aborted\n")
+    assert _post_slug("260503", 3, pipeline_dir=tmp_path) == "260503-3"
+
+
+def test_post_slug_own_published_returns_bare(tmp_path):
+    events = _events_dir(tmp_path)
+    (events / "260326-status.txt").write_text("1:aborted\n7:published\n")
+    assert _post_slug("260326", 7, pipeline_dir=tmp_path) == "260326"
