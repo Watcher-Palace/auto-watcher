@@ -21,8 +21,7 @@ Deploy target: `git@github.com:jshu039-maker/blog.git`, branch `main` (SSH alias
 ```
 _pipeline/
   events/YYMMDD.md           # Stage 1: tracked Weibo events (one per date)
-  events/YYMMDD-approved.txt # line-separated approved event indexes (e.g. "1\n3")
-  events/YYMMDD-status.txt   # per-date terminal status, one "N:published" / "N:aborted" per line
+  events/YYMMDD-status.txt   # per-event status, "N:selected" / "N:abort" / "N:published" (one per line). researched/drafted/reviewed/candidate are derived from file presence.
   research/YYMMDD-N-title.md # Stage 2: research output
   draft/YYMMDD-N-title-vN.md # Stage 3: draft post
   draft/YYMMDD-N-assets/     # images for this draft
