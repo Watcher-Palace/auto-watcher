@@ -64,7 +64,7 @@ After running, display the events file contents so the user can review.
 **Show the numbered event list and ask:**
 **"Which events to process? Enter numbers (e.g. '1 3') or 'all', or 'none' to stop."**
 
-Write approved indexes to `_pipeline/events/YYMMDD-approved.txt`, one per line.
+Record each approved index in the unified status sidecar:
 
 ```python
 from src.utils.pipeline import record_selected
