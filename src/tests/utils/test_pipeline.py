@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import date, timedelta
 
 from src.utils.pipeline import (
-    events_path, approved_path, research_path,
+    events_path, research_path,
     next_draft_path, latest_draft, latest_review,
     review_path, next_review_path,
     get_event_titles, find_research_file,
@@ -17,11 +17,6 @@ REPO = Path(__file__).parent.parent.parent.parent  # scripts/tests/utils/ → re
 def test_events_path():
     p = events_path("260325")
     assert p == REPO / "_pipeline" / "events" / "260325.md"
-
-
-def test_approved_path():
-    p = approved_path("260325")
-    assert p == REPO / "_pipeline" / "events" / "260325-approved.txt"
 
 
 def test_research_path():

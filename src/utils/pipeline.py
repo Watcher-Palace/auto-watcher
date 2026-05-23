@@ -12,10 +12,6 @@ def events_path(date_str: str) -> Path:
     return PIPELINE / "events" / f"{date_str}.md"
 
 
-def approved_path(date_str: str) -> Path:
-    return PIPELINE / "events" / f"{date_str}-approved.txt"
-
-
 def research_path(date_str: str, n: int, title: str) -> Path:
     return PIPELINE / "research" / f"{date_str}-{n}-{title}.md"
 
