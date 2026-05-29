@@ -57,17 +57,14 @@ tags:
 ---
 
 ## 概述
-[Summary paragraph. Add #### 时间线 subsection only if the story spans multiple dates —
-use bold dates: **YYYY年M月D日**：...]
+[Summary paragraph followed by case-specific sub-sections via #### headings.
+Everything case-specific lives here — including timeline, prior background,
+follow-up status, judgment details, party claims, victim's self-statement.
+Use #### sub-headings like 时间线, 判决要点, 男方诉讼请求, 受害者自述, etc.
+Dates in bold: **YYYY年M月D日**：...]
 
 ## 信息来源
 [YYYY.MM.DD，来源名称。*标题*。URL or asset]
-
-## 前情
-[Optional: prior background. Same source format.]
-
-## 后续
-[Optional: follow-up. Format: （年）月日：...]
 
 ## 舆论
 [Optional. **Facts only** — only concrete metrics: read counts, share counts, comment counts,
@@ -78,9 +75,13 @@ characterisation of public reaction. The blog logs facts, not opinion summaries.
 [#词条名# 访问日期：年.月.日。阅读量：N万。]
 
 ## 相关内容
-[Optional. Related cases, context, documents — same facts-only rule as 舆论.
+[Optional. ONLY general/comparative material — statute citations, parallel cases,
+industry/structural background. Same facts-only rule as 舆论.
+Do NOT put case-specific content here (that goes in 概述 sub-sections).
 No commentary, no opinion citations.]
 ```
+
+**Structural rule:** All case-specific content (background, timeline, follow-up status, judgment details, party statements, victim's words) belongs inside `## 概述` as `####` sub-sections. `## 相关内容` is reserved for general/comparative material only (statutes, parallel cases, structural context). Do not create standalone `## 前情` or `## 后续` sections — fold them into 概述.
 
 ## Inline Formatting
 
@@ -97,6 +98,7 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 - Concise 概述: 2–4 sentences maximum before the timeline.
 - Sources section: one line per source, format exactly `YYYY.MM.DD，来源。*标题*。URL`
 - **Facts only, no inference:** Every sentence must be directly supported by a source. Do not infer, interpret, or editorialize. Do not draw conclusions from facts even if they seem obvious — let the facts speak. If something is not explicitly stated in a source, do not write it.
+- **No expert opinions:** Strip all named-expert commentary on the case — lawyers, scholars, doctors, analysts, columnists, "专家". This applies even when the reviewer accepts such content. Factual law (statute numbers,司法解释 thresholds, official enacted dates) and parallel cases may stay if stated without attribution to a commentator. The blog logs facts, not professional commentary.
 
 ## Categories
 
@@ -107,8 +109,13 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 - `D` — 个人行为
 - `N` — 中立事件/等待后续
 
-## Special Tags
+## Tags
 
+The canonical tag list lives in `/home/jc/Projects/auto-watcher/src/tags.yml`, grouped by status / crime / legal / topic / context / identity / location. **Read it before picking tags.** Only use tags that already exist there — the publisher validates every draft against this registry and refuses to deploy if it sees an unknown tag.
+
+If the event genuinely needs a new tag, stop and ask the user before inventing one; do not silently coin new tags in a draft.
+
+Status tags (always available):
 - `PING` — 插眼等后续（follow-up expected）
 - `TODO` — 还需查证（unverified claim）
 

@@ -14,7 +14,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
-from openai import OpenAI
 from src.utils.web import WebClient
 from src.utils.pipeline import events_path, set_state
 
@@ -22,8 +21,8 @@ WEIBO_API = "https://m.weibo.cn/api/container/getIndex"
 FEMINIST_KEYWORDS = ["女性", "女权", "性别", "婚姻", "家暴", "性侵", "拐卖", "生育", "就业歧视"]
 CN_TZ = timezone(timedelta(hours=8))
 PAGINATION_MAX_PAGES = 20
-PAGINATION_DELAY_SEC = 0.5   # base; actual = uniform(base, base*3)
-INTER_UID_DELAY_SEC = 2.0    # base; actual = uniform(base, base*3)
+PAGINATION_DELAY_SEC = 3.0   # base; actual = uniform(base, base*3) → 3–9s per page
+INTER_UID_DELAY_SEC = 5.0    # base; actual = uniform(base, base*3) → 5–15s between UIDs
 
 
 class RateLimited(Exception):
@@ -116,40 +115,50 @@ def bucket_posts_by_date(posts: list[dict], target_dates: list[str]) -> dict[str
     return dict(buckets)
 
 
-def filter_feminist_events(posts: list[dict], api_key: str, model: str) -> list[dict]:
-    """Call OpenRouter to filter and deduplicate feminist-relevant events."""
+def filter_feminist_events(posts: list[dict]) -> list[dict]:
+    """Use claude CLI to filter and deduplicate feminist-relevant events."""
     if not posts:
         return []
-    client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+    import subprocess
     posts_text = "\n\n".join(
         f"[{i+1}] URL: {p['url']}\nText: {p['text']}\nRetweet: {p['retweet_text']}"
         for i, p in enumerate(posts)
     )
     keywords = "、".join(FEMINIST_KEYWORDS)
-    prompt = f"""以下是微博帖子。请筛选出与女性权益、性别议题相关的事件，关键词包括：{keywords}。
+    prompt = f"""以下是微博帖子。请筛选出与女性权益、性别议题相关的**近期具体事件**，关键词包括：{keywords}。
+
+**收录标准（同时满足）：**
+1. 是具体事件（有明确当事人、发生地点或机构），不是泛泛的性别议题讨论或科普
+2. 是近期发生或有新进展的事件（新闻报道、判决、声明、案发等）；若帖子讨论的是旧事件且无新进展，则不收录
+
+**排除以下内容：**
+- 对历史事件或旧案的回顾/感慨（无新进展）
+- 泛化的性别讨论、观点分享、情绪宣泄
+- 对某议题的一般性科普或评论
 
 对于相同事件的多个帖子，请合并为一条。每条事件用以下格式输出（JSON数组）：
 [
   {{
     "title": "标题简述（10字以内）",
-    "brief": "一两句话概述",
+    "brief": "一两句话概述，注明最新进展",
     "sources": ["url1", "url2"]
   }}
 ]
 
-如无相关内容，返回空数组 []。
+如无符合条件的内容，返回空数组 []。
 
 帖子列表：
 {posts_text}"""
 
     for attempt in range(3):
         try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,
+            result = subprocess.run(
+                ["claude", "-p", prompt, "--model", "claude-haiku-4-5-20251001", "--output-format", "text"],
+                capture_output=True, text=True, timeout=120,
             )
-            content = resp.choices[0].message.content.strip()
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr.strip())
+            content = result.stdout.strip()
             start = content.find("[")
             end = content.rfind("]") + 1
             if start == -1 or end == 0:
@@ -220,17 +229,19 @@ def append_events_to_file(date_str: str, new_events: list[dict]) -> Path:
     return out
 
 
-def run_tracker(date_str: str, api_key: str, model: str, cookie: str) -> None:
+def run_tracker(date_str: str, cookie: str) -> None:
     """Single-date mode: fetch current page only, write to date_str events file."""
     tracked_uids = [u.strip() for u in os.environ.get("TRACKED_UIDS", "").split(",") if u.strip()]
     web = WebClient(cookie=cookie)
     all_posts = []
-    for uid in tracked_uids:
+    for i, uid in enumerate(tracked_uids):
+        if i > 0:
+            time.sleep(random.uniform(INTER_UID_DELAY_SEC, INTER_UID_DELAY_SEC * 3))
         try:
             all_posts.extend(fetch_weibo_posts(web, uid))
         except WebClient.FetchError as e:
             print(f"Warning: failed to fetch uid {uid}: {e}")
-    events = filter_feminist_events(all_posts, api_key, model)
+    events = filter_feminist_events(all_posts)
     out = write_events_file(date_str, events)
     set_state("20" + date_str)
     print(f"Wrote {len(events)} events to {out}")
@@ -239,8 +250,6 @@ def run_tracker(date_str: str, api_key: str, model: str, cookie: str) -> None:
 def run_tracker_range(
     end_date: date,
     days: int,
-    api_key: str,
-    model: str,
     cookie: str,
     uids: list[str] | None = None,
     merge: bool = False,
@@ -258,11 +267,17 @@ def run_tracker_range(
     cutoff = datetime.combine(cutoff_date, datetime.min.time(), tzinfo=CN_TZ)
     web = WebClient(cookie=cookie)
     all_posts = []
+    skipped_uids: list[str] = []
     for i, uid in enumerate(uids):
         if i > 0:
             time.sleep(random.uniform(INTER_UID_DELAY_SEC, INTER_UID_DELAY_SEC * 3))
         print(f"Paginating uid {uid} until {cutoff.date()} ...")
-        posts = fetch_weibo_posts_paginated(web, uid, cutoff)
+        try:
+            posts = fetch_weibo_posts_paginated(web, uid, cutoff)
+        except RateLimited:
+            skipped_uids = uids[i:]
+            print(f"  uid {uid}: RATE LIMITED — writing partial results and stopping", file=sys.stderr)
+            break
         print(f"  uid {uid}: {len(posts)} posts collected")
         all_posts.extend(posts)
     buckets = bucket_posts_by_date(all_posts, target_dates)
@@ -270,10 +285,20 @@ def run_tracker_range(
     writer = append_events_to_file if merge else write_events_file
     for date_str in sorted(target_dates):
         bucket = buckets.get(date_str, [])
-        events = filter_feminist_events(bucket, api_key, model) if bucket else []
+        events = filter_feminist_events(bucket) if bucket else []
         out = writer(date_str, events)
         action = "appended" if merge else "wrote"
         print(f"  {date_str}: {len(bucket)} posts → {len(events)} events {action} → {out}")
+    if skipped_uids:
+        skipped = ",".join(skipped_uids)
+        print(
+            f"\nRATE LIMITED. Partial results written above (skipped uids: {skipped}).\n"
+            f"Wait 6–24h, then complete with: python src/tracker.py [args] --uids {skipped} --merge\n"
+            "Do not retry now — additional requests extend the window.\n"
+            "If you need to continue immediately, get a fresh WEIBO_COOKIE from another browser session.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     set_state("20" + end_date.strftime("%y%m%d"))
 
 
@@ -291,19 +316,16 @@ def main() -> None:
     parser.add_argument("--merge", action="store_true", help="append to existing events files (range mode)")
     args = parser.parse_args()
 
-    cfg = yaml.safe_load(open(Path(__file__).parent / "config.yaml"))
-    model = cfg["llm"]["tracker_model"]
-    api_key = os.environ["OPENROUTER_API_KEY"]
     cookie = os.environ.get("WEIBO_COOKIE", "")
 
     try:
         if args.days:
             end_date = _parse_yymmdd(args.end) if args.end else (date.today() - timedelta(days=1))
             uids = [u.strip() for u in args.uids.split(",") if u.strip()] if args.uids else None
-            run_tracker_range(end_date, args.days, api_key, model, cookie, uids=uids, merge=args.merge)
+            run_tracker_range(end_date, args.days, cookie, uids=uids, merge=args.merge)
         else:
             date_arg = args.date or (date.today() - timedelta(days=1)).strftime("%y%m%d")
-            run_tracker(date_arg, api_key, model, cookie)
+            run_tracker(date_arg, cookie)
     except RateLimited:
         print(
             "\nRATE LIMITED. Weibo throttle is per-cookie and persists 6–24h.\n"

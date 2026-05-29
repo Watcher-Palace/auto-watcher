@@ -21,6 +21,28 @@ def read_frontmatter(content: str) -> dict:
     return yaml.safe_load(content[3:end]) or {}
 
 
+def load_tag_registry() -> set[str]:
+    registry_path = Path(__file__).parent / "tags.yml"
+    if not registry_path.exists():
+        return set()
+    data = yaml.safe_load(registry_path.read_text(encoding="utf-8")) or {}
+    allowed: set[str] = set()
+    for group in data.values():
+        if isinstance(group, list):
+            allowed.update(group)
+    return allowed
+
+
+def validate_tags(tags, registry: set[str]) -> None:
+    if not registry:
+        return
+    unknown = [t for t in (tags or []) if t not in registry]
+    if unknown:
+        raise SystemExit(
+            f"Unknown tags {unknown}. Add to src/tags.yml or remove from draft."
+        )
+
+
 def calendar_color(category: str) -> str:
     return CATEGORY_COLORS.get(category, "black")
 
@@ -97,6 +119,7 @@ def _append_new_month(content: str, year: int, month: int) -> str:
 
 def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = True) -> None:
     fm = read_frontmatter(draft_path.read_text(encoding="utf-8"))
+    validate_tags(fm.get("tags"), load_tag_registry())
     posts_dir = REPO_ROOT / "source" / "_posts"
     post_slug = _post_slug(date_str, n)
 

@@ -1,0 +1,55 @@
+# Canonical tag registry for the blog.
+# Publisher validates every draft's `tags:` against this list before deploy.
+# To introduce a new tag, add it here first, then use it in a draft.
+# Grouping is for human readability only; validator flattens all groups.
+
+status:
+  - PING   # 待续跟进
+  - TODO   # 待查证
+
+crime:
+  - 犯罪
+  - 强奸
+  - 性侵
+  - 性骚扰
+  - 偷拍
+  - 故意杀人
+  - 拐卖
+  - 暴力
+  - 投毒
+  - 迷药
+  - 遗产侵占
+
+legal:
+  - 法律
+  - 名誉权
+
+topic:
+  - 婚姻
+  - 性别歧视
+  - 性别盲视
+  - 女性生理
+  - 代孕
+  - 公共服务
+  - 言论管控
+  - 舆论
+  - 媒体
+  - 教育
+  - 文化
+  - 游戏
+  - 精神疾病
+  - 国外政策
+
+context:
+  - 职场
+  - 民宿
+  - 金融
+
+identity:
+  - 未成年
+  - 留学生
+  - 公职人员
+
+location:
+  - 德国
+  - 跨国

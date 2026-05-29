@@ -1,2 +1,2 @@
-1:selected
+1:abort
 3:published

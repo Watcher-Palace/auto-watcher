@@ -135,7 +135,7 @@ Use **Haiku** (`model: haiku`) for research subagents — fetch-search-extract t
 
 Use **Sonnet** (`model: sonnet`) for write and review subagents — these require nuanced judgment (e.g. no inference, feminist framing) that Haiku handles unreliably.
 
-When dispatching parallel research agents, run in **batches of 2–3**, not all at once, so a quota hit loses only one batch rather than all work.
+When dispatching parallel subagents (research, write, or review), run in **batches of 2–3**, not all at once, so a quota hit loses only one batch rather than all work.
 
 ## Tracker Blocker Protocol
 
