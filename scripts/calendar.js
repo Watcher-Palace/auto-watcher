@@ -3,7 +3,7 @@
 hexo.extend.generator.register('calendar-index', function (locals) {
   const moment = require('moment');
 
-  const CAT_COLOR = { S: 'darkred', A: 'red', B: 'yellow', C: 'orange' };
+  const CAT_COLOR = { S: 'darkred', A: 'red', B: 'orange', C: 'yellow' };
   const CAT_BOLD = new Set(['S']);
   const AC_CATS = new Set(['S', 'A', 'B', 'C']);
   const CAT_PRIORITY = { S: 0, A: 1, B: 2, C: 3, D: 4, N: 5 };

@@ -75,7 +75,7 @@ tags:
 ```html
 <a style="color: red;" href="{{ site.root }}2026/YYMMDD/" title="Post title">link text</a>
 ```
-Color convention: darkred bold = S, red = A, yellow = B, orange = C/mixed, black = N/PING.
+Color convention: darkred bold = S, red = A, orange = B, yellow = C/mixed, black = N/PING.
 
 ## Stage Details
 
