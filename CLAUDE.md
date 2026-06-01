@@ -49,6 +49,14 @@ How cells render (see `scripts/calendar.js`):
 
 To change calendar appearance or color mapping, edit `scripts/calendar.js`.
 
+## Tests
+
+```bash
+source src/venv/bin/activate
+python -m pytest src/tests/ -q
+```
+Tests are hermetic (network and the `claude` CLI are mocked). The same command runs in CI on every push/PR via `.github/workflows/tests.yml`; deps are pinned in `requirements.txt`.
+
 ## Stage Details
 
 ### Stage 1 — Track (`src/tracker.py`)
