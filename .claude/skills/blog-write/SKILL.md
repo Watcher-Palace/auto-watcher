@@ -22,7 +22,7 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
 ## Modes
 
-**Initial mode:** Read the research file. Use WebSearch + WebFetch for additional sources or missing details not covered in research. Write the first draft.
+**Initial mode:** Read the research file, then **track the story to today** — search each key person/institution for developments after the research file's date (new verdicts, hearings, arrests, statements). Do not rely on the research file alone; it may be days stale. Fold new facts into the body and mark the most recent one with `<font color="blue">`. Write the first draft.
 
 **Revision mode:** Read the current draft and review file together. For each `<!-- [REVIEWER]: ... -->` suggestion:
 - Apply it if it is factually correct and well-supported.

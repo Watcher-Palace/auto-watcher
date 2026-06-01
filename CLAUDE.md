@@ -36,41 +36,7 @@ Published posts go to `source/_posts/YYMMDD.md` with assets in `source/_posts/YY
 
 ## Post Format
 
-**Frontmatter:**
-```yaml
----
-title: Post title
-date: 2026-01-23 20:20:39
-categories: A   # S=政府/国家层面, A=刑事/极恶劣, B=民事/较大, C=非官方/较小, D=个人, N=中立/待续
-tags:
-- PING          # PING=待续跟进, TODO=待查证
----
-```
-
-**Standard sections** (概述 always first; 时间线 inside 概述 if multi-date):
-```
-## 概述
-#### 时间线  (optional)
-## 信息来源
-## 前情      (optional)
-## 后续      (optional)
-## 舆论       (optional)
-### 微博词条  (inside 舆论)
-## 相关内容  (optional)
-```
-
-**Inline formatting:**
-```html
-<font color="red">emphasis</font>
-<font color="blue">latest update</font>
-<font color="grey">verbatim quote</font>
-```
-
-**Asset embedding:**
-```html
-<img src="{% asset_path filename.jpg %}" width="300" alt="description">
-<embed src="{% asset_path file.pdf %}" type="application/pdf" width="100%" height="600px">
-```
+The authoritative post spec — frontmatter, section structure, inline `<font>` color conventions, asset embedding, categories, and tags — lives in the `blog-write` skill (`.claude/skills/blog-write/SKILL.md`). Edit it there; do not duplicate the spec in this file or it will drift.
 
 ## index.md Calendar
 
@@ -83,8 +49,9 @@ Color convention: darkred bold = S, red = A, orange = B, yellow = C/mixed, black
 ## Stage Details
 
 ### Stage 1 — Track (`src/tracker.py`)
-Run:
+Run (venv lives at `src/venv/`, not `.venv/`; date arg is positional YYMMDD, there is no `--date` flag):
 ```bash
+source src/venv/bin/activate
 python src/tracker.py [YYMMDD]            # single date (default: yesterday)
 python src/tracker.py --days N [--end YYMMDD] [--merge]  # date range
 ```
@@ -95,7 +62,8 @@ Implementation details (for debugging, not for manual reimplementation):
 - Cookie must be from `weibo.cn` domain (fields: `_T_WM`, `ALF`, `SSOloginstate`, `SUB`, `SUBP`)
 - Use desktop Chrome UA + `Referer: https://m.weibo.cn/` — mobile UA triggers bot detection
 - Extract both `mblog.text` AND `mblog.retweeted_status.text` — feminist content is often in retweets
-- Tracked account UID: `1114030772`
+- Tracked account UID: `1114030772` (override via `TRACKED_UIDS`)
+- LLM filtering runs via the `claude` CLI subprocess (`--model claude-haiku-4-5-20251001`), using the local Claude Code subscription — no OpenRouter or external API key
 
 ### Stage 2 — Research (skill: `blog-research`)
 Invoke the `blog-research` skill before dispatching any research subagent. Output to `_pipeline/research/YYMMDD-N-title.md` with sections: `## Facts`, `## Parties`, `## Sources`.
@@ -117,8 +85,10 @@ The script picks the latest draft for that event, copies it to `source/_posts/YY
 
 ```
 WEIBO_COOKIE=_T_WM=...; ALF=...; SSOloginstate=...; SUB=...; SUBP=...
-OPENROUTER_API_KEY=sk-or-...   # only needed for tracker (tencent/hy3-preview:free)
+TRACKED_UIDS=uid1,uid2,uid3     # Weibo UIDs the tracker fetches
 ```
+
+Tracker LLM filtering uses the `claude` CLI subprocess (Haiku) on the local Claude Code subscription. There is no OpenRouter/external API key dependency.
 
 ## Known Pitfalls
 
@@ -128,7 +98,7 @@ OPENROUTER_API_KEY=sk-or-...   # only needed for tracker (tencent/hy3-preview:fr
 | Weibo fetch blocked | Use desktop Chrome UA, not mobile |
 | Weibo cookie expired (all UIDs fail, no captcha challenge) | Get fresh cookie from browser — do NOT switch to WebSearch for discovery |
 | Tracker exits with `RATE LIMITED` | Per-cookie throttle, persists 6–24h. Wait, then re-run with `--merge`. (Distinct from cookie expiry.) |
-| OpenRouter model 404 | Update `src/config.yaml` tracker_model to a current free model (e.g. `tencent/hy3-preview:free`) |
+| Tracker LLM filtering fails | Check the `claude` CLI is on PATH and the Claude Code subscription is active — not OpenRouter or any API key. |
 
 ## Subagent Model Selection
 
@@ -143,3 +113,7 @@ When dispatching parallel subagents (research, write, or review), run in **batch
 ## Tracker Blocker Protocol
 
 When the Stage 1 tracker fails, surface the specific error immediately and wait for the user to resolve it. Do not attempt to replace the tracker with WebSearch or other discovery methods — the Weibo UIDs in `.env` are the authoritative event sources.
+
+## Keeping Docs Accurate (anti-drift)
+
+When a learned correction contradicts this file or a `SKILL.md`, fix that file directly — do not park the correction in a memory file as a permanent shadow copy. Auto-memory is for facts *not yet* in the canonical docs; once a fact lands here or in a skill, the memory should be deleted. This is the rule that keeps CLAUDE.md and the skills from drifting out of sync with reality (e.g. venv path, tracker LLM backend, script flags).

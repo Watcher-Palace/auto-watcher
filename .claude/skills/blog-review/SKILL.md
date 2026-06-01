@@ -25,8 +25,8 @@ Repo root: `/home/jc/Projects/auto-watcher`
    - Use WebSearch + WebFetch. Prioritise: 澎湃新闻, 新京报, 红星新闻, 极目新闻, court notices, official statements.
 3. **Check verbatim quotes** — every `<font color="grey">` passage must be traceable to a real source. Flag any that cannot be verified.
 4. **Check legal/factual claims** — any `<font color="red">` passage must be accurate. Flag overstatements or errors.
-5. **Check the latest-update marker** — the `<font color="blue">` passage must be the actual most recent development. Correct if outdated.
-6. **Check structure and format** — section order, source citation format, category choice, tag usage.
+5. **Check the latest-update marker** — independently search each key person/institution for developments up to today. The `<font color="blue">` passage must be the actual most recent development; if a more recent fact exists than what it marks, flag it as an issue requiring update.
+6. **Check structure and format** — section order, source citation format, category choice, tag usage. In particular, if a `## 舆论` section exists but contains no concrete metrics (阅读量/转发量/评论量/投票结果 etc.), flag it: the section must be removed entirely. Placeholder text like "未获取具体数据" is a format violation.
 
 ## Output Path
 

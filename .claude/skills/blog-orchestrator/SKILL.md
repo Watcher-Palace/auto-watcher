@@ -51,11 +51,11 @@ For each confirmed date, run:
 
 ```bash
 cd /home/jc/Projects/auto-watcher
-source .venv/bin/activate
-python src/tracker.py --date YYMMDD
+source src/venv/bin/activate
+python src/tracker.py YYMMDD
 ```
 
-The tracker reads `WEIBO_COOKIE` and `OPENROUTER_API_KEY` from environment or `.env`.
+The tracker reads `WEIBO_COOKIE` and `TRACKED_UIDS` from environment or `.env`. LLM filtering runs via the `claude` CLI subprocess (Haiku), using the local Claude Code subscription — not an external API key.
 
 After running, display the events file contents so the user can review.
 
@@ -78,22 +78,15 @@ for i in approved_indexes:
 
 ### Filter terminal events
 
-Before iterating, query `event_statuses(date_str)` from `src.utils.pipeline` for each date. It returns `{index: state}` for every event in the date's events file. Remove any (date, index) where state is `published` or `abort` — these are terminal and must not be re-dispatched. The remaining states (`candidate`, `selected`, `researched`, `drafted`, `reviewed`) all represent in-flight work.
-
-Example:
-
-```
->>> event_statuses("260326")
-{1: 'abort', 2: 'candidate', 3: 'abort', 4: 'candidate', 5: 'candidate', 6: 'candidate', 7: 'published', 8: 'candidate', 9: 'candidate', 10: 'published'}
-```
-
-→ For 260326, every event with a stored decision is terminal; only `candidate` events remain (which means: the user has not approved them — do not dispatch).
+Query `event_statuses(date_str)` from `src.utils.pipeline` — it returns `{index: state}` for the date. Dispatch only the **in-flight approved** states (`selected`, `researched`, `drafted`, `reviewed`). Skip:
+- `published` / `abort` — terminal, never re-dispatch.
+- `candidate` — not yet user-approved (Stage 1c), so do not dispatch.
 
 For each approved (date, index, title) triple:
 
 ### 2. Research (subagent)
 
-Dispatch a `blog-research` subagent:
+Dispatch a `blog-research` subagent with **`model: haiku`** (mechanical fetch-search-extract). When processing multiple events, dispatch in **batches of 2–3** so a quota hit loses only one batch.
 
 ```
 date: YYMMDD
@@ -107,7 +100,7 @@ Wait for the research subagent to complete and confirm the research file exists 
 
 ### 3. Write (subagent)
 
-Dispatch a `blog-write` subagent in `initial` mode:
+Dispatch a `blog-write` subagent in `initial` mode with **`model: sonnet`** (writing needs nuanced judgment — no inference, feminist framing — that Haiku handles unreliably). Dispatch in **batches of 2–3**.
 
 ```
 date: YYMMDD
@@ -133,7 +126,7 @@ For each draft:
 
 **4b-i. Review (subagent):**
 
-Dispatch a `blog-review` subagent:
+Dispatch a `blog-review` subagent with **`model: sonnet`** (fact-checking and the no-inference rule need nuanced judgment):
 
 ```
 date: YYMMDD
@@ -156,6 +149,8 @@ Tell the user: **"Review v{N} written: {STATUS}. Review file: {path}. Approve re
 **Do not auto-trigger revision even if STATUS: ISSUES.** The user may want to annotate the review with `<!-- [USER]: ... -->`, edit suggestions, or stop the loop.
 
 **4b-iii. If user approves, dispatch revision (subagent):**
+
+A revision is a `blog-write` subagent — use **`model: sonnet`**.
 
 ```
 date: YYMMDD
@@ -183,8 +178,8 @@ Show the user a summary of all clean drafts ready to publish. Ask:
 
 ```bash
 cd /home/jc/Projects/auto-watcher
-source .venv/bin/activate
-python src/publisher.py --date YYMMDD
+source src/venv/bin/activate
+python src/publisher.py YYMMDD N
 ```
 
 The publisher copies drafts to `source/_posts/`, moves assets, updates the calendar in `source/index.md`, and runs `pnpm deploy`.
@@ -197,12 +192,13 @@ After publishing, confirm the posts are live.
 
 The pipeline reads from environment variables or `.env` in the repo root:
 - `WEIBO_COOKIE` — required for tracker
-- `OPENROUTER_API_KEY` — required for tracker
+- `TRACKED_UIDS` — comma-separated Weibo UIDs the tracker fetches
+
+LLM filtering in the tracker uses the `claude` CLI subprocess (Haiku), not an external API key.
 
 ---
 
 ## Notes
 
-- Dispatch research subagents in parallel when processing multiple events for the same date.
-- Write/review subagents run per-event; they may be parallelised if the user prefers speed over sequential review.
+- Subagent models and batch sizes are specified inline at each dispatch step above (Haiku for research, Sonnet for write/review, batches of 2–3).
 - After a full pipeline cycle, suggest running the `blog-curate` skill to maintain notes quality.
