@@ -4,7 +4,6 @@ from pathlib import Path
 
 from src.publisher import (
     copy_draft, move_assets, read_frontmatter,
-    calendar_color, inject_calendar_entry,
 )
 
 
@@ -36,48 +35,3 @@ def test_read_frontmatter_extracts_fields():
     fm = read_frontmatter(content)
     assert fm["title"] == "测试"
     assert fm["categories"] == "A"
-
-
-def test_calendar_color_categories():
-    assert calendar_color("A") == "red"
-    assert calendar_color("B") == "yellow"
-    assert calendar_color("C") == "orange"
-    assert calendar_color("D") == "orange"
-    assert calendar_color("N") == "black"
-
-
-def test_inject_calendar_entry_inserts_link(tmp_path):
-    index = tmp_path / "index.md"
-    index.write_text(
-        "## 2026年三月\n<td>25</td>\n",
-        encoding="utf-8",
-    )
-    inject_calendar_entry(
-        index_path=index,
-        date_str="260325",
-        title="测试事件",
-        category="A",
-        post_slug="260325",
-    )
-    content = index.read_text(encoding="utf-8")
-    assert "260325" in content
-    assert "测试" in content
-    assert "red" in content
-
-
-def test_inject_calendar_entry_appends_to_existing_cell(tmp_path):
-    index = tmp_path / "index.md"
-    index.write_text(
-        '## 2026年三月\n<td>25<br>\n<a href="old">old</a>\n</td>\n',
-        encoding="utf-8",
-    )
-    inject_calendar_entry(
-        index_path=index,
-        date_str="260325",
-        title="新事件",
-        category="B",
-        post_slug="260325-new",
-    )
-    content = index.read_text(encoding="utf-8")
-    assert "old" in content
-    assert "新" in content

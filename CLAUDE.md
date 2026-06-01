@@ -14,7 +14,7 @@ pnpm run build
 pnpm run deploy    # build + push to GitHub Pages
 ```
 
-Deploy target: `git@github.com:jshu039-maker/blog.git`, branch `main` (SSH alias `git_personal` may be used).
+Deploy target (from `_config.yml`): `git@git_personal:Watcher-Palace/auto-watcher.git`, branch `gh-pages` (`git_personal` is an SSH alias).
 
 ## Pipeline Overview
 
@@ -38,13 +38,16 @@ Published posts go to `source/_posts/YYMMDD.md` with assets in `source/_posts/YY
 
 The authoritative post spec — frontmatter, section structure, inline `<font>` color conventions, asset embedding, categories, and tags — lives in the `blog-write` skill (`.claude/skills/blog-write/SKILL.md`). Edit it there; do not duplicate the spec in this file or it will drift.
 
-## index.md Calendar
+## Landing-page Calendar
 
-`source/index.md` contains a monthly calendar table. When publishing, inject a new `<td>` entry (or add a link to an existing date cell). Link format:
-```html
-<a style="color: red;" href="{{ site.root }}2026/YYMMDD/" title="Post title">link text</a>
-```
-Color convention: darkred bold = S, red = A, orange = B, yellow = C/mixed, black = N/PING.
+The monthly calendar on the homepage (`/index.html`) is generated at **build time** by the Hexo generator `scripts/calendar.js` from post frontmatter — there is no `source/index.md` and the publisher does not touch the calendar. Publishing a post is enough; the calendar regenerates on the next `pnpm build`/`deploy`.
+
+How cells render (see `scripts/calendar.js`):
+- Only categories S/A/B/C appear (D/N are excluded). Color: S = darkred bold, A = red, B = orange, C = yellow.
+- An event day shows the phrase `挑战失败` split across that day's events — one `<a>` link per event, each colored by its category. Segments are joined by a neutral grey `_` so multiple same-category events on one day stay distinguishable.
+- A day with no event since the last A–C event shows a green `Day N` counter.
+
+To change calendar appearance or color mapping, edit `scripts/calendar.js`.
 
 ## Stage Details
 
@@ -79,7 +82,7 @@ Run:
 ```bash
 python src/publisher.py <YYMMDD> <N>
 ```
-The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, updates `source/index.md` calendar if present, then runs `pnpm build` + `pnpm deploy`. Do not execute these steps manually.
+The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 
 ## Environment Variables
 
