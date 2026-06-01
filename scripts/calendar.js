@@ -23,6 +23,13 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     posts.sort((a, b) => CAT_PRIORITY[a.cat] - CAT_PRIORITY[b.cat])
   );
 
+  // Build summary-page map: 'YYMM' -> url, from pages carrying a summary_month marker
+  const summaryMap = {};
+  locals.pages.each(page => {
+    if (!page.summary_month) return;
+    summaryMap[String(page.summary_month)] = root + page.path.replace(/\/index\.html$/, '/');
+  });
+
   // Split '挑战失败' into n parts (max 4), distributing chars front-heavy
   function splitLabel(n) {
     const chars = ['挑', '战', '失', '败'];
@@ -92,6 +99,12 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     const daysInMonth = m.daysInMonth();
     const firstDow = m.clone().startOf('month').day(); // 0=Sun
 
+    const yymm = m.format('YYMM');
+    const summaryUrl = summaryMap[yymm];
+    const heading = summaryUrl
+      ? `## ${year}年${month}月 <a class="month-summary" href="${summaryUrl}">本月总结</a>`
+      : `## ${year}年${month}月`;
+
     let rows = '';
     let cells = Array(firstDow).fill('<td></td>');
 
@@ -107,7 +120,7 @@ hexo.extend.generator.register('calendar-index', function (locals) {
       rows += `    <tr>${cells.join('')}</tr>\n`;
     }
 
-    return `\n## ${year}年${month}月\n
+    return `\n${heading}\n
 <table class="calendar-table">
   <thead><tr><th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th></tr></thead>
   <tbody>
@@ -140,6 +153,7 @@ ${rows}  </tbody>
   }
   .calendar-table th { background-color: #f2f2f2; font-weight: bold; }
   .calendar-table a { text-decoration: none; }
+  .month-summary { font-size: 0.6em; font-weight: normal; }
 </style>`;
 
   // Render markdown intro + CSS + calendar HTML
