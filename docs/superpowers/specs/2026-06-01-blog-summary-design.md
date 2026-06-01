@@ -7,14 +7,19 @@
 
 An on-demand stage, **not** part of the regular tracking→research→write→review→publish
 pipeline and not wired into `blog-orchestrator`. Invoked only when the user asks for it.
-It produces, for one month, a summary **page** with statistics over the blog's **published**
-articles: category counts, tag counts, and a grouped article list. The page is published to
-the Hexo site and linked from the landing-page calendar (a `本月总结` link next to that
-month's heading).
+It produces, for one month, a summary **page** over the blog's **published** articles,
+combining:
+- **Statistics** — category counts, tag counts, and a grouped article list (deterministic).
+- **Qualitative prose** — a neutral-descriptive synthesis: 本月综述 (overview), 主题脉络
+  (thematic threads), 结构性观察 (recurring patterns), 待跟进 (this month's open threads).
 
-It is intentionally statistical for now. The skill leaves room to layer a qualitative prose
-pass (themes / narrative of the month) on top later, which is why generation runs on Sonnet
-rather than a bare deterministic script.
+The page is published to the Hexo site and linked from the landing-page calendar (a
+`本月总结` link next to that month's heading).
+
+The prose is **neutral-descriptive**: it synthesizes and groups what the month's posts
+actually report — no stance-taking, no invented facts, no named-expert commentary (consistent
+with the blog's "logs facts" rule). Because the prose requires reading and synthesizing post
+bodies, generation runs on Sonnet rather than a bare deterministic script.
 
 ## Two stages
 
@@ -33,14 +38,14 @@ i.e. only when the summary is "written **and** published", per requirement.
 language in a session — "write the May summary", "write summary of 2605", "summarize last
 month". All map to this skill.
 
-**Month argument:** `YYMM`. If omitted, default to the **last fully-completed calendar
-month** relative to today.
+**Month argument:** `YYMM`. If omitted, ask the user which month to summarize — do not guess.
 
 **Model:** on trigger, the main session invokes the `blog-summary` skill (to load its
 procedure) and **dispatches a single subagent with `model: sonnet`** to do the generation and
 write the draft. Rationale: matches the repo convention (research=Haiku, write/review=Sonnet),
-keeps the expensive main-session model out of a routine task, and leaves headroom for a future
-prose pass. (Publishing — Stage B — is **not** delegated to the subagent; see below.)
+keeps the expensive main-session model out of a routine task, and is needed for the
+neutral-descriptive prose synthesis (which requires reading and grouping post bodies, not just
+frontmatter). (Publishing — Stage B — is **not** delegated to the subagent; see below.)
 
 ### Scope / data source
 
@@ -118,7 +123,32 @@ Ordering:
 - Within an article-list group: by `date` ascending.
 - Tag table: by count descending, then tag string for stable ties.
 
-### Draft output (a complete Hexo page)
+### Qualitative prose (neutral-descriptive)
+
+The stats come from the deterministic snippet; the prose is the subagent's job. After
+computing stats, the subagent **reads the month's post bodies** (the `## 概述` sections, etc.,
+not just frontmatter) and writes four sections. All four are **neutral-descriptive**:
+synthesize and group what the posts report; do not take a stance, do not use the blog's
+angry/sardonic register, do not introduce facts or claims absent from the month's posts, and
+do not add named-expert commentary.
+
+- **本月综述 (overview)** — 2–4 sentences: volume, which categories dominated, the month's
+  overall character. Turns the stats into narrative.
+- **主题脉络 (thematic threads)** — cluster the month's events into recurring themes, derived
+  from tags + bodies (e.g. *言论管控*: 言论管控/舆论/媒体; *婚姻与财产*: 婚姻/遗产侵占/名誉权;
+  *暴力犯罪*: 故意杀人/性侵/强奸). One bullet per cluster, naming the events it contains. An
+  event may appear in more than one cluster. Skip clusters with only incidental membership.
+- **结构性观察 (recurring patterns)** — a short paragraph describing patterns that genuinely
+  recur across multiple events this month (e.g. repeated removal/封号 of feminist speech;
+  repeated judicial outcomes of a given kind). Stated as factual recurrence observed in the
+  month's posts — *describing* a pattern that is present, not editorializing about it. If no
+  pattern recurs across multiple events, say so briefly rather than manufacturing one.
+- **待跟进 (open threads)** — events among this month's posts tagged `PING` (待续跟进) or
+  `TODO` (待查证); one bullet each noting what is unresolved. Identified from the stats rows'
+  tags. If none, omit the section.
+
+Grounding rule (applies to all prose): every statement must be traceable to a post published
+this month. When in doubt, prefer fewer, well-supported sentences over speculation.
 
 The draft written to `_pipeline/summary/YYMM.md` **is** the page that will be published — so it
 carries Hexo page frontmatter and the content uses `##` sections (no duplicate `#` H1; the page
@@ -135,6 +165,17 @@ layout: page
 > 范围：本月已发布文章（source/_posts，按 frontmatter 日期归月）。未发布 / abort 不计入。
 
 总计：18 篇
+
+## 本月综述
+本月共记录 18 篇，以 A 类（刑事案件）为主（9 篇）……（2–4 句，中性描述）
+
+## 主题脉络
+- **言论管控**：（涉及的事件标题，逗号分隔）
+- **婚姻与财产**：……
+- **暴力犯罪**：……
+
+## 结构性观察
+（一段，描述本月跨多起事件反复出现的模式，仅陈述事实层面的重复，不作评论）
 
 ## 分类统计
 | 分类 | 含义 | 篇数 | 占比 |
@@ -159,6 +200,11 @@ layout: page
 - …
 
 ### B
+- …
+
+## 待跟进
+> 本月标记 PING / TODO 的事件
+- 2026-05-?? 《……》 — PING：待 XX 后续
 - …
 ```
 
@@ -251,10 +297,11 @@ Months without a published summary page render exactly as today (no link).
 1. **New:** `.claude/skills/blog-summary/SKILL.md` — the skill. Frontmatter `description` must
    include the trigger phrasing so the skill is discoverable from natural-language requests
    ("write summary of …", "monthly summary"). Body contains: scope, parsing rules + reference
-   snippet, ordering rules, the draft page template (incl. frontmatter), the rule that
-   **generation** is dispatched to a `model: sonnet` subagent, and the **publish** procedure
-   (human gate → `cp` to `source/summaries/YYMM.md` → `pnpm build` → `pnpm deploy`, run in the
-   main session after confirmation).
+   snippet, ordering rules, the prose-pass instructions (the four neutral-descriptive sections
+   + grounding rule), the draft page template (incl. frontmatter), the rule that **generation**
+   is dispatched to a `model: sonnet` subagent, and the **publish** procedure (human gate →
+   `cp` to `source/summaries/YYMM.md` → `pnpm build` → `pnpm deploy`, run in the main session
+   after confirmation).
 2. **Modify:** `scripts/calendar.js` — `summaryMap` from `locals.pages`, conditional heading
    link, and the `.month-summary` CSS rule.
 3. **New (runtime dirs):** `_pipeline/summary/` and `source/summaries/`, each with a `.gitkeep`
@@ -289,18 +336,29 @@ be auto-chained into the pipeline.
 No hermetic unit tests are added (no new committed Python module — logic lives in the skill).
 Verification is by running against a real month and eyeballing:
 - Stage A for `2605`: confirm category counts match `grep -c` spot-checks, the article list is
-  complete and correctly grouped S→N, tag percentages use the total-posts base.
-- No-argument run: confirm it defaults to the last completed month.
+  complete and correctly grouped S→N, tag percentages use the total-posts base, and the four
+  prose sections (综述 / 主题脉络 / 结构性观察 / 待跟进) are present, neutral in tone, and
+  contain no claims absent from the month's posts.
+- No-argument run: confirm it asks the user which month rather than guessing.
 - Zero-post month: confirm the zero-post page + message.
 - Stage B: after `pnpm build` (or `pnpm server`), confirm the `本月总结` link appears next to
   that month's heading, resolves to the summary page, and that months without a summary show
   no link.
 
+## Future extensions (designed-aware, not built now)
+
+- **跨月后续 (cross-month follow-ups)** — surface events tagged `PING` in *earlier* months
+  whose situation got **new updates** in the current month. Distinct from the in-scope 待跟进
+  (which lists *this* month's open threads); this one tracks *prior* threads that moved. Needs
+  cross-month event linkage (matching the same event across summaries/posts), so it is deferred
+  until the per-month summary is in use. The prose pass and `summary_month` marker leave room
+  for it.
+
 ## Out of scope (YAGNI for now)
 
-- Qualitative prose / thematic narrative (deferred; the Sonnet-subagent choice keeps the door
-  open).
-- Month-over-month comparison / trends.
+- **重点事件 (spotlight)** — a curated S/A highlight list was considered and dropped; the
+  article list + 主题脉络 already give a reading path.
+- Month-over-month statistical comparison / trends.
 - A dedicated publish script (three Bash commands suffice for now).
 - Category×tag cross-tabulation.
 
