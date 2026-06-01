@@ -1,0 +1,26 @@
+# Dates where all selected events are terminal (published or abort).
+# Pipeline check only needs to look at dates NOT in this list.
+# Update by appending a date once every event is published or aborted.
+260321
+260325
+260326
+260501
+260502
+260503
+260504
+260505
+260506
+260507
+260508
+260509
+260511
+260512
+260513
+260514
+260521
+260522
+260525
+260526
+260528
+260529
+260531

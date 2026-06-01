@@ -27,7 +27,10 @@ _pipeline/
   draft/YYMMDD-N-assets/     # images for this draft
   review/YYMMDD-N-title-vN.md# Stage 4: review notes
   .state                     # last tracked date (plain text: "20260325")
+  done-dates.txt             # dates where all events are terminal (published/abort); append when a date is fully done
 ```
+
+**Pipeline check:** Only scan dates NOT listed in `done-dates.txt`. When checking status, look at `events/YYMMDD.md` (for today's events if no status file yet) and `events/YYMMDD-status.txt` plus presence of research/draft/review files for in-flight dates.
 
 Published posts go to `source/_posts/YYMMDD.md` with assets in `source/_posts/YYMMDD/`.
 
