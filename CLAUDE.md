@@ -26,6 +26,7 @@ _pipeline/
   draft/YYMMDD-N-title-vN.md # Stage 3: draft post
   draft/YYMMDD-N-assets/     # images for this draft
   review/YYMMDD-N-title-vN.md# Stage 4: review notes
+  summary/YYMM.md            # On-demand monthly summary draft (Stage A; not the regular pipeline)
   .state                     # last tracked date (plain text: "20260325")
   done-dates.txt             # dates where all events are terminal (published/abort); append when a date is fully done
 ```
@@ -48,6 +49,8 @@ How cells render (see `scripts/calendar.js`):
 - A day with no event since the last A–C event shows a green `Day N` counter.
 
 To change calendar appearance or color mapping, edit `scripts/calendar.js`.
+
+Month headings also show a `本月总结` link when that month has a **published summary page** (see the on-demand Monthly Summary stage). `scripts/calendar.js` builds the link by scanning pages for a `summary_month: "YYMM"` frontmatter marker; no summary page means no link.
 
 ## Tests
 
@@ -92,6 +95,13 @@ python src/publisher.py <YYMMDD> <N>
 ```
 The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 
+### On-demand — Monthly Summary (skill: `blog-summary`)
+
+**Not part of the regular pipeline** and never run by `blog-orchestrator` — invoked only on request: `/blog-summary YYMM` or natural language ("write summary of <month>", "write the May summary", "monthly summary"). If no month is given, ask which month — do not guess.
+
+- **Stage A — generate:** dispatch a single **Sonnet** subagent (per the `blog-summary` skill) that computes category/tag statistics over the month's **published** posts and writes a neutral-descriptive prose summary draft to `_pipeline/summary/YYMM.md`. Human gate: review the draft before publishing.
+- **Stage B — publish (after confirmation):** copy the draft to `source/summaries/YYMM.md`, then `pnpm build` + `pnpm deploy`. The landing-page calendar then shows a `本月总结` link next to that month (see Landing-page Calendar). `publisher.py` is post-specific and is not used here.
+
 ## Environment Variables
 
 ```
@@ -118,6 +128,8 @@ Research files must be written entirely in **Simplified Chinese**. Do not write 
 Use **Haiku** (`model: haiku`) for research subagents — fetch-search-extract tasks that don't require stylistic judgment.
 
 Use **Sonnet** (`model: sonnet`) for write and review subagents — these require nuanced judgment (e.g. no inference, feminist framing) that Haiku handles unreliably.
+
+Use **Sonnet** (`model: sonnet`) for the **`blog-summary`** generation subagent too — it reads and synthesizes the month's post bodies into neutral-descriptive prose, which Haiku handles unreliably.
 
 When dispatching parallel subagents (research, write, or review), run in **batches of 2–3**, not all at once, so a quota hit loses only one batch rather than all work.
 
