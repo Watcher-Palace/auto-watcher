@@ -68,7 +68,8 @@ hexo.extend.generator.register('calendar-index', function (locals) {
         const safeTitle = post.title.replace(/"/g, '&quot;');
         return `<a style="color:${color};${bold}" href="${post.urlPath}" title="${safeTitle}">${labels[i]}</a>`;
       });
-      return `${day}<br>${links.join('')}`;
+      const sep = '<span style="color:#999;">_</span>';
+      return `${day}<br>${links.join(sep)}`;
     }
 
     // Untracked gap: leave blank
