@@ -69,6 +69,8 @@ the skill and is run via the existing venv (`source src/venv/bin/activate`).
 Parsing rules (regex, stdlib only — no PyYAML dependency):
 - Frontmatter = text between the first two `---` lines.
 - `date:` → first `YYYY-MM-DD`; keep the post only if it starts with the target `YYYY-MM`.
+  The unit of counting is the **post file**; one calendar date can carry several post files
+  (several events, e.g. `260117.md` + `260117-2.md`), each a separate row. See Edge cases.
 - `title:` → remainder of the line.
 - `categories:` → the scalar on that line (single letter S/A/B/C/D/N). Default `N` if absent.
 - `tags:` → block-list items: lines matching `^-\s*(.+)$` following the `tags:` line.
@@ -149,6 +151,13 @@ do not add named-expert commentary.
 
 Grounding rule (applies to all prose): every statement must be traceable to a post published
 this month. When in doubt, prefer fewer, well-supported sentences over speculation.
+
+Context sizing (measured 2026-06-01): a month's posts are small. The heaviest month on record
+(2026-05, 32 posts) is ~66K chars ≈ ~40–100K tokens depending on tokenizer; typical months are
+5–10× smaller. That fits comfortably in Sonnet's 200K window alongside the skill instructions
+and the output, so the subagent reads the month's post bodies directly. If a future month ever
+grew several times larger, the cheap fallback is to feed only the `## 概述` sections rather than
+whole files — not needed now.
 
 The draft written to `_pipeline/summary/YYMM.md` **is** the page that will be published — so it
 carries Hexo page frontmatter and the content uses `##` sections (no duplicate `#` H1; the page
@@ -306,7 +315,7 @@ Months without a published summary page render exactly as today (no link).
    link, and the `.month-summary` CSS rule.
 3. **New (runtime dirs):** `_pipeline/summary/` and `source/summaries/`, each with a `.gitkeep`
    so the directories exist in the repo.
-4. **Modify:** `CLAUDE.md` —
+4. **Modify:** `CLAUDE.md` and `README.md` —
    - Add an "On-demand: monthly summary" note (separate from the regular pipeline; triggered by
      `/blog-summary` or natural language; Stage A generate + Stage B publish).
    - Add the Sonnet rule to "Subagent Model Selection".
@@ -321,15 +330,14 @@ be auto-chained into the pipeline.
 - **Zero posts in the month:** still write a valid page with `总计：0 篇` and empty tables, and
   tell the user no published posts fell in that month (likely a wrong/early month argument).
   Publishing such a page is the user's call.
-- **Re-running an already-summarized month:** regenerate the draft (overwrite) and, on
-  re-publish, overwrite `source/summaries/YYMM.md` and redeploy. Idempotent.
+- **Re-running an already-summarized month:** confirm with the user of what to do. 
 - **Generated but not published:** no calendar link — the link is tied to the page existing in
   `source/` and being deployed, which is exactly "written and published".
 - **Multiple posts on one day** (e.g. `260117.md` + `260117-2.md`): each is a separate row;
   both appear in their category group. No de-duplication.
 - **Post with no `tags:`** : contributes to category counts and the article list (tags shown
-  empty) but not to any tag count.
-- **Category missing/blank:** default to `N`.
+  empty) but not to any tag count. Also remind user with the situation.
+- **Category missing/blank:** default to `N`. Also remind user.
 
 ## Testing / verification
 
