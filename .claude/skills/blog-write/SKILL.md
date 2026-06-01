@@ -24,10 +24,14 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
 **Initial mode:** Read the research file, then **track the story to today** — search each key person/institution for developments after the research file's date (new verdicts, hearings, arrests, statements). Do not rely on the research file alone; it may be days stale. Fold new facts into the body and mark the most recent one with `<font color="blue">`. Write the first draft.
 
-**Revision mode:** Read the current draft and review file together. For each `<!-- [REVIEWER]: ... -->` suggestion:
+**Tracking to today (strictly enforced):** Your search MUST reach today's actual date. Do not stop at the date of the most recent article you found — run at least one search with the current month/year (e.g. "事件名 2026年6月" or "事件名 最新进展") to confirm nothing newer exists. Finding a 0527 article does not mean 0527 is current — keep searching until you have checked up to today.
+
+**Blue font rule (strictly enforced):** `<font color="blue">` marks the last REAL factual development — a new verdict, arrest, official statement, or confirmed event. A sentence saying "截至X日无最新进展" or "尚未发布通报" is NOT a factual development and must NEVER be the blue-font item. If your search found no new developments after the last real fact, move blue to that last real fact and set `date:` to match its date. Never set `date:` to today's date or the search date just because you searched and found nothing.
+
+**Revision mode:** Read the current draft and review file together. Apply ONLY changes explicitly formatted as `<!-- [REVIEWER]: ... -->` annotations — do NOT apply bare text, category/date changes, or restructuring that isn't in a `<!-- [REVIEWER]: -->` block. Do not make any other changes beyond what the reviewer flagged. For each `<!-- [REVIEWER]: ... -->` suggestion:
 - Apply it if it is factually correct and well-supported.
 - Reject it (leave the original text unchanged and add `<!-- [WRITER-REJECTED]: <reason> -->` inline) if you have valid reasoning — e.g., the suggestion is factually wrong, contradicted by a source, or introduces imprecision.
-- Preserve every `<!-- [USER]: ... -->` annotation exactly as written — if a reviewer suggestion conflicts with a user annotation, follow the user annotation.
+- **User annotations take precedence over all reviewer suggestions.** User annotations appear as either `<!-- [USER]: ... -->` inline comments OR as a section headed `## 人类意见` / `## 人类的意见` in the review file. If a reviewer suggestion conflicts with a user annotation, follow the user annotation. Apply user annotations exactly as written.
 
 **For "删除或核查" / "verify or remove" suggestions:** always attempt verification first via WebSearch + WebFetch. Only delete if verification actually fails. Do not delete content just because the reviewer flagged it — flagged ≠ wrong. If verification succeeds, keep the content (and optionally cite the new source); if it fails, then remove and note `<!-- [WRITER-REMOVED-UNVERIFIED]: <what was checked> -->`.
 
@@ -50,7 +54,7 @@ Follow `source/_drafts/template.md` for structure. Use published posts in `sourc
 ```
 ---
 title: [post title]
-date: [YYYY-MM-DD]   # latest updated date (most recent factual development), not original event date
+date: [YYYY-MM-DD]   # date the latest factual event OCCURRED, not the date a news article was published reporting it. E.g. if a verdict happened on May 15 and was reported May 20, use May 15.
 categories: [A/B/C/D/N]
 tags:
 - [tag]
@@ -68,7 +72,7 @@ Dates in bold: **YYYY年M月D日**：...]
 
 ## 舆论
 [Optional. **Facts only** — only concrete metrics: read counts, share counts, comment counts,
-poll results. Omit the section entirely if no metrics exist.
+poll results. **If you have no concrete number (阅读量/讨论量/转发量/评论量), do NOT write this section at all — not even the header.** Writing `## 舆论` with only a hashtag name or "未获取具体数据" is a format violation.
 NEVER include: "网友纷纷表示", "引发热议", quoted or paraphrased commentary, your own
 characterisation of public reaction. The blog logs facts, not opinion summaries.]
 ### 微博词条
