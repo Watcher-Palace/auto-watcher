@@ -299,10 +299,20 @@ total = len(rows)
 cat_counts = Counter(r[2] for r in rows)
 tag_counts = Counter(t for r in rows for t in r[3])
 
+# category × tag cross-tab: (category, tag) -> post count
+from collections import defaultdict
+cell = defaultdict(int)
+for _, _, c, ts in rows:
+    for t in ts:
+        cell[(c, t)] += 1
+
 def pct(n):
     return round(100 * n / total) if total else 0
 
 CAT_ORDER = ["S", "A", "B", "C", "D", "N"]
+tags_order = [t for t, _ in sorted(tag_counts.items(), key=lambda x: (-x[1], x[0]))]
+cats_present = [c for c in CAT_ORDER if cat_counts.get(c)]
+
 print("TOTAL", total)
 print("CATS")
 for c in CAT_ORDER:
@@ -311,6 +321,10 @@ for c in CAT_ORDER:
 print("TAGS")
 for t, n in sorted(tag_counts.items(), key=lambda x: (-x[1], x[0])):
     print(t, n, pct(n))
+print("CROSS")                       # category × tag cross-tab (rows S→N, cols = tags_order)
+print("分类 | " + " | ".join(tags_order))
+for c in cats_present:
+    print(c + " | " + " | ".join(str(cell[(c, t)]) for t in tags_order))
 print("ROWS")
 for r in sorted(rows, key=lambda r: (CAT_ORDER.index(r[2]) if r[2] in CAT_ORDER else 99, r[0])):
     print(r[0], "|", r[2], "|", r[1], "|", ", ".join(r[3]))
@@ -367,6 +381,12 @@ layout: page
 |---|---|---|
 | <标签> | <n> | <p>% |
 
+## 分类 × 标签交叉表
+> 行 = 分类（S→N，仅出现的分类）；列 = 全部标签（按频次降序，与上表一致）；格 = 篇数。来自上面 CROSS 输出，逐格照抄。
+| 分类 | <标签1> | <标签2> | … |
+|---|---|---|---|
+| <分类> | <n> | <n> | … |
+
 ## 文章列表
 > 按分类 S→N 排序，组内按日期
 ### <分类>
@@ -415,12 +435,19 @@ for f in sorted(Path("source/_posts").glob("*.md")):
 total = len(rows)
 print("TOTAL", total)
 print("CATS", dict(Counter(r[1] for r in rows)))
+from collections import defaultdict
+cell = defaultdict(int)
+for _, c, ts in rows:
+    for t in ts:
+        cell[(c, t)] += 1
+print("A×犯罪", cell[("A", "犯罪")], "| B×偷拍", cell[("B", "偷拍")], "| B×教育", cell[("B", "教育")])
 PY
 ```
 Expected output:
 ```
 TOTAL 32
 CATS {'A': 14, 'B': 13, 'C': 2, 'D': 2, 'N': 1}
+A×犯罪 12 | B×偷拍 7 | B×教育 5
 ```
 (Independent cross-check: `grep -l '^date: 2026-05' source/_posts/*.md | wc -l` → `32`.)
 
@@ -546,10 +573,10 @@ Run:
 ```bash
 test -f _pipeline/summary/2605.md && \
 grep -E '^summary_month: "2605"' _pipeline/summary/2605.md && \
-grep -c -E '^## (本月综述|主题脉络|结构性观察|分类统计|标签统计|文章列表|待跟进)' _pipeline/summary/2605.md
+grep -c -E '^## (本月综述|主题脉络|结构性观察|分类统计|标签统计|分类 × 标签交叉表|文章列表|待跟进)' _pipeline/summary/2605.md
 ```
-Expected: the file exists, the `summary_month` line matches, and the section count is `7`
-(or `6` if 待跟进 was omitted — but May has many `PING` posts, so expect `7`).
+Expected: the file exists, the `summary_month` line matches, and the section count is `8`
+(or `7` if 待跟进 was omitted — but May has many `PING` posts, so expect `8`).
 
 - [ ] **Step 3: Verify the stats in the draft match ground truth**
 
@@ -566,7 +593,8 @@ Expected: all three match (total 32; A=14/44%; B=13/41%).
 Read `_pipeline/summary/2605.md` and confirm: 本月综述 is 2–4 neutral sentences; 主题脉络
 bullets name real events; 结构性观察 describes only patterns present in the posts; no
 stance-taking / angry register; no claims absent from the month's posts; no named-expert
-commentary.
+commentary. Also confirm the 分类 × 标签交叉表 matches the snippet's CROSS output — spot-check
+row A (犯罪=12, 暴力=5) and row B (偷拍=7, 教育=5).
 
 - [ ] **Step 5: Stop. Report to the user.**
 

@@ -9,7 +9,8 @@ An on-demand stage, **not** part of the regular tracking→research→write→re
 pipeline and not wired into `blog-orchestrator`. Invoked only when the user asks for it.
 It produces, for one month, a summary **page** over the blog's **published** articles,
 combining:
-- **Statistics** — category counts, tag counts, and a grouped article list (deterministic).
+- **Statistics** — category counts, tag counts, a category×tag cross-tab, and a grouped
+  article list (deterministic).
 - **Qualitative prose** — a neutral-descriptive synthesis: 本月综述 (overview), 主题脉络
   (thematic threads), 结构性观察 (recurring patterns), 待跟进 (this month's open threads).
 
@@ -114,6 +115,13 @@ for f in sorted(Path("source/_posts").glob("*.md")):
 total = len(rows)
 cat_counts = Counter(r[2] for r in rows)
 tag_counts = Counter(t for r in rows for t in r[3])
+
+# category × tag cross-tab: (category, tag) -> post count
+from collections import defaultdict
+cell = defaultdict(int)
+for _, _, c, ts in rows:
+    for t in ts:
+        cell[(c, t)] += 1
 ```
 
 Percentages: `round(100 * count / total)` (integer percent). For tags the base is **total
@@ -124,6 +132,10 @@ Ordering:
 - Category table & article-list groups: fixed order `S, A, B, C, D, N` (skip categories with 0 posts).
 - Within an article-list group: by `date` ascending.
 - Tag table: by count descending, then tag string for stable ties.
+- Cross-tab: **rows** = categories present, fixed order `S, A, B, C, D, N`; **columns** = all
+  tags, in the same frequency-descending order as the tag table; cells = `cell[(cat, tag)]`
+  (0 when absent). This is a wide table (~30 tag columns) — accepted; it may scroll
+  horizontally on the page.
 
 ### Qualitative prose (neutral-descriptive)
 
@@ -200,6 +212,14 @@ layout: page
 | 法律 | 6 | 33% |
 | 婚姻 | 4 | 22% |
 | … | | |
+
+## 分类 × 标签交叉表
+> 行 = 分类（S→N，仅出现的分类）；列 = 全部标签（按出现频次降序，与上表一致）；格 = 篇数
+| 分类 | 犯罪 | 偷拍 | 教育 | … |
+|---|---|---|---|---|
+| A | 12 | 3 | 1 | … |
+| B | 2 | 7 | 5 | … |
+| … | | | | |
 
 ## 文章列表
 > 按分类 S→N 排序，组内按日期
@@ -344,9 +364,10 @@ be auto-chained into the pipeline.
 No hermetic unit tests are added (no new committed Python module — logic lives in the skill).
 Verification is by running against a real month and eyeballing:
 - Stage A for `2605`: confirm category counts match `grep -c` spot-checks, the article list is
-  complete and correctly grouped S→N, tag percentages use the total-posts base, and the four
-  prose sections (综述 / 主题脉络 / 结构性观察 / 待跟进) are present, neutral in tone, and
-  contain no claims absent from the month's posts.
+  complete and correctly grouped S→N, tag percentages use the total-posts base, the
+  category×tag cross-tab cells match the snippet output (e.g. A×犯罪=12, B×偷拍=7, B×教育=5),
+  and the four prose sections (综述 / 主题脉络 / 结构性观察 / 待跟进) are present, neutral in
+  tone, and contain no claims absent from the month's posts.
 - No-argument run: confirm it asks the user which month rather than guessing.
 - Zero-post month: confirm the zero-post page + message.
 - Stage B: after `pnpm build` (or `pnpm server`), confirm the `本月总结` link appears next to
@@ -368,7 +389,6 @@ Verification is by running against a real month and eyeballing:
   article list + 主题脉络 already give a reading path.
 - Month-over-month statistical comparison / trends.
 - A dedicated publish script (three Bash commands suffice for now).
-- Category×tag cross-tabulation.
 
 Note: the summary is published as a Hexo **page** (not a post), so it does not appear in post
 feeds, archives, or the calendar's post scan.
