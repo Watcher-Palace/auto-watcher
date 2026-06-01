@@ -167,7 +167,7 @@ def test_run_tracker_writes_events_file(tmp_path, monkeypatch):
             {"title": "测试事件", "brief": "简短描述", "sources": ["https://example.com"]}
         ]):
             from src.tracker import run_tracker
-            run_tracker("260325", api_key="test", model="test-model", cookie="")
+            run_tracker("260325", cookie="")
 
     events_file = tmp_path / "_pipeline" / "events" / "260325.md"
     assert events_file.exists()
@@ -245,8 +245,7 @@ def test_run_tracker_range_uids_override(tmp_path, monkeypatch):
          patch("src.tracker.filter_feminist_events", return_value=[]), \
          patch("src.tracker.time.sleep"):
         from src.tracker import run_tracker_range
-        run_tracker_range(date(2026, 5, 7), days=1, api_key="k", model="m",
-                          cookie="c", uids=["only_me"])
+        run_tracker_range(date(2026, 5, 7), days=1, cookie="c", uids=["only_me"])
     assert called_uids == ["only_me"]
 
 
@@ -266,15 +265,14 @@ def test_run_tracker_range_merge_appends(tmp_path, monkeypatch):
                return_value=[{"title": "新增事件", "brief": "y", "sources": []}]), \
          patch("src.tracker.time.sleep"):
         from src.tracker import run_tracker_range
-        run_tracker_range(date(2026, 5, 7), days=1, api_key="k", model="m",
-                          cookie="c", uids=["u1"], merge=True)
+        run_tracker_range(date(2026, 5, 7), days=1, cookie="c", uids=["u1"], merge=True)
     text = pre.read_text(encoding="utf-8")
     assert "## 1. 已有事件" in text
     assert "## 2. 新增事件" in text
 
 
 def test_run_tracker_range_inter_uid_delay(tmp_path, monkeypatch):
-    """Should sleep INTER_UID_DELAY_SEC between UIDs (not before the first)."""
+    """Should sleep a jittered delay between UIDs (not before the first)."""
     import src.utils.pipeline as pipeline_mod
     monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
     monkeypatch.setattr(pipeline_mod, "STATE_FILE", tmp_path / ".state")
@@ -285,10 +283,12 @@ def test_run_tracker_range_inter_uid_delay(tmp_path, monkeypatch):
          patch("src.tracker.filter_feminist_events", return_value=[]), \
          patch("src.tracker.time.sleep", side_effect=fake_sleep):
         from src.tracker import run_tracker_range, INTER_UID_DELAY_SEC
-        run_tracker_range(date(2026, 5, 7), days=1, api_key="k", model="m",
-                          cookie="c", uids=["a", "b", "c"])
-    inter_uid_sleeps = [s for s in sleeps if s == INTER_UID_DELAY_SEC]
-    assert len(inter_uid_sleeps) == 2  # 3 UIDs → 2 inter-UID delays
+        run_tracker_range(date(2026, 5, 7), days=1, cookie="c", uids=["a", "b", "c"])
+    # The only sleeps in run_tracker_range are the inter-UID delays, each
+    # jittered as uniform(INTER_UID_DELAY_SEC, INTER_UID_DELAY_SEC*3).
+    # 3 UIDs → 2 delays (none before the first), each within the jitter range.
+    assert len(sleeps) == 2
+    assert all(INTER_UID_DELAY_SEC <= s <= INTER_UID_DELAY_SEC * 3 for s in sleeps)
 
 
 def test_run_tracker_range_writes_per_date_files(tmp_path, monkeypatch):
@@ -312,13 +312,14 @@ def test_run_tracker_range_writes_per_date_files(tmp_path, monkeypatch):
     }
     def fake_paginate(web, uid, cutoff, max_pages=20):
         return posts_for_uid[uid]
-    def fake_filter(posts, api_key, model):
+    def fake_filter(posts):
         return [{"title": f"event-{len(posts)}", "brief": "x", "sources": []}]
 
     with patch("src.tracker.fetch_weibo_posts_paginated", side_effect=fake_paginate), \
-         patch("src.tracker.filter_feminist_events", side_effect=fake_filter):
+         patch("src.tracker.filter_feminist_events", side_effect=fake_filter), \
+         patch("src.tracker.time.sleep"):
         from src.tracker import run_tracker_range
-        run_tracker_range(date(2026, 5, 7), days=2, api_key="k", model="m", cookie="c")
+        run_tracker_range(date(2026, 5, 7), days=2, cookie="c")
 
     f7 = tmp_path / "_pipeline" / "events" / "260507.md"
     f6 = tmp_path / "_pipeline" / "events" / "260506.md"
