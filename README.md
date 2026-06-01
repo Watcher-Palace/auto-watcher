@@ -26,6 +26,7 @@ Track (Weibo) → Research → Write → Review → [human gate] → Publish
 - **Blog**: Hexo + landscape theme, deployed to GitHub Pages (`gh-pages` branch)
 - **Pipeline**: Python scripts in `src/`, AI agents in `.claude/skills/`
 - **Tracking**: Weibo API via `src/tracker.py`
+- **CI**: GitHub Actions runs the test suite on every push/PR (`.github/workflows/tests.yml`)
 
 ## Commands
 
@@ -45,11 +46,11 @@ pytest src/tests/                     # run tests
 ## Environment Variables
 
 ```
-WEIBO_COOKIE=...        # required for tracker
-OPENROUTER_API_KEY=...  # required for tracker (LLM filtering)
+WEIBO_COOKIE=...               # required for tracker
+TRACKED_UIDS=uid1,uid2,uid3    # Weibo UIDs the tracker fetches
 ```
 
-Set in `src/.env`.
+Set in `src/.env`. LLM filtering runs through the local `claude` CLI (Claude Code subscription) — there is no external API key.
 
 ### Getting a Weibo Cookie
 
