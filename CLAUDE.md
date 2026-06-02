@@ -10,9 +10,11 @@ A feminist news blog (Hexo, deployed to GitHub Pages) with a semi-automated pipe
 
 ```bash
 pnpm run server    # local preview at http://localhost:4000
-pnpm run build
-pnpm run deploy    # build + push to GitHub Pages
+pnpm run build     # hexo generate — regenerates public/
+pnpm run deploy    # hexo deploy — pushes the EXISTING public/ to gh-pages; does NOT build
 ```
+
+**Always `pnpm run build` before `pnpm run deploy`** for a manual deploy — `deploy` only pushes whatever is already in `public/`, so skipping the build silently ships stale content. (`publisher.py` already chains build → deploy, so this only bites manual deploys.)
 
 Deploy target (from `_config.yml`): `git@git_personal:Watcher-Palace/auto-watcher.git`, branch `gh-pages` (`git_personal` is an SSH alias).
 
