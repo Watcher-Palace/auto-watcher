@@ -152,7 +152,7 @@ User annotates disagreements as `<!-- [USER]: ... -->` before revision.
 
 ### Stage 5 — Publish (Python)
 
-Copies approved draft to `source/_posts/YYMMDD.md`, moves assets, injects calendar entry into `source/index.md`, runs `pnpm deploy`.
+Copies approved draft to `source/_posts/YYMMDD.md`, moves assets, injects calendar entry into `source/index.md`, runs `pnpm run deploy`.
 
 Calendar entry format in index.md (inject into correct month):
 ```html

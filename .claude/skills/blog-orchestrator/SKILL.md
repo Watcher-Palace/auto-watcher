@@ -182,7 +182,7 @@ source src/venv/bin/activate
 python src/publisher.py YYMMDD N
 ```
 
-The publisher copies drafts to `source/_posts/`, moves assets, and runs `pnpm deploy`. The landing-page calendar regenerates automatically at build time from post frontmatter (`scripts/calendar.js`) — the publisher does not touch it.
+The publisher copies drafts to `source/_posts/`, moves assets, and runs `pnpm run deploy`. The landing-page calendar regenerates automatically at build time from post frontmatter (`scripts/calendar.js`) — the publisher does not touch it.
 
 After publishing, confirm the posts are live.
 

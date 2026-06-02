@@ -32,7 +32,7 @@ Encapsulate the feminist blog automation pipeline into Claude Code skills and su
 
   scripts/
     tracker.py              ← Weibo fetch + LLM filter → events file
-    publisher.py            ← copy draft, move assets, update index.md, pnpm deploy
+    publisher.py            ← copy draft, move assets, update index.md, pnpm run deploy
     utils/
       pipeline.py           ← path resolution, state, pipeline_summary()
       web.py                ← WebClient (Weibo fetch + extract_text)
@@ -122,7 +122,7 @@ Stage 4 — Review loop (per draft, independently; no iteration limit)
 
 Stage 5 — Publish (per confirmed draft)
   └─ run scripts/publisher.py
-  └─ warn user explicitly: this runs pnpm deploy → GitHub Pages
+  └─ warn user explicitly: this runs pnpm run deploy → GitHub Pages
 ```
 
 ---
@@ -233,7 +233,7 @@ During Stage 5 (Publish), `publisher.py` moves `_pipeline/draft/YYMMDD-N-assets/
 | Script | Responsibility |
 |---|---|
 | `scripts/tracker.py` | Weibo API fetch, strip HTML from `mblog.text` + `mblog.retweeted_status.text`, LLM filter for feminist relevance, deduplicate, write `_pipeline/events/YYMMDD.md` |
-| `scripts/publisher.py` | Copy draft → `source/_posts/YYMMDD.md`, move assets to `source/_posts/YYMMDD/`, inject calendar entry into `source/index.md`, run `pnpm deploy` |
+| `scripts/publisher.py` | Copy draft → `source/_posts/YYMMDD.md`, move assets to `source/_posts/YYMMDD/`, inject calendar entry into `source/index.md`, run `pnpm run deploy` |
 | `scripts/utils/pipeline.py` | Path resolution (`research_path`, `next_draft_path`), state read/write (`_pipeline/.state`), `pipeline_summary()` |
 | `scripts/utils/web.py` | `WebClient`: Weibo fetch with desktop Chrome UA + `weibo.cn` cookie, `extract_text()` |
 

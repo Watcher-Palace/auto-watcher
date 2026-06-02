@@ -1771,7 +1771,7 @@ For each confirmed draft:
 cd /home/jc/Projects/auto-watcher && source scripts/venv/bin/activate && python scripts/publisher.py YYMMDD N
 ```
 
-Warn before running: *"This will run `pnpm deploy` and push to GitHub Pages."*
+Warn before running: *"This will run `pnpm run deploy` and push to GitHub Pages."*
 
 ---
 
