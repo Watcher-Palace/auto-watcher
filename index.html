@@ -220,12 +220,41 @@ document.addEventListener('DOMContentLoaded', function() {
   link.className = 'cal-popover-link';
   pop.appendChild(link);
   document.body.appendChild(pop);
-
-<p>  function closePop() {<br>    pop.classList.remove(‘open’);<br>    openTrigger &#x3D; null;<br>  }</p>
-<p>  function openPop(trigger) {<br>    link.textContent &#x3D; trigger.getAttribute(‘data-title’) || ‘’;<br>    link.setAttribute(‘href’, trigger.getAttribute(‘data-url’) || ‘#’);<br>    pop.classList.add(‘open’);<br>    var rect &#x3D; trigger.getBoundingClientRect();<br>    var left &#x3D; rect.left;<br>    var maxLeft &#x3D; window.innerWidth - pop.offsetWidth - 8;<br>    if (left &gt; maxLeft) left &#x3D; maxLeft;<br>    if (left &lt; 8) left &#x3D; 8;<br>    pop.style.top &#x3D; (rect.bottom + 4) + ‘px’;<br>    pop.style.left &#x3D; left + ‘px’;<br>    openTrigger &#x3D; trigger;<br>  }</p>
-<p>  document.addEventListener(‘click’, function (e) {<br>    var trigger &#x3D; e.target.closest ? e.target.closest(‘.cal-trigger’) : null;<br>    if (trigger) {<br>      if (openTrigger &#x3D;&#x3D;&#x3D; trigger) closePop(); else openPop(trigger);<br>      return;<br>    }<br>    if (!(e.target.closest &amp;&amp; e.target.closest(‘.cal-popover’))) closePop();<br>  });</p>
-<p>  document.addEventListener(‘keydown’, function (e) {<br>    if (e.key &#x3D;&#x3D;&#x3D; ‘Escape’) { closePop(); return; }<br>    var trigger &#x3D; e.target.closest ? e.target.closest(‘.cal-trigger’) : null;<br>    if (trigger &amp;&amp; (e.key &#x3D;&#x3D;&#x3D; ‘Enter’ || e.key &#x3D;&#x3D;&#x3D; ‘ ‘ || e.key &#x3D;&#x3D;&#x3D; ‘Spacebar’)) {<br>      e.preventDefault();<br>      if (openTrigger &#x3D;&#x3D;&#x3D; trigger) closePop(); else openPop(trigger);<br>    }<br>  });<br>})();<br></script></p>
-
+  function closePop() {
+    pop.classList.remove('open');
+    openTrigger = null;
+  }
+  function openPop(trigger) {
+    link.textContent = trigger.getAttribute('data-title') || '';
+    link.setAttribute('href', trigger.getAttribute('data-url') || '#');
+    pop.classList.add('open');
+    var rect = trigger.getBoundingClientRect();
+    var left = rect.left;
+    var maxLeft = window.innerWidth - pop.offsetWidth - 8;
+    if (left > maxLeft) left = maxLeft;
+    if (left < 8) left = 8;
+    pop.style.top = (rect.bottom + 4) + 'px';
+    pop.style.left = left + 'px';
+    openTrigger = trigger;
+  }
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest ? e.target.closest('.cal-trigger') : null;
+    if (trigger) {
+      if (openTrigger === trigger) closePop(); else openPop(trigger);
+      return;
+    }
+    if (!(e.target.closest && e.target.closest('.cal-popover'))) closePop();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closePop(); return; }
+    var trigger = e.target.closest ? e.target.closest('.cal-trigger') : null;
+    if (trigger && (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar')) {
+      e.preventDefault();
+      if (openTrigger === trigger) closePop(); else openPop(trigger);
+    }
+  });
+})();
+</script>
       
     </div>
     <footer class="article-footer">
