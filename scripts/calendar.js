@@ -30,6 +30,15 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     summaryMap[String(page.summary_month)] = root + page.path.replace(/\/index\.html$/, '/');
   });
 
+  // HTML-attribute-escape a value (order matters: & first)
+  function escapeAttr(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   // Split '挑战失败' into n parts (max 4), distributing chars front-heavy
   function splitLabel(n) {
     const chars = ['挑', '战', '失', '败'];
@@ -72,8 +81,9 @@ hexo.extend.generator.register('calendar-index', function (locals) {
       const links = posts.slice(0, 4).map((post, i) => {
         const color = CAT_COLOR[post.cat];
         const bold = CAT_BOLD.has(post.cat) ? 'font-weight:bold;' : '';
-        const safeTitle = post.title.replace(/"/g, '&quot;');
-        return `<a style="color:${color};${bold}" href="${post.urlPath}" title="${safeTitle}">${labels[i]}</a>`;
+        const safeTitle = escapeAttr(post.title);
+        const safeUrl = escapeAttr(post.urlPath);
+        return `<span class="cal-trigger" role="button" tabindex="0" data-title="${safeTitle}" data-url="${safeUrl}" style="color:${color};${bold}">${labels[i]}</span>`;
       });
       const sep = '<span style="color:#999;">_</span>';
       return `${day}<br>${links.join(sep)}`;
