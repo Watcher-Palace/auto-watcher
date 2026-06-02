@@ -113,7 +113,7 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     const summaryUrl = summaryMap[yymm];
     const heading = summaryUrl
       ? `## ${year}年${month}月 <a class="month-summary" href="${summaryUrl}">本月总结</a>`
-      : `## ${year}年${month}月`;
+      : `## ${year}年${month}月（待维护）`;
 
     let rows = '';
     let cells = Array(firstDow).fill('<td></td>');
@@ -181,6 +181,12 @@ ${rows}  </tbody>
   .cal-popover-link { text-decoration: none; }
 </style>`;
 
+  // IMPORTANT: this <script> must contain NO blank lines. The calendar table + this
+  // script render as one contiguous raw-HTML block that hexo-renderer-marked passes
+  // through verbatim — but a single blank line ENDS that block, and everything after it
+  // gets re-parsed as markdown (smartypants turns ' into ‘’ and = into &#x3D;, and wraps
+  // lines in <p>/<br>), producing invalid JS that silently throws on load. Keep every
+  // line non-empty. Same reason the <style> block above has no blank lines.
   const script = `<script>
 (function () {
   var openTrigger = null;
@@ -190,12 +196,10 @@ ${rows}  </tbody>
   link.className = 'cal-popover-link';
   pop.appendChild(link);
   document.body.appendChild(pop);
-
   function closePop() {
     pop.classList.remove('open');
     openTrigger = null;
   }
-
   function openPop(trigger) {
     link.textContent = trigger.getAttribute('data-title') || '';
     link.setAttribute('href', trigger.getAttribute('data-url') || '#');
@@ -209,7 +213,6 @@ ${rows}  </tbody>
     pop.style.left = left + 'px';
     openTrigger = trigger;
   }
-
   document.addEventListener('click', function (e) {
     var trigger = e.target.closest ? e.target.closest('.cal-trigger') : null;
     if (trigger) {
@@ -218,7 +221,6 @@ ${rows}  </tbody>
     }
     if (!(e.target.closest && e.target.closest('.cal-popover'))) closePop();
   });
-
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { closePop(); return; }
     var trigger = e.target.closest ? e.target.closest('.cal-trigger') : null;
