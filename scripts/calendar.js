@@ -164,10 +164,74 @@ ${rows}  </tbody>
   .calendar-table th { background-color: #f2f2f2; font-weight: bold; }
   .calendar-table a { text-decoration: none; }
   .month-summary { font-size: 0.6em; font-weight: normal; }
+  .cal-trigger { cursor: pointer; }
+  .cal-popover {
+    position: fixed;
+    display: none;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 16em;
+    font-size: 0.9rem;
+  }
+  .cal-popover.open { display: block; }
+  .cal-popover-link { text-decoration: none; }
 </style>`;
 
+  const script = `<script>
+(function () {
+  var openTrigger = null;
+  var pop = document.createElement('div');
+  pop.className = 'cal-popover';
+  var link = document.createElement('a');
+  link.className = 'cal-popover-link';
+  pop.appendChild(link);
+  document.body.appendChild(pop);
+
+  function closePop() {
+    pop.classList.remove('open');
+    openTrigger = null;
+  }
+
+  function openPop(trigger) {
+    link.textContent = trigger.getAttribute('data-title') || '';
+    link.setAttribute('href', trigger.getAttribute('data-url') || '#');
+    pop.classList.add('open');
+    var rect = trigger.getBoundingClientRect();
+    var left = rect.left;
+    var maxLeft = window.innerWidth - pop.offsetWidth - 8;
+    if (left > maxLeft) left = maxLeft;
+    if (left < 8) left = 8;
+    pop.style.top = (rect.bottom + 4) + 'px';
+    pop.style.left = left + 'px';
+    openTrigger = trigger;
+  }
+
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest ? e.target.closest('.cal-trigger') : null;
+    if (trigger) {
+      if (openTrigger === trigger) closePop(); else openPop(trigger);
+      return;
+    }
+    if (!(e.target.closest && e.target.closest('.cal-popover'))) closePop();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closePop(); return; }
+    var trigger = e.target.closest ? e.target.closest('.cal-trigger') : null;
+    if (trigger && (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar')) {
+      e.preventDefault();
+      if (openTrigger === trigger) closePop(); else openPop(trigger);
+    }
+  });
+})();
+</script>`;
+
   // Render markdown intro + CSS + calendar HTML
-  const md = `骗你的，没有不愤怒的义务（动感夹心，2026）。\n\n${css}\n${calendarHtml}`;
+  const md = `骗你的，没有不愤怒的义务（动感夹心，2026）。\n\n${css}\n${calendarHtml}\n${script}`;
 
   return hexo.render.render({ text: md, engine: 'markdown' }).then(renderedContent => {
     return {
