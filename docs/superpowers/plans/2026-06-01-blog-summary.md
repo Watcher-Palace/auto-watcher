@@ -4,7 +4,7 @@
 
 **Goal:** Add an on-demand monthly-summary stage to the feminist blog — a `blog-summary` skill that computes category/tag stats plus neutral-descriptive prose for one month, publishes it as a Hexo page, and surfaces a `本月总结` link on the landing-page calendar.
 
-**Architecture:** A new standalone skill (not in `blog-orchestrator`). Stage A dispatches a Sonnet subagent that runs a deterministic stdlib Python snippet for stats and reads post bodies for prose, writing a draft Hexo page to `_pipeline/summary/YYMM.md`. After a human gate, Stage B copies it to `source/summaries/YYMM.md` and runs `pnpm build` + `pnpm deploy`. `scripts/calendar.js` is extended to render a `本月总结` link next to a month whose summary page exists.
+**Architecture:** A new standalone skill (not in `blog-orchestrator`). Stage A dispatches a Sonnet subagent that runs a deterministic stdlib Python snippet for stats and reads post bodies for prose, writing a draft Hexo page to `_pipeline/summary/YYMM.md`. After a human gate, Stage B copies it to `source/summaries/YYMM.md` and runs `pnpm build` + `pnpm run deploy`. `scripts/calendar.js` is extended to render a `本月总结` link next to a month whose summary page exists.
 
 **Tech Stack:** Python 3 (stdlib only, run via `src/venv`), Hexo 8 generator (`scripts/calendar.js`, JS), Markdown skill doc, pnpm build/deploy.
 
@@ -238,7 +238,7 @@ subagent and never auto-chain it from Stage A. After the user confirms, run from
 ```bash
 cp _pipeline/summary/{YYMM}.md source/summaries/{YYMM}.md
 pnpm build      # regenerates the calendar; the 本月总结 link now appears for this month
-pnpm deploy
+pnpm run deploy
 ```
 
 `publisher.py` is post-specific (writes to `source/_posts/`, moves assets, validates tags) and
@@ -489,7 +489,7 @@ Replace with:
 In `CLAUDE.md`, find the end of the Stage 5 block:
 
 ```
-The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
+The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm run deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 ```
 
 Insert immediately after it:
@@ -501,7 +501,7 @@ Insert immediately after it:
 **Not part of the regular pipeline** and never run by `blog-orchestrator` — invoked only on request: `/blog-summary YYMM` or natural language ("write summary of <month>", "write the May summary", "monthly summary"). If no month is given, ask which month — do not guess.
 
 - **Stage A — generate:** dispatch a single **Sonnet** subagent (per the `blog-summary` skill) that computes category/tag statistics over the month's **published** posts and writes a neutral-descriptive prose summary draft to `_pipeline/summary/YYMM.md`. Human gate: review the draft before publishing.
-- **Stage B — publish (after confirmation):** copy the draft to `source/summaries/YYMM.md`, then `pnpm build` + `pnpm deploy`. The landing-page calendar then shows a `本月总结` link next to that month (see Landing-page Calendar). `publisher.py` is post-specific and is not used here.
+- **Stage B — publish (after confirmation):** copy the draft to `source/summaries/YYMM.md`, then `pnpm build` + `pnpm run deploy`. The landing-page calendar then shows a `本月总结` link next to that month (see Landing-page Calendar). `publisher.py` is post-specific and is not used here.
 ```
 
 - [ ] **Step 3: Add the Sonnet rule to Subagent Model Selection**
@@ -598,7 +598,7 @@ row A (犯罪=12, 暴力=5) and row B (偷拍=7, 教育=5).
 
 - [ ] **Step 5: Stop. Report to the user.**
 
-Do **not** run Stage B (`cp` to `source/summaries/`, `pnpm build`, `pnpm deploy`). Tell the
+Do **not** run Stage B (`cp` to `source/summaries/`, `pnpm build`, `pnpm run deploy`). Tell the
 user the draft is ready at `_pipeline/summary/2605.md` for review and that publishing is their
 call. (The draft is a working artifact; leave it uncommitted unless the user wants it kept.)
 

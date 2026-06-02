@@ -34,7 +34,7 @@ subagent and never auto-chain it from Stage A. After the user confirms, run from
 ```bash
 cp _pipeline/summary/{YYMM}.md source/summaries/{YYMM}.md
 pnpm build      # regenerates the calendar; the 本月总结 link now appears for this month
-pnpm deploy
+pnpm run deploy
 ```
 
 `publisher.py` is post-specific (writes to `source/_posts/`, moves assets, validates tags) and

@@ -269,7 +269,7 @@ Stage A. Because the draft is already a complete page, publishing is a copy + bu
 ```bash
 cp _pipeline/summary/YYMM.md source/summaries/YYMM.md
 pnpm build      # regenerates the calendar — the 本月总结 link now appears for this month
-pnpm deploy
+pnpm run deploy
 ```
 
 No new publisher script and `publisher.py` is **not** reused (it is post-specific: writes to
@@ -329,7 +329,7 @@ Months without a published summary page render exactly as today (no link).
    snippet, ordering rules, the prose-pass instructions (the four neutral-descriptive sections
    + grounding rule), the draft page template (incl. frontmatter), the rule that **generation**
    is dispatched to a `model: sonnet` subagent, and the **publish** procedure (human gate →
-   `cp` to `source/summaries/YYMM.md` → `pnpm build` → `pnpm deploy`, run in the main session
+   `cp` to `source/summaries/YYMM.md` → `pnpm build` → `pnpm run deploy`, run in the main session
    after confirmation).
 2. **Modify:** `scripts/calendar.js` — `summaryMap` from `locals.pages`, conditional heading
    link, and the `.month-summary` CSS rule.

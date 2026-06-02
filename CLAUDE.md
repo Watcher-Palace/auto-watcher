@@ -93,14 +93,14 @@ Run:
 ```bash
 python src/publisher.py <YYMMDD> <N>
 ```
-The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
+The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm run deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 
 ### On-demand — Monthly Summary (skill: `blog-summary`)
 
 **Not part of the regular pipeline** and never run by `blog-orchestrator` — invoked only on request: `/blog-summary YYMM` or natural language ("write summary of <month>", "write the May summary", "monthly summary"). If no month is given, ask which month — do not guess.
 
 - **Stage A — generate:** dispatch a single **Sonnet** subagent (per the `blog-summary` skill) that computes category/tag statistics over the month's **published** posts and writes a neutral-descriptive prose summary draft to `_pipeline/summary/YYMM.md`. Human gate: review the draft before publishing.
-- **Stage B — publish (after confirmation):** copy the draft to `source/summaries/YYMM.md`, then `pnpm build` + `pnpm deploy`. The landing-page calendar then shows a `本月总结` link next to that month (see Landing-page Calendar). `publisher.py` is post-specific and is not used here.
+- **Stage B — publish (after confirmation):** copy the draft to `source/summaries/YYMM.md`, then `pnpm build` + `pnpm run deploy`. The landing-page calendar then shows a `本月总结` link next to that month (see Landing-page Calendar). `publisher.py` is post-specific and is not used here.
 
 ## Environment Variables
 
