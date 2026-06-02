@@ -78,7 +78,7 @@ Implementation details (for debugging, not for manual reimplementation):
 - Cookie must be from `weibo.cn` domain (fields: `_T_WM`, `ALF`, `SSOloginstate`, `SUB`, `SUBP`)
 - Use desktop Chrome UA + `Referer: https://m.weibo.cn/` — mobile UA triggers bot detection
 - Extract both `mblog.text` AND `mblog.retweeted_status.text` — feminist content is often in retweets
-- Tracked account UID: `1114030772` (override via `TRACKED_UIDS`)
+- Tracked account UID: set via `TRACKED_UIDS` env var in `.env` (not committed)
 - LLM filtering runs via the `claude` CLI subprocess (`--model claude-haiku-4-5-20251001`), using the local Claude Code subscription — no OpenRouter or external API key
 
 ### Stage 2 — Research (skill: `blog-research`)

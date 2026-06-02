@@ -89,7 +89,7 @@ https://m.weibo.cn/api/container/getIndex?type=uid&value={uid}&containerid=10760
 ```
 
 **Accounts to track (numeric UIDs):**
-- `1114030772`
+- set via `TRACKED_UIDS` in `.env` (not committed)
 
 **Topic keywords:** 女性、女权、性别、婚姻、家暴、性侵、拐卖、生育、就业歧视
 

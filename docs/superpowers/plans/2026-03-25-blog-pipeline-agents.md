@@ -717,29 +717,29 @@ SAMPLE_CARDS = [
 
 
 def test_parse_weibo_cards_extracts_text():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert len(posts) == 2
     assert posts[0]["text"] == "link 女性遭受家暴事件"
 
 
 def test_parse_weibo_cards_includes_retweet():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert posts[0]["retweet_text"] == "转发内容 详细描述"
 
 
 def test_parse_weibo_cards_empty_retweet():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert posts[1]["retweet_text"] == ""
 
 
 def test_parse_weibo_cards_skips_non_mblog():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert len(posts) == 2
 
 
 def test_parse_weibo_cards_builds_url():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
-    assert posts[0]["url"] == "https://weibo.com/1114030772/Abc123"
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
+    assert posts[0]["url"] == "https://weibo.com/9999999999/Abc123"
 
 
 def test_format_events_markdown():
@@ -801,7 +801,7 @@ from scripts.utils.web import WebClient
 from scripts.utils.pipeline import events_path, set_state
 
 WEIBO_API = "https://m.weibo.cn/api/container/getIndex"
-TRACKED_UIDS = ["1114030772"]
+TRACKED_UIDS = os.environ.get("TRACKED_UIDS", "").split(",")
 FEMINIST_KEYWORDS = ["女性", "女权", "性别", "婚姻", "家暴", "性侵", "拐卖", "生育", "就业歧视"]
 
 

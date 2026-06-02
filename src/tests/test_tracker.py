@@ -38,33 +38,33 @@ SAMPLE_CARDS = [
 
 
 def test_parse_weibo_cards_extracts_text():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert len(posts) == 2
     assert posts[0]["text"] == "link 女性遭受家暴事件"
 
 
 def test_parse_weibo_cards_includes_retweet():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert posts[0]["retweet_text"] == "转发内容 详细描述"
 
 
 def test_parse_weibo_cards_empty_retweet():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert posts[1]["retweet_text"] == ""
 
 
 def test_parse_weibo_cards_skips_non_mblog():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert len(posts) == 2
 
 
 def test_parse_weibo_cards_builds_url():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
-    assert posts[0]["url"] == "https://weibo.com/1114030772/Abc123"
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
+    assert posts[0]["url"] == "https://weibo.com/9999999999/Abc123"
 
 
 def test_parse_weibo_cards_extracts_created_dt():
-    posts = parse_weibo_cards(SAMPLE_CARDS, "1114030772")
+    posts = parse_weibo_cards(SAMPLE_CARDS, "9999999999")
     assert posts[0]["created_dt"].date() == date(2026, 5, 7)
     assert posts[1]["created_dt"].date() == date(2026, 5, 6)
 
