@@ -182,3 +182,50 @@ def test_finalize_if_terminal_noop_when_not_terminal(tmp_path):
     assert result is False
     assert "260601" not in _read_done_dates(pipeline_dir=root)
     assert (root / "events" / "260601.md").exists()  # not moved
+
+
+from src import archiver as archiver_mod
+
+
+def test_backfill_archives_every_done_date(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    (root / "done-dates.txt").write_text("# header\n260601\n260602\n", encoding="utf-8")
+    _make(root / "events", "260601.md")
+    _make(root / "events", "260602.md")
+    _make(root / "draft", "260603-1-x-v1.md")  # not done → must stay
+
+    archiver_mod.backfill(pipeline_dir=root, archive_dir=archive)
+
+    assert (archive / "events" / "260601.md").exists()
+    assert (archive / "events" / "260602.md").exists()
+    assert (root / "draft" / "260603-1-x-v1.md").exists()
+
+
+def test_backfill_is_idempotent(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    (root / "done-dates.txt").write_text("# header\n260601\n", encoding="utf-8")
+    _make(root / "events", "260601.md")
+
+    archiver_mod.backfill(pipeline_dir=root, archive_dir=archive)
+    archiver_mod.backfill(pipeline_dir=root, archive_dir=archive)  # must not raise
+
+    assert (archive / "events" / "260601.md").exists()
+
+
+def test_main_single_date_finalizes(tmp_path, monkeypatch):
+    root, archive = _full_pipeline(tmp_path)
+    (root / "done-dates.txt").write_text("# header\n", encoding="utf-8")
+    (root / "events" / "260601.md").write_text("## 1. 标题1", encoding="utf-8")
+    (root / "events" / "260601-status.txt").write_text("1:abort\n", encoding="utf-8")
+    monkeypatch.setattr("src.archiver.PIPELINE", root)
+    monkeypatch.setattr("src.archiver.ARCHIVE", archive)
+
+    rc = archiver_mod.main(["260601"])
+
+    assert rc == 0
+    assert (archive / "events" / "260601.md").exists()
+
+
+def test_main_no_args_returns_error(capsys):
+    rc = archiver_mod.main([])
+    assert rc == 1
