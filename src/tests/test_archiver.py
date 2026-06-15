@@ -147,3 +147,38 @@ def test_archive_date_is_idempotent(tmp_path):
     assert len(first) == 1
     assert second == []  # nothing left to move
     assert (archive / "events" / "260601.md").exists()
+
+
+from src.utils.pipeline import finalize_if_terminal
+
+
+def test_finalize_if_terminal_archives_and_marks_done(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    (root / "done-dates.txt").write_text("# header\n", encoding="utf-8")
+    _make(root / "events", "260601.md")
+    (root / "events" / "260601.md").write_text(
+        "## 1. 标题1\n**Brief**: x", encoding="utf-8"
+    )
+    (root / "events" / "260601-status.txt").write_text("1:published\n", encoding="utf-8")
+
+    result = finalize_if_terminal("260601", pipeline_dir=root, archive_dir=archive)
+
+    assert result is True
+    assert "260601" in _read_done_dates(pipeline_dir=root)
+    assert (archive / "events" / "260601.md").exists()
+    assert not (root / "events" / "260601.md").exists()
+
+
+def test_finalize_if_terminal_noop_when_not_terminal(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    (root / "done-dates.txt").write_text("# header\n", encoding="utf-8")
+    (root / "events" / "260601.md").write_text(
+        "## 1. 标题1\n## 2. 标题2", encoding="utf-8"
+    )
+    (root / "events" / "260601-status.txt").write_text("1:published\n", encoding="utf-8")
+
+    result = finalize_if_terminal("260601", pipeline_dir=root, archive_dir=archive)
+
+    assert result is False
+    assert "260601" not in _read_done_dates(pipeline_dir=root)
+    assert (root / "events" / "260601.md").exists()  # not moved

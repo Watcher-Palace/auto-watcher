@@ -278,6 +278,22 @@ def archive_date(
     return moved
 
 
+def finalize_if_terminal(
+    date_str: str,
+    pipeline_dir: Path = PIPELINE,
+    archive_dir: Path = ARCHIVE,
+) -> bool:
+    """If date_str is fully terminal, mark it done and archive its files.
+
+    Returns True when it did work, False when the date is not terminal.
+    """
+    if not is_date_terminal(date_str, pipeline_dir=pipeline_dir):
+        return False
+    mark_done(date_str, pipeline_dir=pipeline_dir)
+    archive_date(date_str, pipeline_dir=pipeline_dir, archive_dir=archive_dir)
+    return True
+
+
 def _post_slug(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
     entries = _read_status_entries(_status_path(date_str, pipeline_dir))
     for idx, state in entries.items():
