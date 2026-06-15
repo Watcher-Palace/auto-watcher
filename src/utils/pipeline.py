@@ -1,10 +1,12 @@
 from __future__ import annotations
 import re
+import shutil
 from pathlib import Path
 from datetime import date, timedelta
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 PIPELINE = REPO_ROOT / "_pipeline"
+ARCHIVE = REPO_ROOT / "_pipeline_archive"
 STATE_FILE = PIPELINE / ".state"
 
 
@@ -199,6 +201,34 @@ def record_published(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> No
         )
     entries[n] = "published"
     _write_status_entries(status_path, entries)
+
+
+def _done_dates_path(pipeline_dir: Path = PIPELINE) -> Path:
+    return pipeline_dir / "done-dates.txt"
+
+
+def _read_done_dates(pipeline_dir: Path = PIPELINE) -> set[str]:
+    p = _done_dates_path(pipeline_dir)
+    if not p.exists():
+        return set()
+    dates: set[str] = set()
+    for raw in p.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line and not line.startswith("#"):
+            dates.add(line)
+    return dates
+
+
+def mark_done(date_str: str, pipeline_dir: Path = PIPELINE) -> bool:
+    """Append date_str to done-dates.txt if not already present.
+
+    Returns True if it was added, False if it was already there.
+    """
+    if date_str in _read_done_dates(pipeline_dir):
+        return False
+    with _done_dates_path(pipeline_dir).open("a", encoding="utf-8") as f:
+        f.write(f"{date_str}\n")
+    return True
 
 
 def _post_slug(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
