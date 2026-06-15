@@ -6,7 +6,9 @@ import yaml
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.utils.pipeline import REPO_ROOT, PIPELINE, record_published, _post_slug
+from src.utils.pipeline import (
+    REPO_ROOT, PIPELINE, record_published, _post_slug, finalize_if_terminal,
+)
 
 
 def read_frontmatter(content: str) -> dict:
@@ -74,6 +76,9 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
 
     record_published(date_str, n)
     print(f"Recorded {date_str}-{n} as published in events sidecar")
+
+    if finalize_if_terminal(date_str):
+        print(f"Date {date_str} complete → archived to _pipeline_archive/")
 
 
 if __name__ == "__main__":
