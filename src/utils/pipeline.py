@@ -285,11 +285,14 @@ def finalize_if_terminal(
 ) -> bool:
     """If date_str is fully terminal, mark it done and archive its files.
 
-    Returns True when it did work, False when the date is not terminal.
+    Returns True when the date is finalized (now or on a prior run), False when
+    it is not yet terminal. Idempotent: a re-run sweeps any stragglers.
     """
-    if not is_date_terminal(date_str, pipeline_dir=pipeline_dir):
+    already_done = date_str in _read_done_dates(pipeline_dir)
+    if not already_done and not is_date_terminal(date_str, pipeline_dir=pipeline_dir):
         return False
-    mark_done(date_str, pipeline_dir=pipeline_dir)
+    if not already_done:
+        mark_done(date_str, pipeline_dir=pipeline_dir)
     archive_date(date_str, pipeline_dir=pipeline_dir, archive_dir=archive_dir)
     return True
 

@@ -4,7 +4,9 @@ from pathlib import Path
 from src.utils.pipeline import (
     ARCHIVE, REPO_ROOT,
     _read_done_dates, mark_done,
+    is_date_terminal, archive_date, finalize_if_terminal,
 )
+from src import archiver as archiver_mod
 
 
 # ---- ARCHIVE constant ----
@@ -44,9 +46,6 @@ def test_mark_done_is_dedup_noop(tmp_path):
     )
 
 
-from src.utils.pipeline import is_date_terminal
-
-
 def _pipeline_with_events(tmp_path: Path, date_str: str, indexes: list[int]) -> Path:
     """Create events/{date}.md with the given event indexes. Returns pipeline root."""
     (tmp_path / "events").mkdir(parents=True, exist_ok=True)
@@ -77,7 +76,10 @@ def test_is_date_terminal_false_when_events_file_missing(tmp_path):
     assert is_date_terminal("260601", pipeline_dir=tmp_path) is False
 
 
-from src.utils.pipeline import archive_date
+def test_is_date_terminal_false_when_no_status_file(tmp_path):
+    _pipeline_with_events(tmp_path, "260601", [1])
+    # No status file → event is "candidate" → not terminal
+    assert is_date_terminal("260601", pipeline_dir=tmp_path) is False
 
 
 def _make(p: Path, name: str, is_dir: bool = False) -> Path:
@@ -149,9 +151,6 @@ def test_archive_date_is_idempotent(tmp_path):
     assert (archive / "events" / "260601.md").exists()
 
 
-from src.utils.pipeline import finalize_if_terminal
-
-
 def test_finalize_if_terminal_archives_and_marks_done(tmp_path):
     root, archive = _full_pipeline(tmp_path)
     (root / "done-dates.txt").write_text("# header\n", encoding="utf-8")
@@ -184,7 +183,19 @@ def test_finalize_if_terminal_noop_when_not_terminal(tmp_path):
     assert (root / "events" / "260601.md").exists()  # not moved
 
 
-from src import archiver as archiver_mod
+def test_finalize_if_terminal_rerun_after_archive_returns_true(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    (root / "done-dates.txt").write_text("# header\n", encoding="utf-8")
+    (root / "events" / "260601.md").write_text("## 1. 标题1", encoding="utf-8")
+    (root / "events" / "260601-status.txt").write_text("1:published\n", encoding="utf-8")
+
+    first = finalize_if_terminal("260601", pipeline_dir=root, archive_dir=archive)
+    # events file is now in the archive; a second call must still report True
+    second = finalize_if_terminal("260601", pipeline_dir=root, archive_dir=archive)
+
+    assert first is True
+    assert second is True
+    assert (archive / "events" / "260601.md").exists()
 
 
 def test_backfill_archives_every_done_date(tmp_path):
@@ -229,3 +240,16 @@ def test_main_single_date_finalizes(tmp_path, monkeypatch):
 def test_main_no_args_returns_error(capsys):
     rc = archiver_mod.main([])
     assert rc == 1
+
+
+def test_main_backfill(tmp_path, monkeypatch):
+    root, archive = _full_pipeline(tmp_path)
+    (root / "done-dates.txt").write_text("# header\n260601\n", encoding="utf-8")
+    _make(root / "events", "260601.md")
+    monkeypatch.setattr("src.archiver.PIPELINE", root)
+    monkeypatch.setattr("src.archiver.ARCHIVE", archive)
+
+    rc = archiver_mod.main(["--backfill"])
+
+    assert rc == 0
+    assert (archive / "events" / "260601.md").exists()
