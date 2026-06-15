@@ -231,6 +231,18 @@ def mark_done(date_str: str, pipeline_dir: Path = PIPELINE) -> bool:
     return True
 
 
+def is_date_terminal(date_str: str, pipeline_dir: Path = PIPELINE) -> bool:
+    """True iff every event for date_str is published or abort.
+
+    False if the events file is missing (cannot determine) or any event is
+    still non-terminal.
+    """
+    statuses = event_statuses(date_str, pipeline_dir=pipeline_dir)
+    if not statuses:
+        return False
+    return all(s in ("published", "abort") for s in statuses.values())
+
+
 def _post_slug(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
     entries = _read_status_entries(_status_path(date_str, pipeline_dir))
     for idx, state in entries.items():
