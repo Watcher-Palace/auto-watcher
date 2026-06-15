@@ -75,3 +75,75 @@ def test_is_date_terminal_false_when_one_pending(tmp_path):
 def test_is_date_terminal_false_when_events_file_missing(tmp_path):
     (tmp_path / "events").mkdir(parents=True, exist_ok=True)
     assert is_date_terminal("260601", pipeline_dir=tmp_path) is False
+
+
+from src.utils.pipeline import archive_date
+
+
+def _make(p: Path, name: str, is_dir: bool = False) -> Path:
+    """Create a file (or dir with one file) named `name` under directory p."""
+    p.mkdir(parents=True, exist_ok=True)
+    target = p / name
+    if is_dir:
+        target.mkdir()
+        (target / "img.jpg").write_bytes(b"x")
+    else:
+        target.write_text("x", encoding="utf-8")
+    return target
+
+
+def _full_pipeline(tmp_path: Path) -> tuple[Path, Path]:
+    """Return (pipeline_dir, archive_dir) with empty stage dirs created."""
+    root = tmp_path / "_pipeline"
+    archive = tmp_path / "_pipeline_archive"
+    for sub in ("events", "research", "draft", "review"):
+        (root / sub).mkdir(parents=True)
+    return root, archive
+
+
+def test_archive_date_moves_all_per_date_files(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    _make(root / "events", "260601.md")
+    _make(root / "events", "260601-status.txt")
+    _make(root / "research", "260601-1-标题.md")
+    _make(root / "draft", "260601-1-标题-v1.md")
+    _make(root / "draft", "260601-1-assets", is_dir=True)
+    _make(root / "review", "260601-1-标题-v1.md")
+
+    moved = archive_date("260601", pipeline_dir=root, archive_dir=archive)
+
+    assert len(moved) == 6
+    assert (archive / "events" / "260601.md").exists()
+    assert (archive / "events" / "260601-status.txt").exists()
+    assert (archive / "research" / "260601-1-标题.md").exists()
+    assert (archive / "draft" / "260601-1-标题-v1.md").exists()
+    assert (archive / "draft" / "260601-1-assets" / "img.jpg").exists()
+    assert (archive / "review" / "260601-1-标题-v1.md").exists()
+    # originals gone
+    assert not (root / "events" / "260601.md").exists()
+    assert not (root / "draft" / "260601-1-assets").exists()
+
+
+def test_archive_date_leaves_other_dates_untouched(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    _make(root / "events", "260601.md")
+    _make(root / "events", "260602.md")
+    _make(root / "draft", "260602-1-x-v1.md")
+
+    archive_date("260601", pipeline_dir=root, archive_dir=archive)
+
+    assert (root / "events" / "260602.md").exists()
+    assert (root / "draft" / "260602-1-x-v1.md").exists()
+    assert not (archive / "events" / "260602.md").exists()
+
+
+def test_archive_date_is_idempotent(tmp_path):
+    root, archive = _full_pipeline(tmp_path)
+    _make(root / "events", "260601.md")
+
+    first = archive_date("260601", pipeline_dir=root, archive_dir=archive)
+    second = archive_date("260601", pipeline_dir=root, archive_dir=archive)
+
+    assert len(first) == 1
+    assert second == []  # nothing left to move
+    assert (archive / "events" / "260601.md").exists()

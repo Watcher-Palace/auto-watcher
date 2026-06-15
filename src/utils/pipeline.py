@@ -243,6 +243,41 @@ def is_date_terminal(date_str: str, pipeline_dir: Path = PIPELINE) -> bool:
     return all(s in ("published", "abort") for s in statuses.values())
 
 
+_ARCHIVE_STAGES = ("events", "research", "draft", "review")
+
+
+def archive_date(
+    date_str: str,
+    pipeline_dir: Path = PIPELINE,
+    archive_dir: Path = ARCHIVE,
+) -> list[Path]:
+    """Move every per-date file for date_str from pipeline_dir into archive_dir.
+
+    Matches `events/{date}.md` and any entry whose name starts with `{date}-`
+    in each stage dir (covers `-status.txt`, `-vN.md` drafts, and
+    `{date}-N-assets/` directories). Idempotent: skips entries whose
+    destination already exists; never clobbers. Returns the destination paths
+    actually moved.
+    """
+    moved: list[Path] = []
+    for stage in _ARCHIVE_STAGES:
+        src_dir = pipeline_dir / stage
+        if not src_dir.exists():
+            continue
+        for entry in sorted(src_dir.iterdir()):
+            name = entry.name
+            if not (name == f"{date_str}.md" or name.startswith(f"{date_str}-")):
+                continue
+            dst_dir = archive_dir / stage
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            dst = dst_dir / name
+            if dst.exists():
+                continue  # already archived — don't clobber
+            shutil.move(str(entry), str(dst))
+            moved.append(dst)
+    return moved
+
+
 def _post_slug(date_str: str, n: int, pipeline_dir: Path = PIPELINE) -> str:
     entries = _read_status_entries(_status_path(date_str, pipeline_dir))
     for idx, state in entries.items():
