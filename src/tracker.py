@@ -351,6 +351,9 @@ def run_tracker_daily(
     state = load_state(sp)
     today = today or date.today()
     uids = [u.strip() for u in os.environ.get("TRACKED_UIDS", "").split(",") if u.strip()]
+    # UIDs left with a resume cursor by a previous run go first, so a heavy
+    # account at the front of TRACKED_UIDS cannot starve the others.
+    uids.sort(key=lambda u: not (state["uids"].get(u) or {}).get("pending"))
     web = WebClient(cookie=cookie)
     first_run_cutoff = datetime.combine(
         today - timedelta(days=DAILY_FIRST_RUN_DAYS), datetime.min.time(), tzinfo=CN_TZ

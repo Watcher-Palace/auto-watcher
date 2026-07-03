@@ -91,6 +91,31 @@ def test_daily_rate_limited_persists_and_exits_2(env, monkeypatch):
     assert pend and pend["next_page"] == 1
 
 
+def test_daily_pending_uids_fetched_first(env, monkeypatch):
+    # uid 222 has a resume cursor from a previous exhausted run: it must be
+    # fetched BEFORE uid 111 so a heavy first account can't starve the rest.
+    monkeypatch.setenv("TRACKED_UIDS", "111,222")
+    order = []
+
+    def fake_fetch(web, uid, page=1):
+        order.append(uid)
+        return []
+
+    monkeypatch.setattr("src.tracker.fetch_weibo_posts", fake_fetch)
+    sp = env / ".tracker-state.json"
+    save_state(
+        {"uids": {
+            "111": {"last_seen_id": "500", "pending": None},
+            "222": {"last_seen_id": "400", "pending": {"next_page": 3}},
+        }},
+        sp,
+    )
+
+    run_tracker_daily(cookie="c", budget=10, state_path=sp, today=date(2026, 7, 3))
+
+    assert order[0] == "222"
+
+
 def test_daily_first_run_walks_back_to_cutoff(env, monkeypatch):
     # no prior state: walk until posts older than DAILY_FIRST_RUN_DAYS
     pages = {

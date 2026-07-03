@@ -1,9 +1,16 @@
 # Daily tracker cron
 
-One small incremental fetch per day (~4–8 requests for 4 UIDs) keeps the
-pipeline current and stays far below Weibo's account-level throttle. Missed
-days are harmless: `--daily` resumes from per-UID `last_seen_id` and any
-saved budget/rate-limit cursor in `_pipeline/.tracker-state.json`.
+One incremental fetch per day keeps the pipeline current while staying far
+below Weibo's account-level throttle. Page count scales with posting volume:
+quiet accounts cost 1–2 pages/day, a prolific one (dozens of posts/day) may
+need 5–10; the run is capped at `--budget` page fetches (default 40 ≈ ~400
+posts across all UIDs) with jittered 3–9s delays — a normal-browsing
+signature, not the 80-requests-in-minutes backfill burst that trips the
+throttle. Missed days and budget overflows are harmless: `--daily` resumes
+from per-UID `last_seen_id` and any saved cursor in
+`_pipeline/.tracker-state.json`, and UIDs with a pending cursor are fetched
+first on the next run. If your accounts are heavy posters, raise the cap,
+e.g. `--daily --budget 60`.
 
 ## Install (WSL, cron is already running on this machine)
 
