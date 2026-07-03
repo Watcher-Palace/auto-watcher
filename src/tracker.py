@@ -303,6 +303,31 @@ def run_tracker_range(
     set_state("20" + end_date.strftime("%y%m%d"))
 
 
+def _fetch_url_post(url: str) -> dict:
+    from src.wbfetch import fetch_post
+    d = fetch_post(url)
+    return {"url": url, "text": d["text"], "retweet_text": d.get("retweet_text", "")}
+
+
+def run_tracker_urls(urls: list[str], date_str: str) -> None:
+    """Anonymous URL-list mode: no cookie, no account, merge-append.
+
+    The user supplies public weibo.com post URLs; each is fetched via
+    src/wbfetch.py (headless Chrome, visitor cookies) and run through the
+    same Haiku filter as tracked posts.
+    """
+    from src.wbfetch import WbFetchError
+    posts = []
+    for u in urls:
+        try:
+            posts.append(_fetch_url_post(u))
+        except WbFetchError as e:
+            print(f"  skip {u}: {e}", file=sys.stderr)
+    events = filter_feminist_events(posts) if posts else []
+    out = append_events_to_file(date_str, events)
+    print(f"{date_str}: {len(posts)} posts → {len(events)} events appended → {out}")
+
+
 DAILY_BUDGET = 40
 DAILY_FIRST_RUN_DAYS = 3
 DAILY_BUCKET_WINDOW_DAYS = 15
@@ -430,12 +455,23 @@ def main() -> None:
                         help="incremental fetch since last seen post per UID (cron-safe; resumes cursors)")
     parser.add_argument("--budget", type=int, default=None,
                         help="max page fetches this run (daily mode; default 40)")
+    parser.add_argument("--urls",
+                        help="comma-separated weibo.com post URLs or @file (one per line); "
+                             "anonymous fetch, no cookie needed")
     args = parser.parse_args()
 
     cookie = os.environ.get("WEIBO_COOKIE", "")
 
     try:
-        if args.daily:
+        if args.urls:
+            raw = args.urls
+            if raw.startswith("@"):
+                urls = [l.strip() for l in Path(raw[1:]).read_text(encoding="utf-8").splitlines() if l.strip()]
+            else:
+                urls = [u.strip() for u in raw.split(",") if u.strip()]
+            date_arg = args.date or (date.today() - timedelta(days=1)).strftime("%y%m%d")
+            run_tracker_urls(urls, date_arg)
+        elif args.daily:
             run_tracker_daily(cookie, budget=args.budget or DAILY_BUDGET)
         elif args.days:
             end_date = _parse_yymmdd(args.end) if args.end else (date.today() - timedelta(days=1))

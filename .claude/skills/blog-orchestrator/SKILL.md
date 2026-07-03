@@ -57,6 +57,12 @@ python src/tracker.py YYMMDD
 
 The tracker reads `WEIBO_COOKIE` and `TRACKED_UIDS` from environment or `.env`. LLM filtering runs via the `claude` CLI subprocess (Haiku), using the local Claude Code subscription — not an external API key.
 
+If the user supplies public Weibo post URLs instead (e.g. while rate-limited), use the anonymous URL mode — no cookie involved:
+
+```bash
+python src/tracker.py --urls "url1,url2" YYMMDD
+```
+
 After running, display the events file contents so the user can review.
 
 ### 1c. Human gate — Approve events

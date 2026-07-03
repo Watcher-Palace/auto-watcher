@@ -71,6 +71,7 @@ source src/venv/bin/activate
 python src/tracker.py [YYMMDD]            # single date (default: yesterday)
 python src/tracker.py --days N [--end YYMMDD] [--merge]  # date range
 python src/tracker.py --daily [--budget N]  # incremental since last seen post (cron-safe; auto-resumes budget/rate-limit cursors)
+python src/tracker.py --urls <url1,url2|@file> [YYMMDD]  # anonymous fetch of public post URLs (no cookie/account; immune to the rate limit)
 ```
 Output: `_pipeline/events/YYMMDD.md` with numbered entries (`## N. 标题`).
 
@@ -124,7 +125,7 @@ Tracker LLM filtering uses the `claude` CLI subprocess (Haiku) on the local Clau
 | Weibo fetch fails silently | Cookie must be from `weibo.cn`, not `weibo.com` |
 | Weibo fetch blocked | Use desktop Chrome UA, not mobile |
 | Weibo cookie expired (all UIDs fail, no captcha challenge) | Get fresh cookie from browser — do NOT switch to WebSearch for discovery |
-| Tracker exits with `RATE LIMITED` | Account-level throttle — a fresh cookie for the same account does NOT reset it. Persists 6–24h. Wait, then re-run with `--merge`. (Distinct from cookie expiry.) |
+| Tracker exits with `RATE LIMITED` | Account-level throttle — a fresh cookie for the same account does NOT reset it. Persists 6–24h. Wait (`--daily` auto-resumes its cursor), or add events immediately via `--urls` (anonymous, unaffected). (Distinct from cookie expiry.) |
 | Tracker LLM filtering fails | Check the `claude` CLI is on PATH and the Claude Code subscription is active — not OpenRouter or any API key. |
 
 ## Subagent Model Selection

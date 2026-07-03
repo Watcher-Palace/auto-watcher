@@ -622,7 +622,7 @@ if __name__ == "__main__":
 - Create: `src/tests/test_tracker_urls.py`
 - Modify: `CLAUDE.md`, `.claude/skills/blog-orchestrator/SKILL.md` (document mode)
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 ```python
 # src/tests/test_tracker_urls.py
@@ -665,7 +665,7 @@ def test_urls_mode_skips_failed_fetch(env, monkeypatch, capsys):
     assert "bad" in capsys.readouterr().err
 ```
 
-- [ ] **Step 2: Implement** in `src/tracker.py`:
+- [x] **Step 2: Implement** in `src/tracker.py`:
 
 ```python
 def _fetch_url_post(url: str) -> dict:
@@ -702,7 +702,7 @@ def run_tracker_urls(urls: list[str], date_str: str) -> None:
             return
 ```
 
-- [ ] **Step 3: Green; docs (CLAUDE.md Stage 1 run block + pitfalls row: rate-limited → use `--urls`; orchestrator 1b alternative); commit + push.**
+- [x] **Step 3: Green; docs (CLAUDE.md Stage 1 run block + pitfalls row: rate-limited → use `--urls`; orchestrator 1b alternative); commit + push.**
 
 ### Task 5: Harvest queue + curate/orchestration docs
 
