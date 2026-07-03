@@ -16,7 +16,13 @@ def make_pw(text="正文内容", author="作者", when="2026-05-28 10:00", fail_
 
     def locator(sel):
         loc = MagicMock()
-        vals = {"detail_wbtext": text, "head_name": author, "head-info_time": when}
+        loc.count.return_value = 1
+        vals = {
+            "detail_wbtext": text,
+            "_name_": author,
+            "_time_": when,
+            "article": text,
+        }
         for k, v in vals.items():
             if k in sel:
                 loc.first.inner_text.return_value = v

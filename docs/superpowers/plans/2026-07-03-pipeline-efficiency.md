@@ -481,9 +481,9 @@ Also replace both legacy "fresh WEIBO_COOKIE from another browser session" error
 - Create: `src/tests/test_wbfetch.py`
 - Modify: `requirements.txt` (add pinned playwright)
 
-- [ ] **Step 1: Install** — `src/venv/bin/pip install playwright` (no `playwright install`: `channel="chrome"` uses `/usr/bin/google-chrome`). Pin exact installed version in `requirements.txt`.
+- [x] **Step 1: Install** — `src/venv/bin/pip install playwright` (no `playwright install`: `channel="chrome"` uses `/usr/bin/google-chrome`). Pin exact installed version in `requirements.txt`.
 
-- [ ] **Step 2: Failing tests** (playwright fully mocked; no network):
+- [x] **Step 2: Failing tests** (playwright fully mocked; no network):
 
 ```python
 # src/tests/test_wbfetch.py
@@ -540,7 +540,7 @@ def test_fetch_post_raises_after_retries():
             fetch_post("https://weibo.com/1/x", retries=2)
 ```
 
-- [ ] **Step 3: Implement `src/wbfetch.py`**
+- [x] **Step 3: Implement `src/wbfetch.py`**
 
 ```python
 """Anonymous Weibo post fetcher: headless system Chrome passes the Sina
@@ -611,9 +611,9 @@ if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
 ```
 
-- [ ] **Step 4: Green (hermetic).** Then live smoke: `src/venv/bin/python src/wbfetch.py https://weibo.com/1699432410/5306536081752889` → expect JSON with 通报 text. If chrome sandbox errors under WSL, add `args=["--no-sandbox"]` to launch. Record outcome in commit message.
+- [x] **Step 4: Green (hermetic).** Then live smoke: `src/venv/bin/python src/wbfetch.py https://weibo.com/1699432410/5306536081752889` → expect JSON with 通报 text. If chrome sandbox errors under WSL, add `args=["--no-sandbox"]` to launch. Record outcome in commit message.
 
-- [ ] **Step 5: Commit + push** (include requirements.txt pin; CI stays hermetic — playwright import only, no browser needed).
+- [x] **Step 5: Commit + push** (include requirements.txt pin; CI stays hermetic — playwright import only, no browser needed).
 
 ### Task 4: `tracker.py --urls` mode
 

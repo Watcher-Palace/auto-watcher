@@ -18,7 +18,11 @@ UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 )
-TEXT_SEL = '[class*="detail_wbtext"]'
+# Logged-out ("visitor wall") pages render one <article> with CSS-module hashed
+# class names; the logged-in SPA uses detail_wbtext. Wait on <article>, prefer
+# the rich selector when present.
+POST_SEL = "article"
+RICH_TEXT_SEL = '[class*="detail_wbtext"]'
 
 
 class WbFetchError(Exception):
@@ -36,19 +40,28 @@ def fetch_post(
         try:
             with sync_playwright() as pw:
                 browser = pw.chromium.launch(
-                    channel="chrome", headless=headless, args=["--no-sandbox"]
+                    channel="chrome",
+                    headless=headless,
+                    args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
                 )
                 try:
                     ctx = browser.new_context(user_agent=UA, locale="zh-CN")
+                    ctx.add_init_script(
+                        "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"
+                    )
                     page = ctx.new_page()
                     page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-                    page.wait_for_selector(TEXT_SEL, timeout=timeout_ms)
-                    text = page.locator(TEXT_SEL).first.inner_text()
-                    author = page.locator('[class*="head_name"]').first.inner_text()
-                    created = page.locator('[class*="head-info_time"]').first.inner_text()
+                    page.wait_for_selector(POST_SEL, timeout=timeout_ms)
+                    rich = page.locator(RICH_TEXT_SEL)
+                    if rich.count() > 0:
+                        text = rich.first.inner_text()
+                    else:
+                        text = page.locator(POST_SEL).first.inner_text()
+                    author = page.locator('article [class*="_name_"]').first.inner_text()
+                    created = page.locator('article [class*="_time_"]').first.inner_text()
                     images = [
                         img.get_attribute("src") or ""
-                        for img in page.locator('article img[class*="picture"]').all()
+                        for img in page.locator("article img").all()
                     ]
                     return {
                         "url": url,

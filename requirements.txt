@@ -3,6 +3,7 @@ requests==2.34.2
 beautifulsoup4==4.14.3
 PyYAML==6.0.3
 python-dotenv==1.2.2
+playwright==1.61.0   # anonymous Weibo post fetch (src/wbfetch.py); tests mock it, no browser download needed in CI
 
 # Test-only.
 pytest==9.0.3
