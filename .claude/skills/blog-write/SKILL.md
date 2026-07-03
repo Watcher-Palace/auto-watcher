@@ -103,6 +103,9 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 - Sources section: one line per source, format exactly `YYYY.MM.DD，来源。*标题*。URL`
 - **Facts only, no inference:** Every sentence must be directly supported by a source. Do not infer, interpret, or editorialize. Do not draw conclusions from facts even if they seem obvious — let the facts speak. If something is not explicitly stated in a source, do not write it.
 - **No expert opinions:** Strip all named-expert commentary on the case — lawyers, scholars, doctors, analysts, columnists, "专家". This applies even when the reviewer accepts such content. Factual law (statute numbers,司法解释 thresholds, official enacted dates) and parallel cases may stay if stated without attribution to a commentator. The blog logs facts, not professional commentary.
+- **Lint gate (mandatory):** after writing the draft file, run
+  `src/venv/bin/python /home/jc/Projects/auto-watcher/src/linter.py <draft-path>`
+  and fix every violation before finishing. Do not report completion with a failing lint.
 
 ## Categories
 

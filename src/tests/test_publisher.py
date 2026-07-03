@@ -42,7 +42,13 @@ def test_publish_finalizes_terminal_date(tmp_path, monkeypatch):
     (root / "draft").mkdir(parents=True)
     (root / "events").mkdir(parents=True)
     draft = root / "draft" / "990101-1-测试-v1.md"
-    draft.write_text("---\ntitle: 测试\n---\n## 内容\n", encoding="utf-8")
+    # minimal draft that passes the lint gate
+    draft.write_text(
+        "---\ntitle: 测试\ndate: 2020-01-01\ncategories: B\ntags:\n- 犯罪\n---\n\n"
+        "## 概述\n正文。\n\n"
+        "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n",
+        encoding="utf-8",
+    )
 
     monkeypatch.setattr("src.publisher.PIPELINE", root)
     monkeypatch.setattr("src.publisher.REPO_ROOT", tmp_path)

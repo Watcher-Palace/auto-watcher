@@ -53,8 +53,16 @@ def move_assets(src: Path, dst: Path) -> None:
 
 
 def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = True) -> None:
-    fm = read_frontmatter(draft_path.read_text(encoding="utf-8"))
+    content = draft_path.read_text(encoding="utf-8")
+    fm = read_frontmatter(content)
     validate_tags(fm.get("tags"), load_tag_registry())
+    from src.linter import lint_text
+    from datetime import date as _date
+    violations = lint_text(content, load_tag_registry(), _date.today())
+    if violations:
+        raise SystemExit(
+            "Draft fails lint:\n" + "\n".join(f"  - {v}" for v in violations)
+        )
     posts_dir = REPO_ROOT / "source" / "_posts"
     post_slug = _post_slug(date_str, n)
 
