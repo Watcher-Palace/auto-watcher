@@ -120,7 +120,7 @@ Tracker LLM filtering uses the `claude` CLI subprocess (Haiku) on the local Clau
 | Weibo fetch fails silently | Cookie must be from `weibo.cn`, not `weibo.com` |
 | Weibo fetch blocked | Use desktop Chrome UA, not mobile |
 | Weibo cookie expired (all UIDs fail, no captcha challenge) | Get fresh cookie from browser — do NOT switch to WebSearch for discovery |
-| Tracker exits with `RATE LIMITED` | Per-cookie throttle, persists 6–24h. Wait, then re-run with `--merge`. (Distinct from cookie expiry.) |
+| Tracker exits with `RATE LIMITED` | Account-level throttle — a fresh cookie for the same account does NOT reset it. Persists 6–24h. Wait, then re-run with `--merge`. (Distinct from cookie expiry.) |
 | Tracker LLM filtering fails | Check the `claude` CLI is on PATH and the Claude Code subscription is active — not OpenRouter or any API key. |
 
 ## Subagent Model Selection
