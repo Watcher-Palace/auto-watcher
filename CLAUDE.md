@@ -70,6 +70,7 @@ Run (venv lives at `src/venv/`, not `.venv/`; date arg is positional YYMMDD, the
 source src/venv/bin/activate
 python src/tracker.py [YYMMDD]            # single date (default: yesterday)
 python src/tracker.py --days N [--end YYMMDD] [--merge]  # date range
+python src/tracker.py --daily [--budget N]  # incremental since last seen post (cron-safe; auto-resumes budget/rate-limit cursors)
 ```
 Output: `_pipeline/events/YYMMDD.md` with numbered entries (`## N. 标题`).
 
@@ -79,6 +80,7 @@ Implementation details (for debugging, not for manual reimplementation):
 - Use desktop Chrome UA + `Referer: https://m.weibo.cn/` — mobile UA triggers bot detection
 - Extract both `mblog.text` AND `mblog.retweeted_status.text` — feminist content is often in retweets
 - Tracked account UID: set via `TRACKED_UIDS` env var in `.env` (not committed)
+- Incremental state (per-UID last-seen post ID + resume cursors) lives in `_pipeline/.tracker-state.json`
 - LLM filtering runs via the `claude` CLI subprocess (`--model claude-haiku-4-5-20251001`), using the local Claude Code subscription — no OpenRouter or external API key
 
 ### Stage 2 — Research (skill: `blog-research`)

@@ -295,11 +295,123 @@ def run_tracker_range(
             f"\nRATE LIMITED. Partial results written above (skipped uids: {skipped}).\n"
             f"Wait 6–24h, then complete with: python src/tracker.py [args] --uids {skipped} --merge\n"
             "Do not retry now — additional requests extend the window.\n"
-            "If you need to continue immediately, get a fresh WEIBO_COOKIE from another browser session.",
+            "The throttle is account-level: a new cookie for the same account does NOT reset it.\n"
+            "To add events immediately, use --urls (anonymous fetch, unaffected).",
             file=sys.stderr,
         )
         sys.exit(2)
     set_state("20" + end_date.strftime("%y%m%d"))
+
+
+DAILY_BUDGET = 40
+DAILY_FIRST_RUN_DAYS = 3
+DAILY_BUCKET_WINDOW_DAYS = 15
+
+
+def run_tracker_daily(
+    cookie: str,
+    budget: int = DAILY_BUDGET,
+    state_path: Path | None = None,
+    today: date | None = None,
+) -> None:
+    """Incremental fetch since last_seen_id per UID, budget-capped, merge-append.
+
+    Budget exhaustion persists a resume cursor and returns normally (the next
+    run continues automatically). RateLimited persists the cursor and exits 2.
+    The throttle is account-level — a new cookie for the same account does not
+    reset it, so no cookie-swap advice is given.
+    """
+    from src.utils.tracker_state import load_state, save_state, state_path as _sp
+    sp = state_path or _sp()
+    state = load_state(sp)
+    today = today or date.today()
+    uids = [u.strip() for u in os.environ.get("TRACKED_UIDS", "").split(",") if u.strip()]
+    web = WebClient(cookie=cookie)
+    first_run_cutoff = datetime.combine(
+        today - timedelta(days=DAILY_FIRST_RUN_DAYS), datetime.min.time(), tzinfo=CN_TZ
+    )
+    remaining = budget
+    all_new: list[dict] = []
+    rate_limited = False
+
+    for i, uid in enumerate(uids):
+        ustate = state["uids"].setdefault(uid, {"last_seen_id": None, "pending": None})
+        last_seen = int(ustate["last_seen_id"]) if ustate["last_seen_id"] else None
+        page = (ustate["pending"] or {}).get("next_page", 1)
+        if i > 0 and remaining > 0:
+            time.sleep(random.uniform(INTER_UID_DELAY_SEC, INTER_UID_DELAY_SEC * 3))
+        max_id_seen = last_seen or 0
+        while True:
+            if remaining <= 0:
+                ustate["pending"] = {"next_page": page}
+                break
+            remaining -= 1
+            try:
+                posts = fetch_weibo_posts(web, uid, page=page)
+            except RateLimited:
+                ustate["pending"] = {"next_page": page}
+                rate_limited = True
+                break
+            except WebClient.FetchError as e:
+                print(f"  uid {uid} page {page}: fetch error {e}", file=sys.stderr)
+                break
+            if not posts:
+                ustate["pending"] = None
+                break
+            fresh = [
+                p for p in posts
+                if p["id"] and not p["is_top"]
+                and (last_seen is None or int(p["id"]) > last_seen)
+            ]
+            for p in fresh:
+                max_id_seen = max(max_id_seen, int(p["id"]))
+            all_new.extend(fresh)
+            organic = [p for p in posts if not p["is_top"] and p["created_dt"]]
+            reached_old = (
+                (last_seen is not None and len(fresh) < len(organic))
+                or (
+                    last_seen is None
+                    and organic
+                    and min(p["created_dt"] for p in organic) < first_run_cutoff
+                )
+            )
+            if reached_old:
+                ustate["pending"] = None
+                break
+            page += 1
+            if remaining > 0:
+                time.sleep(random.uniform(PAGINATION_DELAY_SEC, PAGINATION_DELAY_SEC * 3))
+        if max_id_seen:
+            ustate["last_seen_id"] = str(max_id_seen)
+        if rate_limited:
+            break
+
+    target_dates = [
+        (today - timedelta(days=k)).strftime("%y%m%d")
+        for k in range(DAILY_BUCKET_WINDOW_DAYS)
+    ]
+    buckets = bucket_posts_by_date(all_new, target_dates)
+    for date_str in sorted(buckets):
+        events = filter_feminist_events(buckets[date_str])
+        out = append_events_to_file(date_str, events)
+        print(f"  {date_str}: {len(buckets[date_str])} posts → {len(events)} events appended → {out}")
+    save_state(state, sp)
+
+    pending_uids = [u for u, s in state["uids"].items() if s.get("pending")]
+    if rate_limited:
+        print(
+            "\nRATE LIMITED (account-level throttle; a new cookie for the same "
+            "account does NOT reset it). Progress saved — the next --daily run "
+            "resumes automatically. Meanwhile you can add events manually with "
+            "--urls (anonymous, unaffected by the throttle).",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    if pending_uids:
+        print(
+            f"Budget exhausted; resume cursor saved for uids: {','.join(pending_uids)}. "
+            "Next --daily run continues automatically."
+        )
 
 
 def _parse_yymmdd(s: str) -> date:
@@ -314,12 +426,18 @@ def main() -> None:
     parser.add_argument("--end", help="end date YYMMDD for range mode (default: yesterday)")
     parser.add_argument("--uids", help="comma-separated UID override (range mode); for partial re-runs")
     parser.add_argument("--merge", action="store_true", help="append to existing events files (range mode)")
+    parser.add_argument("--daily", action="store_true",
+                        help="incremental fetch since last seen post per UID (cron-safe; resumes cursors)")
+    parser.add_argument("--budget", type=int, default=None,
+                        help="max page fetches this run (daily mode; default 40)")
     args = parser.parse_args()
 
     cookie = os.environ.get("WEIBO_COOKIE", "")
 
     try:
-        if args.days:
+        if args.daily:
+            run_tracker_daily(cookie, budget=args.budget or DAILY_BUDGET)
+        elif args.days:
             end_date = _parse_yymmdd(args.end) if args.end else (date.today() - timedelta(days=1))
             uids = [u.strip() for u in args.uids.split(",") if u.strip()] if args.uids else None
             run_tracker_range(end_date, args.days, cookie, uids=uids, merge=args.merge)
@@ -328,10 +446,11 @@ def main() -> None:
             run_tracker(date_arg, cookie)
     except RateLimited:
         print(
-            "\nRATE LIMITED. Weibo throttle is per-cookie and persists 6–24h.\n"
+            "\nRATE LIMITED. Weibo throttle is account-level and persists 6–24h\n"
+            "(a new cookie for the same account does NOT reset it).\n"
             "Wait, then re-run with: python src/tracker.py [args] --merge\n"
             "Do not retry now — additional requests extend the window.\n"
-            "If you need to continue immediately, get a fresh WEIBO_COOKIE from another browser session.",
+            "To add events immediately, use --urls (anonymous fetch, unaffected).",
             file=sys.stderr,
         )
         sys.exit(2)

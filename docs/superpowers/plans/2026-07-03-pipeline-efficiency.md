@@ -20,7 +20,7 @@
 - Modify: `src/publisher.py` (lint gate in `publish()`)
 - Modify: `.claude/skills/blog-write/SKILL.md` (writer must pass lint)
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 # src/tests/test_linter.py
@@ -94,9 +94,9 @@ def test_bad_category_flagged():
     assert any("categories" in x for x in v)
 ```
 
-- [ ] **Step 2: Run, verify failure** — `src/venv/bin/python -m pytest src/tests/test_linter.py -q` → ImportError.
+- [x] **Step 2: Run, verify failure** — `src/venv/bin/python -m pytest src/tests/test_linter.py -q` → ImportError.
 
-- [ ] **Step 3: Implement `src/linter.py`**
+- [x] **Step 3: Implement `src/linter.py`**
 
 ```python
 from __future__ import annotations
@@ -203,9 +203,9 @@ if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
 ```
 
-- [ ] **Step 4: Green** — same pytest command, all pass. Full suite too.
+- [x] **Step 4: Green** — same pytest command, all pass. Full suite too.
 
-- [ ] **Step 5: Publisher gate** — in `src/publisher.py` `publish()` right after `validate_tags(...)`:
+- [x] **Step 5: Publisher gate** — in `src/publisher.py` `publish()` right after `validate_tags(...)`:
 
 ```python
     from src.linter import lint_text
@@ -217,7 +217,7 @@ if __name__ == "__main__":
 
 Add test in `test_linter.py` (monkeypatch style of `test_publish_finalizes_terminal_date`) that `publish()` raises SystemExit on a draft with an em dash, `deploy=False`.
 
-- [ ] **Step 6: blog-write SKILL.md** — append to the end of the "Style Rules" section:
+- [x] **Step 6: blog-write SKILL.md** — append to the end of the "Style Rules" section:
 
 ```markdown
 - **Lint gate (mandatory):** after writing the draft file, run
@@ -225,7 +225,7 @@ Add test in `test_linter.py` (monkeypatch style of `test_publish_finalizes_termi
   and fix every violation before finishing. Do not report completion with a failing lint.
 ```
 
-- [ ] **Step 7: Full suite green → commit + push.**
+- [x] **Step 7: Full suite green → commit + push.**
 
 ### Task 2: Tracker incremental state + budget + `--daily`
 
@@ -235,7 +235,7 @@ Add test in `test_linter.py` (monkeypatch style of `test_publish_finalizes_termi
 - Modify: `src/tracker.py`
 - Modify: `CLAUDE.md` (Stage 1 commands; pitfalls row already fixed)
 
-- [ ] **Step 1: Failing tests for state store**
+- [x] **Step 1: Failing tests for state store**
 
 ```python
 # src/tests/test_tracker_daily.py
@@ -258,7 +258,7 @@ def test_roundtrip(tmp_path):
     assert load_state(p)["uids"]["111"]["last_seen_id"] == "5300000000000001"
 ```
 
-- [ ] **Step 2: Implement `src/utils/tracker_state.py`**
+- [x] **Step 2: Implement `src/utils/tracker_state.py`**
 
 ```python
 from __future__ import annotations
@@ -286,7 +286,7 @@ def save_state(state: dict, path: Path | None = None) -> None:
     p.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
 ```
 
-- [ ] **Step 3: Failing tests for `run_tracker_daily`** (patch `src.tracker.fetch_weibo_posts`, `src.tracker.filter_feminist_events`, `src.utils.pipeline.PIPELINE` → tmp; no sleeps: patch `time.sleep`):
+- [x] **Step 3: Failing tests for `run_tracker_daily`** (patch `src.tracker.fetch_weibo_posts`, `src.tracker.filter_feminist_events`, `src.utils.pipeline.PIPELINE` → tmp; no sleeps: patch `time.sleep`):
 
 ```python
 def _post(pid, day, text="家暴 事件", top=False):
@@ -350,7 +350,7 @@ def test_daily_rate_limited_persists_and_exits_2(env, monkeypatch):
     assert ei.value.code == 2
 ```
 
-- [ ] **Step 4: Implement `run_tracker_daily` in `src/tracker.py`**
+- [x] **Step 4: Implement `run_tracker_daily` in `src/tracker.py`**
 
 ```python
 DAILY_BUDGET = 40
@@ -470,9 +470,9 @@ and before existing dispatch:
 
 Also replace both legacy "fresh WEIBO_COOKIE from another browser session" error strings with the account-level wording used above.
 
-- [ ] **Step 5: Green; full suite; commit + push.**
+- [x] **Step 5: Green; full suite; commit + push.**
 
-- [ ] **Step 6: CLAUDE.md Stage 1** — add to the run block: `python src/tracker.py --daily             # incremental (cron-safe); resumes budget/rate-limit cursors` and one sentence under Implementation details: state lives in `_pipeline/.tracker-state.json`.
+- [x] **Step 6: CLAUDE.md Stage 1** — add to the run block: `python src/tracker.py --daily             # incremental (cron-safe); resumes budget/rate-limit cursors` and one sentence under Implementation details: state lives in `_pipeline/.tracker-state.json`.
 
 ### Task 3: `src/wbfetch.py` anonymous fetcher
 
