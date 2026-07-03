@@ -765,11 +765,11 @@ The same gate applies at promotion time for `[CANDIDATE]` entries.
 - Create: `_pipeline/skill-evolution-questions.md`
 - Modify: `.claude/skills/blog-write/SKILL.md` (only zero-counterexample rules)
 
-- [ ] **Step 1:** Extract all user corrections: every `## 人类意见`/`<!-- [USER]: -->` block in `_pipeline{,_archive}/review/`, plus v1→final frontmatter diffs (categories, date, tags) via a throwaway `src/venv/bin/python` script writing `/tmp/corrections.md`.
-- [ ] **Step 2:** Group into candidate principles; draft a category rubric (S/A/B/C/D/N boundary criteria + why, 2 contrastive examples each from published posts).
-- [ ] **Step 3:** Validate: re-classify all published posts in `source/_posts/` with the rubric; record agreement vs final categories.
-- [ ] **Step 4:** Zero-counterexample rules → integrate into blog-write SKILL.md sections (Categories/Style). Rules with exceptions → `_pipeline/skill-evolution-questions.md`, one entry per rule: statement, supporting count, exception cases, keep/drop/refine question.
-- [ ] **Step 5:** Commit + push. Handoff summary points user at the questions file.
+- [x] **Step 1:** Extract all user corrections: every `## 人类意见`/`<!-- [USER]: -->` block in `_pipeline{,_archive}/review/`, plus v1→final frontmatter diffs (categories, date, tags) via a throwaway `src/venv/bin/python` script writing `/tmp/corrections.md`.
+- [x] **Step 2:** Group into candidate principles; draft a category rubric (S/A/B/C/D/N boundary criteria + why, 2 contrastive examples each from published posts).
+- [x] **Step 3:** Validate: re-classify all published posts in `source/_posts/` with the rubric; record agreement vs final categories.
+- [x] **Step 4:** Zero-counterexample rules → integrate into blog-write SKILL.md sections (Categories/Style). Rules with exceptions → `_pipeline/skill-evolution-questions.md`, one entry per rule: statement, supporting count, exception cases, keep/drop/refine question.
+- [x] **Step 5:** Commit + push. Handoff summary points user at the questions file.
 
 ## Self-Review Notes
 

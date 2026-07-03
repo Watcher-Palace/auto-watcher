@@ -116,9 +116,13 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 - `D` — 个人行为
 - `N` — 中立事件/等待后续
 
+**A/B 边界（历史校准，47 篇已发布文章零反例）：** 判 A 看刑事司法程序是否**实际启动**（刑事立案、刑拘、批捕、公诉、开庭、判决、获刑），不看行为"感觉上"是否犯罪。偷拍、骚扰等案件若只有行政处理（治安拘留、罚款、开除、校纪处分）或报警未刑事立案 → `B`。历史上写手系统性把此类案件误判为 A，再被人工降级。
+
 ## Tags
 
 The canonical tag list lives in `/home/jc/Projects/auto-watcher/src/tags.yml`, grouped by status / crime / legal / topic / context / identity / location. **Read it before picking tags.** Only use tags that already exist there — the publisher validates every draft against this registry and refuses to deploy if it sees an unknown tag.
+
+**Every v1 draft must carry 2+ tags** (every published post does; "加tag" was a recurring manual correction because v1 drafts shipped without any). The linter rejects empty tags.
 
 If the event genuinely needs a new tag, stop and ask the user before inventing one; do not silently coin new tags in a draft.
 

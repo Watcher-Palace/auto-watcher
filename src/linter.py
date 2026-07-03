@@ -67,8 +67,11 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
         if c not in VALID_CATEGORIES:
             violations.append(f"categories 非法值：{c!r}（允许 S/A/B/C/D/N）")
 
+    tags = fm.get("tags") or []
+    if not tags:
+        violations.append("tags 为空 —— 每篇文章必须从 src/tags.yml 选 2 个以上标签")
     if registry:
-        for t in fm.get("tags") or []:
+        for t in tags:
             if t not in registry:
                 violations.append(f"未注册 tag：{t}（见 src/tags.yml）")
 

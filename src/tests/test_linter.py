@@ -68,6 +68,13 @@ def test_bad_category_flagged():
     assert any("categories" in x for x in v)
 
 
+def test_empty_tags_flagged():
+    # every published post carries tags; v1 drafts repeatedly shipped without
+    draft = make_draft().replace("tags:\n- 犯罪\n", "tags: []\n")
+    v = lint_text(draft, REGISTRY, TODAY)
+    assert any("tags" in x for x in v)
+
+
 def test_publish_blocks_on_lint_failure(tmp_path, monkeypatch):
     root = tmp_path / "_pipeline"
     (root / "draft").mkdir(parents=True)
