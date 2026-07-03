@@ -76,6 +76,8 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
                 violations.append(f"未注册 tag：{t}（见 src/tags.yml）")
 
     d = fm.get("date")
+    if isinstance(d, datetime) or (isinstance(d, str) and re.search(r"\d{2}:\d{2}", d)):
+        violations.append("date 含时间成分 —— 只写 YYYY-MM-DD（无 00:00:00）")
     if isinstance(d, str):
         try:
             d = datetime.strptime(d[:10], "%Y-%m-%d").date()

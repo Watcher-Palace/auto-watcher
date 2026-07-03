@@ -118,6 +118,8 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 
 **A/B 边界（历史校准，47 篇已发布文章零反例）：** 判 A 看刑事司法程序是否**实际启动**（刑事立案、刑拘、批捕、公诉、开庭、判决、获刑），不看行为"感觉上"是否犯罪。偷拍、骚扰等案件若只有行政处理（治安拘留、罚款、开除、校纪处分）或报警未刑事立案 → `B`。历史上写手系统性把此类案件误判为 A，再被人工降级。
 
+**B/D 边界（用户确认，2026-07）：** 无刑事立案时，偷拍等侵犯隐私/涉性内容的伤害 → `B`；一般性肢体冲突（推搡、踢打、撞击等，仅治安处理或无处理）→ `D`。
+
 ## Tags
 
 The canonical tag list lives in `/home/jc/Projects/auto-watcher/src/tags.yml`, grouped by status / crime / legal / topic / context / identity / location. **Read it before picking tags.** Only use tags that already exist there — the publisher validates every draft against this registry and refuses to deploy if it sees an unknown tag.

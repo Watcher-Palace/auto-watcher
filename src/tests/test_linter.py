@@ -68,6 +68,11 @@ def test_bad_category_flagged():
     assert any("categories" in x for x in v)
 
 
+def test_date_with_time_component_flagged():
+    v = lint_text(make_draft(date_str="2026-06-01 20:00:00"), REGISTRY, TODAY)
+    assert any("时间" in x for x in v)
+
+
 def test_empty_tags_flagged():
     # every published post carries tags; v1 drafts repeatedly shipped without
     draft = make_draft().replace("tags:\n- 犯罪\n", "tags: []\n")
