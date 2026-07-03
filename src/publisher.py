@@ -85,6 +85,14 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
     record_published(date_str, n)
     print(f"Recorded {date_str}-{n} as published in events sidecar")
 
+    queue = PIPELINE / "harvest-queue.txt"
+    entry = f"{date_str}-{n}"
+    existing = queue.read_text(encoding="utf-8").splitlines() if queue.exists() else []
+    if entry not in existing:
+        with queue.open("a", encoding="utf-8") as f:
+            f.write(entry + "\n")
+    print(f"Queued {entry} for skill harvest — run blog-curate to distill corrections")
+
     if finalize_if_terminal(date_str):
         print(f"Date {date_str} complete → archived to _pipeline_archive/")
 

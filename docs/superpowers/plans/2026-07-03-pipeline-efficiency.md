@@ -711,9 +711,9 @@ def run_tracker_urls(urls: list[str], date_str: str) -> None:
 - Create: `src/tests/test_harvest_queue.py`
 - Modify: `.claude/skills/blog-curate/SKILL.md`, `CLAUDE.md`
 
-- [ ] **Step 1: Failing test** — reuse `test_publish_finalizes_terminal_date` fixture pattern; after `publish(..., deploy=False)` assert `(root / "harvest-queue.txt").read_text() == "990101-1\n"`; publishing twice doesn't duplicate the line.
+- [x] **Step 1: Failing test** — reuse `test_publish_finalizes_terminal_date` fixture pattern; after `publish(..., deploy=False)` assert `(root / "harvest-queue.txt").read_text() == "990101-1\n"`; publishing twice doesn't duplicate the line.
 
-- [ ] **Step 2: Implement** in `publish()` after `record_published(...)`:
+- [x] **Step 2: Implement** in `publish()` after `record_published(...)`:
 
 ```python
     queue = PIPELINE / "harvest-queue.txt"
@@ -724,7 +724,7 @@ def run_tracker_urls(urls: list[str], date_str: str) -> None:
     print(f"Queued {entry} for skill harvest — run blog-curate to distill corrections")
 ```
 
-- [ ] **Step 3: blog-curate SKILL.md** — add a `## Harvest (feed the notes)` section before "Curation Process":
+- [x] **Step 3: blog-curate SKILL.md** — add a `## Harvest (feed the notes)` section before "Curation Process":
 
 ```markdown
 ## Harvest (feed the notes)
@@ -746,9 +746,9 @@ dropped — list the exception cases and ask the user to keep/drop/refine it.
 The same gate applies at promotion time for `[CANDIDATE]` entries.
 ```
 
-- [ ] **Step 4: CLAUDE.md Stage 5** — append: `After a successful publish the event is appended to _pipeline/harvest-queue.txt; run the blog-curate skill periodically to distill queued corrections into skill notes.`
+- [x] **Step 4: CLAUDE.md Stage 5** — append: `After a successful publish the event is appended to _pipeline/harvest-queue.txt; run the blog-curate skill periodically to distill queued corrections into skill notes.`
 
-- [ ] **Step 5: Green; commit + push.**
+- [x] **Step 5: Green; commit + push.**
 
 ### Task 6: Daily cron prep (no install)
 

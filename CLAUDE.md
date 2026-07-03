@@ -99,6 +99,8 @@ python src/publisher.py <YYMMDD> <N>
 ```
 The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm run deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 
+Each successful publish also appends the event to `_pipeline/harvest-queue.txt`; run the `blog-curate` skill periodically to distill queued corrections into skill notes (general principles only — see the skill's exception gate).
+
 ### On-demand — Monthly Summary (skill: `blog-summary`)
 
 **Not part of the regular pipeline** and never run by `blog-orchestrator` — invoked only on request: `/blog-summary YYMM` or natural language ("write summary of <month>", "write the May summary", "monthly summary"). If no month is given, ask which month — do not guess.
