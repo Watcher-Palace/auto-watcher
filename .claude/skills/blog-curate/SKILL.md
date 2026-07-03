@@ -64,6 +64,14 @@ A `[CANDIDATE]` is ready to promote when:
 
 When promoting, integrate naturally into the relevant section of `SKILL.md` — do not append a "Notes" section. Rewrite the affected SKILL.md section to incorporate the insight seamlessly.
 
+**Prefer code over prose (anti-bloat):** if a promoted rule is mechanically
+checkable, implement it as a `src/linter.py` check (with a test) and keep at
+most one line about it in SKILL.md. Prose rules depend on subagent attention
+and dilute each other as the file grows; lint rules are enforced for free.
+When promoting into SKILL.md, also merge any overlapping existing rules —
+net growth of the file should be near zero. If SKILL.md exceeds ~180 lines,
+flag it to the user for a compaction pass instead of appending more.
+
 ## Conflict Resolution
 
 If a note conflicts with `SKILL.md`:
