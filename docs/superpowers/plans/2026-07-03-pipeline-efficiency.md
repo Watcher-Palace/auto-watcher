@@ -755,7 +755,7 @@ The same gate applies at promotion time for `[CANDIDATE]` entries.
 **Files:**
 - Create: `setup/cron.md`
 
-- [ ] Write `setup/cron.md`: the crontab line
+- [x] Write `setup/cron.md`: the crontab line
   `15 9 * * * cd /home/jc/Projects/auto-watcher && src/venv/bin/python src/tracker.py --daily >> _pipeline/tracker.log 2>&1`,
   install command (`crontab -e`), WSL caveats (cron service must run: `sudo service cron start` or systemd `sudo systemctl enable --now cron`; machine must be on; missed days harmless — state resumes), and the Windows Task Scheduler alternative (`wsl.exe -d <distro> -- bash -lc '...'`). Commit + push.
 
