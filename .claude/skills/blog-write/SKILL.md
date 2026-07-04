@@ -85,7 +85,7 @@ Do NOT put case-specific content here (that goes in 概述 sub-sections).
 No commentary, no opinion citations.]
 ```
 
-**Structural rule:** All case-specific content (background, timeline, follow-up status, judgment details, party statements, victim's words) belongs inside `## 概述` as `####` sub-sections. `## 相关内容` is reserved for general/comparative material only (statutes, parallel cases, structural context). Do not create standalone `## 前情` or `## 后续` sections — fold them into 概述.
+**Structural rule:** All case-specific content (background, timeline, follow-up status, judgment details, party statements, victim's words) belongs inside `## 概述` as `####` sub-sections. `## 相关内容` is reserved for general/comparative material only (statutes, parallel cases, structural context). Do not create standalone `## 前情` or `## 后续` sections by default — fold them into 概述 (the linter warns but does not block; the reviewer/user may wave exceptions through).
 
 ## Inline Formatting
 
@@ -114,9 +114,9 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 - `B` — 民事案件；影响较大的舆论事件
 - `C` — 非官方组织；影响较小的舆论事件
 - `D` — 个人行为
-- `N` — 中立事件/等待后续
+- `N` — 中立事件。满足任一即为 N，且 **N 优先于其他级别判断**：①事实尚未核实（存疑）；②属实但已获公正解决（如加害者被判死刑；低于此的刑事结果历史上仍计 A/B）；③与性别不平等的相关性尚不确定。
 
-**A/B 边界（历史校准，47 篇已发布文章零反例）：** 判 A 看刑事司法程序是否**实际启动**（刑事立案、刑拘、批捕、公诉、开庭、判决、获刑），不看行为"感觉上"是否犯罪。偷拍、骚扰等案件若只有行政处理（治安拘留、罚款、开除、校纪处分）或报警未刑事立案 → `B`。历史上写手系统性把此类案件误判为 A，再被人工降级。
+**A/B 边界（历史校准，47 篇已发布文章零反例）：** 判 A 看刑事司法程序是否**实际启动**（刑事立案、刑拘、批捕、公诉、开庭、判决、获刑），不看行为"感觉上"是否犯罪。无程序但造成死亡/重伤或全国性极恶劣影响的重大事件仍可判 A。偷拍、骚扰等案件若只有行政处理（治安拘留、罚款、开除、校纪处分）或报警未刑事立案 → `B`。历史上写手系统性把此类案件误判为 A，再被人工降级。
 
 **B/D 边界（用户确认，2026-07）：** 无刑事立案时，偷拍等侵犯隐私/涉性内容的伤害 → `B`；一般性肢体冲突（推搡、踢打、撞击等，仅治安处理或无处理）→ `D`。
 

@@ -1,21 +1,19 @@
-# Skill-evolution questions — status after 2026-07-04 review round
+# Skill-evolution questions — ALL RESOLVED 2026-07-04
 
-## Resolved
+- **Q1 (rubric + N)** — REFINED per user and adopted into blog-write SKILL.md:
+  N is checked first and covers ①事实未核实 ②属实但已获公正解决（如死刑判决；
+  低于此的刑事结果历史上仍计 A/B）③性别不平等相关性不确定。A/B/D rubric kept
+  with the severe-harm arm. Re-validated: fits the published corpus with zero
+  unexplained exceptions.
+- **Q2 (B vs D)** — KEPT: 隐私/涉性伤害 → B；一般肢体冲突仅治安处理 → D。
+- **Q3 (date format)** — KEPT + LINTED: plain YYYY-MM-DD enforced.
+- **Q4 (前情/后续)** — DOWNGRADED to lint warning: default is still fold into
+  概述, but the reviewer/user can wave exceptions through; nothing blocks.
+- **Q5 (260601-1)** — FIXED to B and redeployed: the boyfriend's responsibility
+  for the death is unproven, so the post grades what is established (civil
+  debt claim). PING tag stays; if criminal responsibility is later proven,
+  upgrade to A. (This confirms the "grade the engaged process, not the
+  suspicion" principle.)
 
-- **Q2 (B vs D)** — KEPT: 无刑事立案时，隐私/涉性内容伤害 → B；一般肢体冲突仅治安处理 → D。
-  Adopted into blog-write SKILL.md Categories.
-- **Q3 (date format)** — KEPT + LINTED: frontmatter date is plain YYYY-MM-DD;
-  linter rejects time components. Old posts untouched.
-
-## Open
-
-- **Q1 (general A/B/D rubric)** — user chose *refine*; awaiting the refined
-  criterion. Current proposal (44/47 fit): A = engaged criminal process OR
-  death/severe harm OR nationwide outrage; else B/D. Exceptions: 260113
-  (death sentence → N), 260119 (立案 → N), 260507 (A pre-process).
-- **Q4 (前情/后续 ban)** — user asked for the rule's origin: added to SKILL.md
-  2026-05-29 (commit b2385fe), promoted from the user's own May annotations
-  (260503-1, 260504-5, 260504-7 「合并到概述」). Awaiting decision:
-  absolute / lint-warning / drop.
-- **Q5 (260601-1 data conflict)** — review annotation said 分级为B but the
-  published post is A. Which stands?
+This file can be deleted after reading; the rules live in
+`.claude/skills/blog-write/SKILL.md` and `src/linter.py`.

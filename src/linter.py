@@ -47,10 +47,6 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
                 "## 舆论 无具体数据（阅读量/讨论量/转发量/评论量）——无数据时整节删除"
             )
 
-    for banned in ("前情", "后续"):
-        if banned in secs:
-            violations.append(f"独立 ## {banned} 章节（应并入 ## 概述 的 #### 子节）")
-
     if "信息来源" in secs:
         for ln in secs["信息来源"].splitlines():
             ln = ln.strip()
@@ -92,6 +88,16 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
     return violations
 
 
+def lint_warnings(content: str) -> list[str]:
+    """Reviewer-waivable issues: reported, but never block a draft."""
+    body = content.split("---", 2)[-1] if content.startswith("---") else content
+    warnings: list[str] = []
+    for banned in ("前情", "后续"):
+        if banned in _sections(body):
+            warnings.append(f"独立 ## {banned} 章节（默认应并入 ## 概述 的 #### 子节；评审可放行）")
+    return warnings
+
+
 def lint_file(path: Path) -> list[str]:
     return lint_text(path.read_text(encoding="utf-8"), load_tag_registry(), date.today())
 
@@ -102,7 +108,9 @@ def main(argv: list[str]) -> int:
         return 2
     rc = 0
     for p in argv:
-        vs = lint_file(Path(p))
+        content = Path(p).read_text(encoding="utf-8")
+        vs = lint_text(content, load_tag_registry(), date.today())
+        ws = lint_warnings(content)
         if vs:
             rc = 1
             print(f"LINT FAIL {p}")
@@ -110,6 +118,8 @@ def main(argv: list[str]) -> int:
                 print(f"  - {v}")
         else:
             print(f"LINT OK {p}")
+        for w in ws:
+            print(f"  ~ WARN: {w}")
     return rc
 
 
