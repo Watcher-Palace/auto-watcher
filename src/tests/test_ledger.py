@@ -49,3 +49,69 @@ def test_get_and_update_row(tmp_path):
     assert ledger.get_row("260524", 1, pipeline_dir=tmp_path)["状态"] == "selected"
     with pytest.raises(KeyError):
         ledger.update_row("260524", 9, pipeline_dir=tmp_path, **{"状态": "x"})
+
+
+def _seed(tmp_path, state="candidate"):
+    ledger.add_event("990101", 1, "标题一", state=state,
+                     maint_date="260711", pipeline_dir=tmp_path)
+
+
+def test_add_event_and_dedup(tmp_path):
+    assert ledger.add_event("990101", 1, "t", maint_date="260711",
+                            pipeline_dir=tmp_path) is True
+    assert ledger.add_event("990101", 1, "t", maint_date="260711",
+                            pipeline_dir=tmp_path) is False
+    row = ledger.get_row("990101", 1, pipeline_dir=tmp_path)
+    assert row["状态"] == "candidate" and row["维护日期"] == "260711"
+
+
+def test_record_no_events_once_per_date(tmp_path):
+    assert ledger.record_no_events("990102", maint_date="260711",
+                                   pipeline_dir=tmp_path) is True
+    assert ledger.record_no_events("990102", pipeline_dir=tmp_path) is False
+    rows = ledger.read_rows(pipeline_dir=tmp_path)
+    assert rows[0]["状态"] == "无事件" and rows[0]["事件编号"] == ""
+
+
+def test_record_selected_flow_and_guards(tmp_path):
+    _seed(tmp_path)
+    ledger.record_selected("990101", 1, pipeline_dir=tmp_path)
+    assert ledger.get_row("990101", 1, pipeline_dir=tmp_path)["状态"] == "selected"
+    ledger.record_selected("990101", 1, pipeline_dir=tmp_path)  # 幂等
+    ledger.record_aborted("990101", 1, pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_selected("990101", 1, pipeline_dir=tmp_path)
+
+
+def test_record_aborted_guards(tmp_path):
+    _seed(tmp_path)
+    ledger.record_published("990101", 1, pub_title="发布题",
+                            pub_date="260712", pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_aborted("990101", 1, pipeline_dir=tmp_path)
+
+
+def test_record_published_sets_fields_and_harvest(tmp_path):
+    _seed(tmp_path)
+    ledger.record_published("990101", 1, pub_title="发布题",
+                            pub_date="260712", pipeline_dir=tmp_path)
+    row = ledger.get_row("990101", 1, pipeline_dir=tmp_path)
+    assert row["状态"] == "published"
+    assert row["发布日期"] == "260712"
+    assert row["发布标题"] == "发布题"
+    assert row["经验提取"] == "待提取"
+    # 幂等：重复发布不改字段
+    ledger.record_published("990101", 1, pub_title="另一题", pipeline_dir=tmp_path)
+    assert ledger.get_row("990101", 1, pipeline_dir=tmp_path)["发布标题"] == "发布题"
+
+
+def test_record_published_missing_row_raises(tmp_path):
+    with pytest.raises(KeyError):
+        ledger.record_published("990101", 9, pipeline_dir=tmp_path)
+
+
+def test_max_index(tmp_path):
+    assert ledger.max_index("990101", pipeline_dir=tmp_path) == 0
+    ledger.add_event("990101", 2, "b", pipeline_dir=tmp_path)
+    ledger.add_event("990101", 1, "a", pipeline_dir=tmp_path)
+    assert ledger.max_index("990101", pipeline_dir=tmp_path) == 2

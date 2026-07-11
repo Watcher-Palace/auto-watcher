@@ -73,3 +73,68 @@ def update_row(date_str: str, n: int | str,
             write_rows(rows, pipeline_dir)
             return
     raise KeyError(f"账本中无 {date_str}-{n} 行")
+
+
+def _today() -> str:
+    return date.today().strftime("%y%m%d")
+
+
+def add_event(date_str: str, n: int, title: str, state: str = "candidate",
+              maint_date: str | None = None,
+              pipeline_dir: Path | None = None) -> bool:
+    """新增事件行；(收录日期, 事件编号) 已存在则 no-op 返回 False。"""
+    if get_row(date_str, n, pipeline_dir):
+        return False
+    add_rows([{"维护日期": maint_date or _today(), "收录日期": date_str,
+               "事件编号": str(n), "标题": title, "状态": state}], pipeline_dir)
+    return True
+
+
+def record_no_events(date_str: str, maint_date: str | None = None,
+                     pipeline_dir: Path | None = None) -> bool:
+    """记录"查过该日期、无事件"；该收录日期已有任何行则 no-op。"""
+    if any(r["收录日期"] == date_str for r in read_rows(pipeline_dir)):
+        return False
+    add_rows([{"维护日期": maint_date or _today(), "收录日期": date_str,
+               "事件编号": "", "标题": "", "状态": NO_EVENTS}], pipeline_dir)
+    return True
+
+
+def record_selected(date_str: str, n: int, pipeline_dir: Path | None = None) -> None:
+    row = get_row(date_str, n, pipeline_dir)
+    if row is None:
+        raise KeyError(f"账本中无 {date_str}-{n} 行")
+    if row["状态"] in ("published", "abort"):
+        raise RuntimeError(f"{date_str}-{n} 已是终态 {row['状态']}，不能 select")
+    if row["状态"] == "candidate":
+        update_row(date_str, n, pipeline_dir, **{"状态": "selected"})
+
+
+def record_aborted(date_str: str, n: int, pipeline_dir: Path | None = None) -> None:
+    row = get_row(date_str, n, pipeline_dir)
+    if row is None:
+        raise KeyError(f"账本中无 {date_str}-{n} 行")
+    if row["状态"] == "published":
+        raise RuntimeError(f"{date_str}-{n} 已 published，不能 abort；如确需请手改 CSV")
+    update_row(date_str, n, pipeline_dir, **{"状态": "abort"})
+
+
+def record_published(date_str: str, n: int, pub_title: str = "",
+                     pub_date: str | None = None,
+                     pipeline_dir: Path | None = None) -> None:
+    row = get_row(date_str, n, pipeline_dir)
+    if row is None:
+        raise KeyError(f"账本中无 {date_str}-{n} 行")
+    if row["状态"] == "published":
+        return
+    if row["状态"] == "abort":
+        raise RuntimeError(f"{date_str}-{n} 已 abort；如确需发布请手改 CSV")
+    update_row(date_str, n, pipeline_dir, **{
+        "状态": "published", "发布日期": pub_date or _today(),
+        "发布标题": pub_title, "经验提取": HARVEST_PENDING})
+
+
+def max_index(date_str: str, pipeline_dir: Path | None = None) -> int:
+    ns = [int(r["事件编号"]) for r in read_rows(pipeline_dir)
+          if r["收录日期"] == date_str and r["事件编号"]]
+    return max(ns) if ns else 0
