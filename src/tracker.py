@@ -15,7 +15,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
 from src.utils.web import WebClient
-from src.utils.pipeline import events_path, set_state
+from src.utils.pipeline import events_path
+from src.utils import ledger
 
 WEIBO_API = "https://m.weibo.cn/api/container/getIndex"
 FEMINIST_KEYWORDS = ["女性", "女权", "性别", "婚姻", "家暴", "性侵", "拐卖", "生育", "就业歧视"]
@@ -187,11 +188,17 @@ def format_events(date_str: str, events: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def write_events_file(date_str: str, events: list[dict]) -> Path:
+def write_events_file(date_str: str, events: list[dict]) -> Path | None:
+    """写 events md（人读内容）并同步账本行。空事件：只记"无事件"行，不写 md。"""
+    if not events:
+        ledger.record_no_events(date_str)
+        return None
     numbered = [dict(e, index=i + 1) for i, e in enumerate(events)]
     out = events_path(date_str)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(format_events(date_str, numbered), encoding="utf-8")
+    for ev in numbered:
+        ledger.add_event(date_str, ev["index"], ev["title"])
     return out
 
 
@@ -204,7 +211,7 @@ def count_existing_events(path: Path) -> int:
     return max(indexes) if indexes else 0
 
 
-def append_events_to_file(date_str: str, new_events: list[dict]) -> Path:
+def append_events_to_file(date_str: str, new_events: list[dict]) -> Path | None:
     """Append events to an existing file, continuing the index from where it left off.
     Creates the file if it doesn't exist."""
     out = events_path(date_str)
@@ -213,7 +220,7 @@ def append_events_to_file(date_str: str, new_events: list[dict]) -> Path:
         return write_events_file(date_str, new_events)
     if not new_events:
         return out
-    offset = count_existing_events(out)
+    offset = max(count_existing_events(out), ledger.max_index(date_str))
     numbered = [dict(e, index=offset + i + 1) for i, e in enumerate(new_events)]
     # format_events re-numbers from 1, so we build the appended block manually
     lines = []
@@ -226,6 +233,8 @@ def append_events_to_file(date_str: str, new_events: list[dict]) -> Path:
         )
     existing = out.read_text(encoding="utf-8").rstrip() + "\n\n"
     out.write_text(existing + "\n".join(lines), encoding="utf-8")
+    for ev in numbered:
+        ledger.add_event(date_str, ev["index"], ev["title"])
     return out
 
 
@@ -243,8 +252,7 @@ def run_tracker(date_str: str, cookie: str) -> None:
             print(f"Warning: failed to fetch uid {uid}: {e}")
     events = filter_feminist_events(all_posts)
     out = write_events_file(date_str, events)
-    set_state("20" + date_str)
-    print(f"Wrote {len(events)} events to {out}")
+    print(f"Wrote {len(events)} events" + (f" to {out}" if out else " (无事件，已记录)"))
 
 
 def run_tracker_range(
@@ -288,7 +296,7 @@ def run_tracker_range(
         events = filter_feminist_events(bucket) if bucket else []
         out = writer(date_str, events)
         action = "appended" if merge else "wrote"
-        print(f"  {date_str}: {len(bucket)} posts → {len(events)} events {action} → {out}")
+        print(f"  {date_str}: {len(bucket)} posts → {len(events)} events {action} → {out or '（无事件行）'}")
     if skipped_uids:
         skipped = ",".join(skipped_uids)
         print(
@@ -300,7 +308,6 @@ def run_tracker_range(
             file=sys.stderr,
         )
         sys.exit(2)
-    set_state("20" + end_date.strftime("%y%m%d"))
 
 
 def _fetch_url_post(url: str) -> dict:

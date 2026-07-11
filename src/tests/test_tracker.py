@@ -158,8 +158,8 @@ def test_fetch_paginated_dedupes_by_id():
 
 def test_run_tracker_writes_events_file(tmp_path, monkeypatch):
     import src.utils.pipeline as pipeline_mod
+    from src.utils import ledger
     monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
-    monkeypatch.setattr(pipeline_mod, "STATE_FILE", tmp_path / ".state")
     (tmp_path / "_pipeline" / "events").mkdir(parents=True)
 
     with patch("src.tracker.fetch_weibo_posts", return_value=[]):
@@ -172,7 +172,8 @@ def test_run_tracker_writes_events_file(tmp_path, monkeypatch):
     events_file = tmp_path / "_pipeline" / "events" / "260325.md"
     assert events_file.exists()
     assert "测试事件" in events_file.read_text(encoding="utf-8")
-    assert (tmp_path / ".state").read_text().strip() == "20260325"
+    row = ledger.get_row("260325", 1, pipeline_dir=tmp_path / "_pipeline")
+    assert row["标题"] == "测试事件" and row["状态"] == "candidate"
 
 
 def test_count_existing_events_returns_max_index(tmp_path):
@@ -294,7 +295,6 @@ def test_run_tracker_range_inter_uid_delay(tmp_path, monkeypatch):
 def test_run_tracker_range_writes_per_date_files(tmp_path, monkeypatch):
     import src.utils.pipeline as pipeline_mod
     monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
-    monkeypatch.setattr(pipeline_mod, "STATE_FILE", tmp_path / ".state")
     (tmp_path / "_pipeline" / "events").mkdir(parents=True)
     monkeypatch.setenv("TRACKED_UIDS", "1,2")
 
@@ -326,4 +326,40 @@ def test_run_tracker_range_writes_per_date_files(tmp_path, monkeypatch):
     assert f7.exists() and f6.exists()
     assert "event-2" in f7.read_text(encoding="utf-8")  # 2 posts on 5/7
     assert "event-1" in f6.read_text(encoding="utf-8")  # 1 post on 5/6
-    assert (tmp_path / ".state").read_text().strip() == "20260507"
+    from src.utils import ledger
+    assert ledger.get_row("260507", 1, pipeline_dir=tmp_path / "_pipeline")["标题"] == "event-2"
+    assert ledger.get_row("260506", 1, pipeline_dir=tmp_path / "_pipeline")["标题"] == "event-1"
+
+
+def test_write_events_file_records_ledger_rows(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
+    from src.tracker import write_events_file
+    from src.utils import ledger
+    out = write_events_file("990101", [
+        {"title": "甲", "brief": "b", "sources": []},
+        {"title": "乙", "brief": "b", "sources": []},
+    ])
+    assert out is not None and out.exists()
+    st = {int(r["事件编号"]): r for r in ledger.read_rows(pipeline_dir=tmp_path)}
+    assert st[1]["标题"] == "甲" and st[1]["状态"] == "candidate"
+    assert st[2]["标题"] == "乙"
+
+
+def test_write_events_file_empty_records_no_events_without_md(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
+    from src.tracker import write_events_file
+    from src.utils import ledger
+    out = write_events_file("990102", [])
+    assert out is None
+    assert not (tmp_path / "events" / "990102.md").exists()
+    rows = ledger.read_rows(pipeline_dir=tmp_path)
+    assert rows[0]["收录日期"] == "990102" and rows[0]["状态"] == "无事件"
+
+
+def test_append_events_continues_ledger_index(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
+    from src.tracker import write_events_file, append_events_to_file
+    from src.utils import ledger
+    write_events_file("990103", [{"title": "甲", "brief": "b", "sources": []}])
+    append_events_to_file("990103", [{"title": "乙", "brief": "b", "sources": []}])
+    assert ledger.get_row("990103", 2, pipeline_dir=tmp_path)["标题"] == "乙"
