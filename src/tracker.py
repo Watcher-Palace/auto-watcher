@@ -332,7 +332,7 @@ def run_tracker_urls(urls: list[str], date_str: str) -> None:
             print(f"  skip {u}: {e}", file=sys.stderr)
     events = filter_feminist_events(posts) if posts else []
     out = append_events_to_file(date_str, events)
-    print(f"{date_str}: {len(posts)} posts → {len(events)} events appended → {out}")
+    print(f"{date_str}: {len(posts)} posts → {len(events)} events appended → {out or '（无事件行）'}")
 
 
 DAILY_BUDGET = 40
@@ -429,7 +429,7 @@ def run_tracker_daily(
     for date_str in sorted(buckets):
         events = filter_feminist_events(buckets[date_str])
         out = append_events_to_file(date_str, events)
-        print(f"  {date_str}: {len(buckets[date_str])} posts → {len(events)} events appended → {out}")
+        print(f"  {date_str}: {len(buckets[date_str])} posts → {len(events)} events appended → {out or '（无事件行）'}")
     save_state(state, sp)
 
     pending_uids = [u for u, s in state["uids"].items() if s.get("pending")]
