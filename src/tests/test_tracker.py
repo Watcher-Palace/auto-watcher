@@ -235,7 +235,6 @@ def test_run_tracker_range_uids_override(tmp_path, monkeypatch):
     """Passing uids= should override TRACKED_UIDS env var."""
     import src.utils.pipeline as pipeline_mod
     monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
-    monkeypatch.setattr(pipeline_mod, "STATE_FILE", tmp_path / ".state")
     (tmp_path / "_pipeline" / "events").mkdir(parents=True)
     monkeypatch.setenv("TRACKED_UIDS", "should,not,be,used")
     called_uids = []
@@ -254,7 +253,6 @@ def test_run_tracker_range_merge_appends(tmp_path, monkeypatch):
     """merge=True should append events to existing file, continuing numbering."""
     import src.utils.pipeline as pipeline_mod
     monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
-    monkeypatch.setattr(pipeline_mod, "STATE_FILE", tmp_path / ".state")
     (tmp_path / "_pipeline" / "events").mkdir(parents=True)
     pre = pipeline_mod.events_path("260507")
     pre.write_text("# Events — 2026-05-07\n\n## 1. 已有事件\n**Sources**: \n**Brief**: x\n",
@@ -276,7 +274,6 @@ def test_run_tracker_range_inter_uid_delay(tmp_path, monkeypatch):
     """Should sleep a jittered delay between UIDs (not before the first)."""
     import src.utils.pipeline as pipeline_mod
     monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
-    monkeypatch.setattr(pipeline_mod, "STATE_FILE", tmp_path / ".state")
     (tmp_path / "_pipeline" / "events").mkdir(parents=True)
     sleeps = []
     def fake_sleep(s): sleeps.append(s)
