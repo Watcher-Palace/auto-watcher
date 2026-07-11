@@ -102,6 +102,8 @@
 3. `blog-research/SKILL.md`：自身写明"全文简体中文"；输出章节标题改中文 `## 事实 / ## 当事方 / ## 信息来源`（CLAUDE.md 同步）；不再收集具名专家评论，只收法条/司法解释/判决等事实性法律信息。存量文件不回改。
 4. `git rm _pipeline/events/--date.md`（霞浦事件已于 260325-3 处理发布）。
 5. orchestrator 5b 措辞改为 build + deploy 链。
+6. `_pipeline/category-tag-heatmap.csv`（2605 月度总结画图的工作文件）移入 `_pipeline_archive/summary/`。【已完成 2026-07-11】
+7. `done-dates.txt` 的删除在方案 E 迁移步骤中执行（现行代码仍在读写它，提前删会被 `mark_done` 重建）。
 
 ## 不做的事
 
