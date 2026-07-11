@@ -32,7 +32,7 @@
 
 ### 对账（reconcile）
 
-子代理只写工件文件、不跑代码，所以中间态不靠人也不靠 prose：每次 CLI/publisher 运行时，对每个非终态行扫描 `research/ draft/ review/` 的 `{收录日期}-{事件编号}-*` 文件，按最高阶段 + 最大版本号回填状态（`review-v2` > `draft-v3` > `research`）。终态行（published/abort/无事件）与 candidate（无工件时）不动。
+子代理只写工件文件、不跑代码，所以中间态不靠人也不靠 prose 记忆：对账**内建于 `ledger.py` 的读路径**——任何状态读取（CLI 全部子命令、publisher、`finalize_event`）先对账再返回，不存在"要记得跑"的独立对账步骤（orchestrator 忘不掉一个不存在的步骤）。对账逻辑：对每个非终态行扫描 `research/ draft/ review/` 的 `{收录日期}-{事件编号}-*` 文件，按最高阶段 + 最大版本号回填状态（`review-v2` > `draft-v3` > `research`）；终态行（published/abort/无事件）与 candidate（无工件时）不动；有变化则写回 CSV。幂等、纯文件系统推导——CSV 落后只影响裸看文件的显示，任何经代码的决策进门先自愈，陈旧不累积。skill 中写明：查看状态一律 `pipeline_cli.py status`，不要裸读 CSV。
 
 ### 载体裁撤与保留
 
