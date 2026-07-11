@@ -138,3 +138,75 @@ def max_index(date_str: str, pipeline_dir: Path | None = None) -> int:
     ns = [int(r["事件编号"]) for r in read_rows(pipeline_dir)
           if r["收录日期"] == date_str and r["事件编号"]]
     return max(ns) if ns else 0
+
+
+def _derive_state(date_str: str, n: str, pipeline_dir: Path) -> str | None:
+    """从工件文件推导中间态；无工件返回 None。前缀必须含结尾连字符。"""
+    for stage in ("review", "draft"):
+        d = pipeline_dir / stage
+        if d.exists():
+            versions = [int(p.stem.rsplit("-v", 1)[-1])
+                        for p in d.glob(f"{date_str}-{n}-*-v*.md")]
+            if versions:
+                return f"{stage}-v{max(versions)}"
+    d = pipeline_dir / "research"
+    if d.exists() and any(d.glob(f"{date_str}-{n}-*.md")):
+        return "research"
+    return None
+
+
+def reconcile(pipeline_dir: Path | None = None) -> list[dict]:
+    """对账内建于读路径：所有状态查询先经此处，遗忘不可能发生。"""
+    pipeline_dir = pipeline_dir or pl.PIPELINE
+    rows = read_rows(pipeline_dir)
+    changed = False
+    for r in rows:
+        if r["状态"] in TERMINAL_STATES or not r["事件编号"]:
+            continue
+        derived = _derive_state(r["收录日期"], r["事件编号"], pipeline_dir)
+        if derived and derived != r["状态"]:
+            r["状态"] = derived
+            changed = True
+    if changed:
+        write_rows(rows, pipeline_dir)
+    return rows
+
+
+def event_statuses(date_str: str, pipeline_dir: Path | None = None) -> dict[int, str]:
+    return {int(r["事件编号"]): r["状态"] for r in reconcile(pipeline_dir)
+            if r["收录日期"] == date_str and r["事件编号"]}
+
+
+def is_date_terminal(date_str: str, pipeline_dir: Path | None = None) -> bool:
+    """该收录日期所有行终态则 True；账本无该日期任何行则 False。"""
+    rows = [r for r in reconcile(pipeline_dir) if r["收录日期"] == date_str]
+    return bool(rows) and all(r["状态"] in TERMINAL_STATES for r in rows)
+
+
+def post_slug(date_str: str, n: int, pipeline_dir: Path | None = None) -> str:
+    """同日已有其他事件 published 时第二篇起用 YYMMDD-N。"""
+    for r in read_rows(pipeline_dir):
+        if (r["收录日期"] == date_str and r["事件编号"]
+                and int(r["事件编号"]) != n and r["状态"] == "published"):
+            return f"{date_str}-{n}"
+    return date_str
+
+
+def pending_harvest(pipeline_dir: Path | None = None) -> list[tuple[str, int]]:
+    return [(r["收录日期"], int(r["事件编号"])) for r in read_rows(pipeline_dir)
+            if r["经验提取"] == HARVEST_PENDING]
+
+
+def mark_harvested(date_str: str, n: int, pipeline_dir: Path | None = None) -> None:
+    update_row(date_str, n, pipeline_dir, **{"经验提取": HARVEST_DONE})
+
+
+def get_untracked_dates(days: int = 7, pipeline_dir: Path | None = None) -> list[str]:
+    covered = {r["收录日期"] for r in read_rows(pipeline_dir)}
+    today = date.today()
+    out = []
+    for i in range(1, days + 1):
+        d = (today - timedelta(days=i)).strftime("%y%m%d")
+        if d not in covered:
+            out.append(d)
+    return out

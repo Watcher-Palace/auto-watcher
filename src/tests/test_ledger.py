@@ -115,3 +115,70 @@ def test_max_index(tmp_path):
     ledger.add_event("990101", 2, "b", pipeline_dir=tmp_path)
     ledger.add_event("990101", 1, "a", pipeline_dir=tmp_path)
     assert ledger.max_index("990101", pipeline_dir=tmp_path) == 2
+
+
+def _artifacts(tmp_path, *relpaths):
+    for rel in relpaths:
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("x", encoding="utf-8")
+
+
+def test_reconcile_derives_stage_and_version(tmp_path):
+    _seed(tmp_path, state="selected")
+    _artifacts(tmp_path,
+               "research/990101-1-标题一.md",
+               "draft/990101-1-标题一-v1.md",
+               "draft/990101-1-标题一-v2.md")
+    assert ledger.event_statuses("990101", pipeline_dir=tmp_path) == {1: "draft-v2"}
+    _artifacts(tmp_path, "review/990101-1-标题一-v2.md")
+    assert ledger.event_statuses("990101", pipeline_dir=tmp_path) == {1: "review-v2"}
+    # 对账结果写回了 CSV
+    assert ledger.get_row("990101", 1, pipeline_dir=tmp_path)["状态"] == "review-v2"
+
+
+def test_reconcile_ignores_terminal_and_other_events(tmp_path):
+    _seed(tmp_path)
+    ledger.add_event("990101", 10, "十", pipeline_dir=tmp_path)
+    ledger.record_published("990101", 1, pub_title="t", pipeline_dir=tmp_path)
+    # 事件 1 的工件不得污染事件 10（前缀含结尾连字符）
+    _artifacts(tmp_path, "draft/990101-1-标题一-v3.md")
+    st = ledger.event_statuses("990101", pipeline_dir=tmp_path)
+    assert st == {1: "published", 10: "candidate"}
+
+
+def test_is_date_terminal(tmp_path):
+    assert ledger.is_date_terminal("990101", pipeline_dir=tmp_path) is False  # 无行
+    _seed(tmp_path)
+    ledger.add_event("990101", 2, "二", pipeline_dir=tmp_path)
+    ledger.record_published("990101", 1, pub_title="t", pipeline_dir=tmp_path)
+    assert ledger.is_date_terminal("990101", pipeline_dir=tmp_path) is False
+    ledger.record_aborted("990101", 2, pipeline_dir=tmp_path)
+    assert ledger.is_date_terminal("990101", pipeline_dir=tmp_path) is True
+    ledger.record_no_events("990103", pipeline_dir=tmp_path)
+    assert ledger.is_date_terminal("990103", pipeline_dir=tmp_path) is True
+
+
+def test_post_slug_second_published_gets_suffix(tmp_path):
+    _seed(tmp_path)
+    ledger.add_event("990101", 2, "二", pipeline_dir=tmp_path)
+    assert ledger.post_slug("990101", 1, pipeline_dir=tmp_path) == "990101"
+    ledger.record_published("990101", 1, pub_title="t", pipeline_dir=tmp_path)
+    assert ledger.post_slug("990101", 2, pipeline_dir=tmp_path) == "990101-2"
+
+
+def test_harvest_queue_roundtrip(tmp_path):
+    _seed(tmp_path)
+    ledger.record_published("990101", 1, pub_title="t", pipeline_dir=tmp_path)
+    assert ledger.pending_harvest(pipeline_dir=tmp_path) == [("990101", 1)]
+    ledger.mark_harvested("990101", 1, pipeline_dir=tmp_path)
+    assert ledger.pending_harvest(pipeline_dir=tmp_path) == []
+
+
+def test_get_untracked_dates_uses_ledger_coverage(tmp_path):
+    from datetime import date, timedelta
+    yesterday = (date.today() - timedelta(days=1)).strftime("%y%m%d")
+    assert yesterday in ledger.get_untracked_dates(pipeline_dir=tmp_path)
+    ledger.record_no_events(yesterday, pipeline_dir=tmp_path)
+    assert yesterday not in ledger.get_untracked_dates(pipeline_dir=tmp_path)
+    assert len(ledger.get_untracked_dates(days=3, pipeline_dir=tmp_path)) == 2
