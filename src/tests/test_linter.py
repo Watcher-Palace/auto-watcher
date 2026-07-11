@@ -96,9 +96,6 @@ def test_publish_blocks_on_lint_failure(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("src.publisher.PIPELINE", root)
     monkeypatch.setattr("src.publisher.REPO_ROOT", tmp_path)
-    monkeypatch.setattr("src.publisher._post_slug", lambda d, n: d)
-    monkeypatch.setattr("src.publisher.record_published", lambda d, n: None)
-    monkeypatch.setattr("src.publisher.finalize_if_terminal", lambda d: False)
 
     from src.publisher import publish
     with pytest.raises(SystemExit) as ei:

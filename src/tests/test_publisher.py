@@ -38,9 +38,12 @@ def test_read_frontmatter_extracts_fields():
 
 
 def test_publish_finalizes_terminal_date(tmp_path, monkeypatch):
+    from src.utils import ledger
+
     root = tmp_path / "_pipeline"
     (root / "draft").mkdir(parents=True)
     (root / "events").mkdir(parents=True)
+    (tmp_path / "_pipeline_archive").mkdir()
     draft = root / "draft" / "990101-1-测试-v1.md"
     # minimal draft that passes the lint gate
     draft.write_text(
@@ -50,19 +53,17 @@ def test_publish_finalizes_terminal_date(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    monkeypatch.setattr("src.publisher.PIPELINE", root)
     monkeypatch.setattr("src.publisher.REPO_ROOT", tmp_path)
-    # isolate from the real _pipeline: stub the pipeline-mutating calls
-    monkeypatch.setattr("src.publisher._post_slug", lambda d, n: d)
-    monkeypatch.setattr("src.publisher.record_published", lambda d, n: None)
-    calls = []
-    monkeypatch.setattr(
-        "src.publisher.finalize_if_terminal",
-        lambda d: calls.append(d) or True,
-    )
+    monkeypatch.setattr("src.publisher.PIPELINE", root)
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", root)
+    monkeypatch.setattr("src.utils.pipeline.ARCHIVE", tmp_path / "_pipeline_archive")
+    ledger.add_event("990101", 1, "测试", pipeline_dir=root)
 
     from src.publisher import publish
     publish("990101", 1, "测试", draft, deploy=False)
 
-    assert calls == ["990101"]
     assert (tmp_path / "source" / "_posts" / "990101.md").exists()
+    assert (tmp_path / "_pipeline_archive" / "draft" / "990101-1-测试-v1.md").exists()
+    events_archive = tmp_path / "_pipeline_archive" / "events"
+    # 单事件日期收尾时 events md 不存在也不报错——目录甚至可能未被创建
+    assert not events_archive.exists() or list(events_archive.iterdir()) == []

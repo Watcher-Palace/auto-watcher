@@ -6,9 +6,9 @@ import yaml
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.utils.pipeline import (
-    REPO_ROOT, PIPELINE, record_published, _post_slug, finalize_if_terminal,
-)
+from src.utils.pipeline import REPO_ROOT, PIPELINE
+from src.utils import ledger
+from src.utils.archive import finalize_event
 
 
 def read_frontmatter(content: str) -> dict:
@@ -66,7 +66,7 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
     for w in lint_warnings(content):
         print(f"  ~ LINT WARN: {w}")
     posts_dir = REPO_ROOT / "source" / "_posts"
-    post_slug = _post_slug(date_str, n)
+    post_slug = ledger.post_slug(date_str, n)
 
     copy_draft(draft_path, posts_dir / f"{post_slug}.md")
     print(f"Copied draft → {posts_dir / f'{post_slug}.md'}")
@@ -84,19 +84,13 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
         subprocess.run(["pnpm", "run", "deploy"], cwd=REPO_ROOT, check=True)
         print("Deployed to GitHub Pages")
 
-    record_published(date_str, n)
-    print(f"Recorded {date_str}-{n} as published in events sidecar")
+    ledger.record_published(date_str, n, pub_title=str(fm.get("title", title)))
+    print(f"Recorded {date_str}-{n} as published in events.csv (经验提取=待提取)")
 
-    queue = PIPELINE / "harvest-queue.txt"
-    entry = f"{date_str}-{n}"
-    existing = queue.read_text(encoding="utf-8").splitlines() if queue.exists() else []
-    if entry not in existing:
-        with queue.open("a", encoding="utf-8") as f:
-            f.write(entry + "\n")
-    print(f"Queued {entry} for skill harvest — run blog-curate to distill corrections")
-
-    if finalize_if_terminal(date_str):
+    if finalize_event(date_str, n):
         print(f"Date {date_str} complete → archived to _pipeline_archive/")
+    else:
+        print(f"Event {date_str}-{n} artifacts archived to _pipeline_archive/")
 
 
 if __name__ == "__main__":
