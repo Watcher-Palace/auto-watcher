@@ -38,7 +38,7 @@
 
 **删除**：`events/*-status.txt` 侧车（含 `record_selected/aborted/published` 的侧车读写实现）、`done-dates.txt` + `mark_done/_read_done_dates`、`.state` + `get_state/set_state/set_last_tracked_date`、`harvest-queue.txt`。
 
-**保留**：`events/YYMMDD.md` —— **纯人读内容**（brief、来源链接，research 输入），代码不再解析；无事件日期不再写空存根 md（CSV 一行"无事件"即为"查过"记录）。`.tracker-state.json` —— 微博 API 游标，非管线状态，内部文件。
+**保留**：`events/YYMMDD.md` —— **内容文件**（brief、来源链接）。用户在批准关卡阅读它，orchestrator 派发 research 时从中取 brief/来源放进 prompt，research 子代理也可直接读；但 Python 状态逻辑不再解析它（事件枚举/状态/归档判断全部来自 CSV），文件丢失只损失介绍文字，不再卡死流程。无事件日期不再写空存根 md（CSV 一行"无事件"即为"查过"记录）。`.tracker-state.json` —— 微博 API 游标，非管线状态，内部文件。
 
 ### 代码
 
