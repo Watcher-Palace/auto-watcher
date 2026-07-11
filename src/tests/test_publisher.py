@@ -67,3 +67,26 @@ def test_publish_finalizes_terminal_date(tmp_path, monkeypatch):
     events_archive = tmp_path / "_pipeline_archive" / "events"
     # 单事件日期收尾时 events md 不存在也不报错——目录甚至可能未被创建
     assert not events_archive.exists() or list(events_archive.iterdir()) == []
+
+
+def test_publish_refuses_unresolved_tag_proposal(tmp_path, monkeypatch):
+    root = tmp_path / "_pipeline"
+    (root / "draft").mkdir(parents=True)
+    (root / "events").mkdir(parents=True)
+    (tmp_path / "_pipeline_archive").mkdir()
+    draft = root / "draft" / "990101-1-测试-v1.md"
+    draft.write_text(
+        "---\ntitle: t\ndate: 2020-01-01\ncategories: B\ntags:\n- 犯罪\n---\n\n"
+        "<!-- [TAG-PROPOSAL]: 新标签 — 理由 -->\n\n"
+        "## 概述\n正文。\n\n"
+        "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n",
+        encoding="utf-8")
+    monkeypatch.setattr("src.publisher.PIPELINE", root)
+    monkeypatch.setattr("src.publisher.REPO_ROOT", tmp_path)
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", root)
+    monkeypatch.setattr("src.utils.pipeline.ARCHIVE", tmp_path / "_pipeline_archive")
+    from src.utils import ledger
+    ledger.add_event("990101", 1, "测试", pipeline_dir=root)
+    from src.publisher import publish
+    with pytest.raises(SystemExit, match="TAG-PROPOSAL"):
+        publish("990101", 1, "测试", draft, deploy=False)

@@ -101,3 +101,28 @@ def test_publish_blocks_on_lint_failure(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as ei:
         publish("990101", 1, "测试", draft, deploy=False)
     assert "破折号" in str(ei.value)
+
+
+from datetime import date as _date
+
+BASE = (
+    "---\ntitle: t\ndate: 2020-01-01\ncategories: B\ntags:{TAGS}\n---\n\n"
+    "{BODY}## 概述\n正文。\n\n"
+    "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n"
+)
+
+
+def test_empty_tags_with_proposal_passes():
+    content = BASE.format(TAGS=" []", BODY="<!-- [TAG-PROPOSAL]: 新标签 — 理由 -->\n\n")
+    assert not [v for v in lint_text(content, {"犯罪"}, _date(2020, 1, 2))
+                if "tags" in v]
+
+
+def test_empty_tags_without_proposal_fails():
+    content = BASE.format(TAGS=" []", BODY="")
+    assert any("tags" in v for v in lint_text(content, {"犯罪"}, _date(2020, 1, 2)))
+
+
+def test_unregistered_tag_still_fails_even_with_proposal():
+    content = BASE.format(TAGS="\n- 未注册", BODY="<!-- [TAG-PROPOSAL]: x — y -->\n\n")
+    assert any("未注册" in v for v in lint_text(content, {"犯罪"}, _date(2020, 1, 2)))

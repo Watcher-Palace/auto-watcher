@@ -56,6 +56,15 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
     content = draft_path.read_text(encoding="utf-8")
     fm = read_frontmatter(content)
     validate_tags(fm.get("tags"), load_tag_registry())
+    from src.linter import TAG_PROPOSAL_RE
+    proposals = TAG_PROPOSAL_RE.findall(content)
+    if proposals:
+        raise SystemExit(
+            "未裁决的 [TAG-PROPOSAL]，拒绝发布：\n"
+            + "\n".join(f"  - {p}" for p in proposals)
+            + "\n批准：将标签加入 src/tags.yml 相应分组和草稿 frontmatter，删除注释；"
+              "否决：删除注释。"
+        )
     from src.linter import lint_text, lint_warnings
     from datetime import date as _date
     violations = lint_text(content, load_tag_registry(), _date.today())

@@ -16,6 +16,7 @@ from src.publisher import read_frontmatter, load_tag_registry
 VALID_CATEGORIES = {"S", "A", "B", "C", "D", "N"}
 METRIC_RE = re.compile(r"(阅读量|讨论量|转发量|评论量|投票|票数)")
 SOURCE_LINE_RE = re.compile(r"^(- )?\d{4}\.\d{1,2}\.\d{1,2}，.+?。\*.+?\*。\S+")
+TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
 
 
 def _sections(body: str) -> dict[str, str]:
@@ -64,8 +65,11 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
             violations.append(f"categories 非法值：{c!r}（允许 S/A/B/C/D/N）")
 
     tags = fm.get("tags") or []
-    if not tags:
-        violations.append("tags 为空 —— 每篇文章必须从 src/tags.yml 选 2 个以上标签")
+    if not tags and not TAG_PROPOSAL_RE.search(content):
+        violations.append(
+            "tags 为空且无 TAG-PROPOSAL —— 选 2 个以上贴切标签，或用 "
+            "<!-- [TAG-PROPOSAL]: 标签名 — 理由 --> 提案新标签"
+        )
     if registry:
         for t in tags:
             if t not in registry:
