@@ -33,7 +33,8 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
     fm = read_frontmatter(content)
     body = content.split("---", 2)[-1] if content.startswith("---") else content
 
-    if "—" in content:
+    prose = re.sub(r"<!--.*?-->", "", content, flags=re.S)
+    if "—" in prose:
         violations.append("破折号 — 出现（风格规则：重组句子，不用破折号）")
 
     secs = _sections(body)

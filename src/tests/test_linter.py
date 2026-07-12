@@ -126,3 +126,17 @@ def test_empty_tags_without_proposal_fails():
 def test_unregistered_tag_still_fails_even_with_proposal():
     content = BASE.format(TAGS="\n- 未注册", BODY="<!-- [TAG-PROPOSAL]: x — y -->\n\n")
     assert any("未注册" in v for v in lint_text(content, {"犯罪"}, _date(2020, 1, 2)))
+
+
+def test_em_dash_only_in_html_comment_not_flagged():
+    # TAG-PROPOSAL's em dash (标签名 — 理由) lives in an HTML comment, not prose —
+    # it must not trip the 破折号 style rule.
+    content = BASE.format(TAGS="\n- 犯罪", BODY="<!-- [TAG-PROPOSAL]: 新标签 — 理由 -->\n\n")
+    v = lint_text(content, {"犯罪"}, _date(2020, 1, 2))
+    assert not any("破折号" in x for x in v)
+
+
+def test_em_dash_in_prose_outside_comment_still_flagged():
+    content = BASE.format(TAGS="\n- 犯罪", BODY="他说——这样。\n\n")
+    v = lint_text(content, {"犯罪"}, _date(2020, 1, 2))
+    assert any("破折号" in x for x in v)
