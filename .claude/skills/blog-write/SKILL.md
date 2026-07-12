@@ -49,51 +49,11 @@ path, v = next_draft_path(date, index, title)
 
 ## Draft Format
 
-Follow `source/_drafts/template.md` for structure. Use published posts in `source/_posts/` as style reference.
-
-```
----
-title: [post title]
-date: [YYYY-MM-DD]   # date the latest factual event OCCURRED, not the date a news article was published reporting it. E.g. if a verdict happened on May 15 and was reported May 20, use May 15.
-categories: [A/B/C/D/N]
-tags:
-- [tag]
----
-
-## 概述
-[Summary paragraph followed by case-specific sub-sections via #### headings.
-Everything case-specific lives here — including timeline, prior background,
-follow-up status, judgment details, party claims, victim's self-statement.
-Use #### sub-headings like 时间线, 判决要点, 男方诉讼请求, 受害者自述, etc.
-Dates in bold: **YYYY年M月D日**：...]
-
-## 信息来源
-[YYYY.MM.DD，来源名称。*标题*。URL or asset]
-
-## 舆论
-[Optional. **Facts only** — only concrete metrics: read counts, share counts, comment counts,
-poll results. **If you have no concrete number (阅读量/讨论量/转发量/评论量), do NOT write this section at all — not even the header.** Writing `## 舆论` with only a hashtag name or "未获取具体数据" is a format violation.
-NEVER include: "网友纷纷表示", "引发热议", quoted or paraphrased commentary, your own
-characterisation of public reaction. The blog logs facts, not opinion summaries.]
-### 微博词条
-[#词条名# 访问日期：年.月.日。阅读量：N万。]
-
-## 相关内容
-[Optional. ONLY general/comparative material — statute citations, parallel cases,
-industry/structural background. Same facts-only rule as 舆论.
-Do NOT put case-specific content here (that goes in 概述 sub-sections).
-No commentary, no opinion citations.]
-```
-
-**Structural rule:** All case-specific content (background, timeline, follow-up status, judgment details, party statements, victim's words) belongs inside `## 概述` as `####` sub-sections. `## 相关内容` is reserved for general/comparative material only (statutes, parallel cases, structural context). Do not create standalone `## 前情` or `## 后续` sections by default — fold them into 概述 (the linter warns but does not block; the reviewer/user may wave exceptions through).
-
-## Inline Formatting
-
-- `<font color="red">text</font>` — legally/factually significant statements, key findings
-- `<font color="blue">text</font>` — most recent update in the story
-- `<font color="grey">text</font>` — verbatim quote from a party or document
-
-All verbatim quotes from parties, courts, or official notices MUST use `<font color="grey">`.
+**The canonical format spec is `source/_drafts/template.md` — read it in full before
+writing.** It defines frontmatter fields, section skeleton and per-section content
+rules, the `<font>` colour conventions, and asset embedding. Structure deviations are
+review-blocking. Use published posts in `source/_posts/` only as prose-style reference —
+older posts may predate current format rules; when they conflict, template.md wins.
 
 ## Style Rules
 
@@ -138,14 +98,5 @@ and the linter accepts an empty tags list only when a proposal comment is presen
 Status tags (always available):
 - `PING` — 插眼等后续（follow-up expected）
 - `TODO` — 还需查证（unverified claim）
-
-## Assets
-
-Download images and documents to `_pipeline/draft/{date}-{index}-assets/`.
-Reference in post:
-```html
-<img src="{% asset_path filename.jpg %}" width="300" alt="description">
-<embed src="{% asset_path file.pdf %}" type="application/pdf" width="100%" height="600px">
-```
 
 Read `.claude/skills/blog-write/notes.md` before writing — it contains accumulated style and voice guidance.

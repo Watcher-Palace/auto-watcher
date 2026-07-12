@@ -108,6 +108,10 @@ Wait for the research subagent to complete and confirm the research file exists 
 
 Dispatch a `blog-write` subagent in `initial` mode with **`model: sonnet`** (writing needs nuanced judgment — no inference, feminist framing — that Haiku handles unreliably). Dispatch in **batches of 2–3**.
 
+The subagent prompt MUST begin by instructing it to read, in order:
+`.claude/skills/blog-write/SKILL.md`, `.claude/skills/blog-write/notes.md`,
+`source/_drafts/template.md` — before writing anything.
+
 ```
 date: YYMMDD
 index: N
@@ -133,6 +137,10 @@ For each draft:
 **4b-i. Review (subagent):**
 
 Dispatch a `blog-review` subagent with **`model: sonnet`** (fact-checking and the no-inference rule need nuanced judgment):
+
+The subagent prompt MUST begin by instructing it to read, in order:
+`.claude/skills/blog-review/SKILL.md`, `.claude/skills/blog-review/notes.md`,
+`source/_drafts/template.md` — before starting the review.
 
 ```
 date: YYMMDD
@@ -163,6 +171,10 @@ them directly, no subagent). Rejected: delete the proposal comment.
 **4b-iii. If user approves, dispatch revision (subagent):**
 
 A revision is a `blog-write` subagent — use **`model: sonnet`**.
+
+The subagent prompt MUST begin by instructing it to read, in order:
+`.claude/skills/blog-write/SKILL.md`, `.claude/skills/blog-write/notes.md`,
+`source/_drafts/template.md` — before revising anything.
 
 ```
 date: YYMMDD

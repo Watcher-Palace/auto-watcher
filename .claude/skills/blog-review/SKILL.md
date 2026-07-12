@@ -26,7 +26,12 @@ Repo root: `/home/jc/Projects/auto-watcher`
 3. **Check verbatim quotes** — every `<font color="grey">` passage must be traceable to a real source. Flag any that cannot be verified.
 4. **Check legal/factual claims** — any `<font color="red">` passage must be accurate. Flag overstatements or errors.
 5. **Check the latest-update marker** — independently search each key person/institution for developments up to today, including a search with the current month/year (e.g. "事件名 2026年6月") to confirm nothing newer exists. The `<font color="blue">` passage must be the actual most recent development; if a more recent fact exists than what it marks, flag it as an issue requiring update. Also flag if the blue passage is a "no update" statement (e.g. "截至X日无最新进展") rather than a real factual development — the blue must mark an actual event, not an absence of news.
-6. **Check structure and format** — section order, source citation format, category choice, tag usage. In particular, if a `## 舆论` section exists but contains no concrete metrics (阅读量/转发量/评论量/投票结果 etc.), flag it: the section must be removed entirely. Placeholder text like "未获取具体数据" is a format violation.
+6. **Check structure and format against the canonical template** — read
+   `source/_drafts/template.md` first, then compare the draft section by section:
+   section names/order, 概述-only placement of case-specific content (#### sub-sections),
+   信息来源 line format, 舆论 concrete-metrics rule, 相关内容 scope, `<font>` colour
+   usage, category value, tag registration. Every deviation is an ISSUE (STATUS: ISSUES),
+   not a stylistic preference.
 7. **Transcribe tag proposals** — copy every `<!-- [TAG-PROPOSAL]: ... -->` comment
    from the draft into a dedicated `## 标签提案` section of the review file, so the
    user sees them at the review gate. Do not resolve them yourself.

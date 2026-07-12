@@ -1,51 +1,41 @@
 ---
-title: 模板
-date: 2026-01-26 14:29:21
-tags:
+title: （文章标题）
+date: 2026-01-01   # 最新事实性进展的发生日（YYYY-MM-DD，禁止时间成分；不是报道日/搜索日）
+categories: B      # 单字母 S/A/B/C/D/N；判级边界见 blog-write skill
+tags:              # 只用 src/tags.yml 已注册标签，且必须真正贴切（禁止凑数）
+- 犯罪
+# 需要新标签时不要自造：在 frontmatter 之后写
+# <!-- [TAG-PROPOSAL]: 标签名 — 理由 -->
 ---
-# 元信息
-title: 就是title
-date：就是date
-categories: S, A, B, C, D, N - 严重程度
-    S: 政府/国家层面；
-    A：刑事案件；影响极为恶劣的舆论事件
-    B：民事案件；影响较大的舆论事件
-    C：非官方组织；影响较小的舆论事件
-    D：个人行为
-    N：中立事件/等待后续
-tags：就是tag
-    PING：插眼等后续
-    TODO：还需查证
-
-# 正文
 
 ## 概述
-#### 时间线（opt）
+（2–4 句中性概述。所有案件相关内容——时间线、前情、后续、判决细节、各方主张、
+受害者自述——都以 #### 子节放在本节内，不得另立独立章节。日期加粗：**YYYY年M月D日**：…）
+
+#### 时间线（按需）
+#### 判决要点（按需）
 
 ## 信息来源
-日期，来源。*标题*。链接或图片/视频
+（一行一条，格式精确为：）
+2026.01.01，来源名称。*标题*。https://example.com/ 或 {% asset_path file.pdf %}
 
-## 前情（opt）
-
-## 后续（opt）
-（x年）x月x日：
-
-## 舆论（opt）
+## 舆论
+（可选。只写具体数据：阅读量/讨论量/转发量/评论量/投票结果。
+没有任何具体数字就整节删除——连标题都不要留。
+禁止"网友纷纷表示""引发热议"、任何评论转述或对舆论的定性。）
 ### 微博词条
-#词条# 访问日期：年.月.日。阅读量：。
+#词条名# 访问日期：2026.01.01。阅读量：N万。
 
-## 相关内容（opt）
+## 相关内容
+（可选。只放一般性/对比性材料：法条原文、同类案件、结构性背景。
+案件本身的内容一律进 ## 概述 的 #### 子节。同"只有事实"规则，无评论。）
 
-
-# 插入文件
-<img src="{% asset_path <file> %}" width="300" alt="文字说明">
-<embed
-  src="{% asset_path file.pdf %}"
-  type="application/pdf"
-  width="100%"
-  height="600px">
-
-# 格式
-<font color="red">强调</font>
-<font color="blue">最新更新</font>
-<font color="grey">原文引用</font>
+<!-- 行内格式约定：
+  <font color="red">…</font>   法律/事实上关键的表述、核心认定
+  <font color="blue">…</font>  最新一条真实事实进展（不能是"暂无进展"类句子）
+  <font color="grey">…</font>  当事人/法院/官方的逐字引用（所有逐字引用必须用灰色）
+资产嵌入（文件放 _pipeline/draft/{date}-{index}-assets/）：
+  <img src="{% asset_path 文件名.jpg %}" width="300" alt="说明">
+  <embed src="{% asset_path 文件.pdf %}" type="application/pdf" width="100%" height="600px">
+风格硬规则：不用破折号（—）；不写填充语（"此事沉寂数月后"等）；每句话必须
+有来源直接支撑，不推断不引申；剥离一切具名专家评论。 -->

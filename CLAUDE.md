@@ -39,7 +39,12 @@ Published posts go to `source/_posts/YYMMDD.md` with assets in `source/_posts/YY
 
 ## Post Format
 
-The authoritative post spec — frontmatter, section structure, inline `<font>` color conventions, asset embedding, categories, and tags — lives in the `blog-write` skill (`.claude/skills/blog-write/SKILL.md`). Edit it there; do not duplicate the spec in this file or it will drift.
+The canonical **format** spec — frontmatter, section structure, per-section content
+rules, inline `<font>` conventions, asset embedding — lives in
+`source/_drafts/template.md` (never rendered: `render_drafts: false`).
+Judgment rules — categories boundaries, tag selection and TAG-PROPOSAL protocol,
+style/no-inference rules — live in the `blog-write` skill. Edit those two files; do
+not duplicate the spec here or it will drift.
 
 ## Landing-page Calendar
 

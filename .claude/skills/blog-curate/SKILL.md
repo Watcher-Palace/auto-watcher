@@ -71,6 +71,9 @@ and dilute each other as the file grows; lint rules are enforced for free.
 When promoting into SKILL.md, also merge any overlapping existing rules —
 net growth of the file should be near zero. If SKILL.md exceeds ~180 lines,
 flag it to the user for a compaction pass instead of appending more.
+Routing when promoting: mechanically checkable → `src/linter.py` (with a test);
+format/structure rules → `source/_drafts/template.md`; judgment rules → the skill's
+`SKILL.md`.
 
 ## Conflict Resolution
 
