@@ -16,7 +16,7 @@ Stage 1 — Track     → _pipeline/events/YYMMDD.md
 Stage 2 — Research  → _pipeline/research/YYMMDD-N-title.md   (subagent)
 Stage 3 — Write     → _pipeline/draft/YYMMDD-N-title-vN.md   (subagent)
 Stage 4 — Review    → _pipeline/review/YYMMDD-N-title-vN.md  (subagent)
-Stage 5 — Publish   → source/_posts/YYMMDD.md
+Stage 5 — Publish   → source/_posts/YYMMDD.md（同日第二篇起为 YYMMDD-N.md）
 ```
 
 Human gates: **approve events** (after Stage 1) · **annotate drafts** (after Stage 3) · **approve revision** (after each review) · **confirm publish** (before Stage 5).
@@ -206,7 +206,7 @@ source src/venv/bin/activate
 python src/publisher.py YYMMDD N
 ```
 
-The publisher copies drafts to `source/_posts/`, moves assets, and runs `pnpm run deploy`. The landing-page calendar regenerates automatically at build time from post frontmatter (`scripts/calendar.js`) — the publisher does not touch it.
+The publisher copies drafts to `source/_posts/`, moves assets, and runs `pnpm build` + `pnpm run deploy`. The landing-page calendar regenerates automatically at build time from post frontmatter (`scripts/calendar.js`) — the publisher does not touch it.
 
 After publishing, confirm the posts are live.
 
@@ -214,7 +214,7 @@ After publishing, confirm the posts are live.
 
 ## Environment
 
-The pipeline reads from environment variables or `.env` in the repo root:
+The pipeline reads from environment variables or **`src/.env`** (not the repo root):
 - `WEIBO_COOKIE` — required for tracker
 - `TRACKED_UIDS` — comma-separated Weibo UIDs the tracker fetches
 

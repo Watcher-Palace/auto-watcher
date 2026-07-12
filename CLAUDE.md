@@ -35,7 +35,7 @@ _pipeline/
 
 **Pipeline check:** Only scan dates NOT listed in `done-dates.txt`. When checking status, look at `events/YYMMDD.md` (for today's events if no status file yet) and `events/YYMMDD-status.txt` plus presence of research/draft/review files for in-flight dates.
 
-Published posts go to `source/_posts/YYMMDD.md` with assets in `source/_posts/YYMMDD/`.
+Published posts go to `source/_posts/YYMMDD.md`（同日第二篇起为 YYMMDD-N.md） with assets in `source/_posts/YYMMDD/`.
 
 ## Post Format
 
@@ -90,7 +90,7 @@ Implementation details (for debugging, not for manual reimplementation):
 - LLM filtering runs via the `claude` CLI subprocess (`--model claude-haiku-4-5-20251001`), using the local Claude Code subscription — no OpenRouter or external API key
 
 ### Stage 2 — Research (skill: `blog-research`)
-Invoke the `blog-research` skill before dispatching any research subagent. Output to `_pipeline/research/YYMMDD-N-title.md` with sections: `## Facts`, `## Parties`, `## Sources`.
+Invoke the `blog-research` skill before dispatching any research subagent. Output to `_pipeline/research/YYMMDD-N-title.md` with sections: `## 事实`, `## 当事方`, `## 信息来源`.
 
 ### Stage 3 — Write (skill: `blog-write`)
 Invoke the `blog-write` skill before dispatching any write subagent. Output to `_pipeline/draft/YYMMDD-N-title-vN.md`. The skill specifies required constraints — section names, URL format in 信息来源, per-section content — that must be embedded in every write-agent prompt.
@@ -115,6 +115,8 @@ Each successful publish also appends the event to `_pipeline/harvest-queue.txt`;
 - **Stage B — publish (after confirmation):** copy the draft to `source/summaries/YYMM.md`, then `pnpm build` + `pnpm run deploy`. The landing-page calendar then shows a `本月总结` link next to that month (see Landing-page Calendar). `publisher.py` is post-specific and is not used here.
 
 ## Environment Variables
+
+The file lives at `src/.env` (gitignored) — not the repo root.
 
 ```
 WEIBO_COOKIE=_T_WM=...; ALF=...; SSOloginstate=...; SUB=...; SUBP=...
