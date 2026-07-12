@@ -137,6 +137,28 @@ def test_reconcile_derives_stage_and_version(tmp_path):
     assert ledger.get_row("990101", 1, pipeline_dir=tmp_path)["状态"] == "review-v2"
 
 
+def test_reconcile_draft_version_beats_older_review(tmp_path):
+    _seed(tmp_path, state="selected")
+    _artifacts(tmp_path,
+               "draft/990101-1-标题一-v1.md",
+               "draft/990101-1-标题一-v2.md",
+               "review/990101-1-标题一-v1.md")
+    # draft-v2 postdates review-v1 (review only covers v1) → true state is draft-v2
+    assert ledger.event_statuses("990101", pipeline_dir=tmp_path) == {1: "draft-v2"}
+    _artifacts(tmp_path, "review/990101-1-标题一-v2.md")
+    assert ledger.event_statuses("990101", pipeline_dir=tmp_path) == {1: "review-v2"}
+
+
+def test_derive_state_skips_non_numeric_version_suffix(tmp_path):
+    _seed(tmp_path, state="selected")
+    _artifacts(tmp_path,
+               "draft/990101-1-标题一-v1.md",
+               "draft/990101-1-标题一-video.md")
+    # "-video.md" matches the glob (contains "-v") but its version suffix
+    # isn't numeric; must be skipped rather than crashing int().
+    assert ledger.event_statuses("990101", pipeline_dir=tmp_path) == {1: "draft-v1"}
+
+
 def test_reconcile_ignores_terminal_and_other_events(tmp_path):
     _seed(tmp_path)
     ledger.add_event("990101", 10, "十", pipeline_dir=tmp_path)

@@ -140,15 +140,35 @@ def max_index(date_str: str, pipeline_dir: Path | None = None) -> int:
     return max(ns) if ns else 0
 
 
+def _stage_max_version(pipeline_dir: Path, stage: str, date_str: str, n: str) -> int:
+    """该 stage 目录下 {date}-{n}-*-vK.md 的最大 K；无匹配或后缀非数字（如
+    `-video.md` 误撞 glob）一律跳过，返回 0。"""
+    d = pipeline_dir / stage
+    if not d.exists():
+        return 0
+    versions = []
+    for p in d.glob(f"{date_str}-{n}-*-v*.md"):
+        suffix = p.stem.rsplit("-v", 1)[-1]
+        if suffix.isdigit():
+            versions.append(int(suffix))
+    return max(versions) if versions else 0
+
+
 def _derive_state(date_str: str, n: str, pipeline_dir: Path) -> str | None:
-    """从工件文件推导中间态；无工件返回 None。前缀必须含结尾连字符。"""
-    for stage in ("review", "draft"):
-        d = pipeline_dir / stage
-        if d.exists():
-            versions = [int(p.stem.rsplit("-v", 1)[-1])
-                        for p in d.glob(f"{date_str}-{n}-*-v*.md")]
-            if versions:
-                return f"{stage}-v{max(versions)}"
+    """从工件文件推导中间态；无工件返回 None。前缀必须含结尾连字符。
+
+    review-vM 只覆盖 draft-vM：若最大 draft 版本 > 最大 review 版本，说明有更新的
+    草稿尚未经过对应版本的评审，真实状态是 draft-vN；否则报告最大 review（若存在）
+    或最大 draft。
+    """
+    draft_max = _stage_max_version(pipeline_dir, "draft", date_str, n)
+    review_max = _stage_max_version(pipeline_dir, "review", date_str, n)
+    if draft_max > review_max:
+        return f"draft-v{draft_max}"
+    elif review_max:
+        return f"review-v{review_max}"
+    elif draft_max:
+        return f"draft-v{draft_max}"
     d = pipeline_dir / "research"
     if d.exists() and any(d.glob(f"{date_str}-{n}-*.md")):
         return "research"

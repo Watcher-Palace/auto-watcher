@@ -86,7 +86,7 @@ Implementation details (for debugging, not for manual reimplementation):
 - Cookie must be from `weibo.cn` domain (fields: `_T_WM`, `ALF`, `SSOloginstate`, `SUB`, `SUBP`)
 - Use desktop Chrome UA + `Referer: https://m.weibo.cn/` — mobile UA triggers bot detection
 - Extract both `mblog.text` AND `mblog.retweeted_status.text` — feminist content is often in retweets
-- Tracked account UID: set via `TRACKED_UIDS` env var in `.env` (not committed)
+- Tracked account UID: set via `TRACKED_UIDS` env var in `src/.env` (not committed)
 - Incremental state (per-UID last-seen post ID + resume cursors) lives in `_pipeline/.tracker-state.json`
 - LLM filtering runs via the `claude` CLI subprocess (`--model claude-haiku-4-5-20251001`), using the local Claude Code subscription — no OpenRouter or external API key
 
@@ -150,7 +150,7 @@ When dispatching parallel subagents (research, write, or review), run in **batch
 
 ## Tracker Blocker Protocol
 
-When the Stage 1 tracker fails, surface the specific error immediately and wait for the user to resolve it. Do not attempt to replace the tracker with WebSearch or other discovery methods — the Weibo UIDs in `.env` are the authoritative event sources.
+When the Stage 1 tracker fails, surface the specific error immediately and wait for the user to resolve it. Do not attempt to replace the tracker with WebSearch or other discovery methods — the Weibo UIDs in `src/.env` are the authoritative event sources.
 
 ## Keeping Docs Accurate (anti-drift)
 

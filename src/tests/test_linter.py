@@ -96,6 +96,9 @@ def test_publish_blocks_on_lint_failure(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("src.publisher.PIPELINE", root)
     monkeypatch.setattr("src.publisher.REPO_ROOT", tmp_path)
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", root)
+    from src.utils import ledger
+    ledger.add_event("990101", 1, "测试", pipeline_dir=root)
 
     from src.publisher import publish
     with pytest.raises(SystemExit) as ei:

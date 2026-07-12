@@ -69,6 +69,31 @@ def test_publish_finalizes_terminal_date(tmp_path, monkeypatch):
     assert not events_archive.exists() or list(events_archive.iterdir()) == []
 
 
+def test_publish_refuses_missing_ledger_row(tmp_path, monkeypatch):
+    root = tmp_path / "_pipeline"
+    (root / "draft").mkdir(parents=True)
+    (root / "events").mkdir(parents=True)
+    (tmp_path / "_pipeline_archive").mkdir()
+    draft = root / "draft" / "990101-1-测试-v1.md"
+    draft.write_text(
+        "---\ntitle: 测试\ndate: 2020-01-01\ncategories: B\ntags:\n- 犯罪\n---\n\n"
+        "## 概述\n正文。\n\n"
+        "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("src.publisher.REPO_ROOT", tmp_path)
+    monkeypatch.setattr("src.publisher.PIPELINE", root)
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", root)
+    monkeypatch.setattr("src.utils.pipeline.ARCHIVE", tmp_path / "_pipeline_archive")
+    # 注意：这里没有调用 ledger.add_event ——账本中没有该 (date, n) 行
+
+    from src.publisher import publish
+    with pytest.raises(SystemExit, match="账本中无"):
+        publish("990101", 1, "测试", draft, deploy=False)
+    # 预检必须在任何拷贝/构建/发布副作用之前发生
+    assert not (tmp_path / "source" / "_posts" / "990101.md").exists()
+
+
 def test_publish_refuses_unresolved_tag_proposal(tmp_path, monkeypatch):
     root = tmp_path / "_pipeline"
     (root / "draft").mkdir(parents=True)

@@ -353,6 +353,22 @@ def test_write_events_file_empty_records_no_events_without_md(tmp_path, monkeypa
     assert rows[0]["收录日期"] == "990102" and rows[0]["状态"] == "无事件"
 
 
+def test_write_events_file_offsets_by_existing_ledger_rows(tmp_path, monkeypatch):
+    """If the events md is gone (e.g. archived after the date went terminal)
+    but ledger rows remain (a terminal row at index 1), write_events_file must
+    number the new event starting after the ledger's max index — not from 1,
+    which would collide with (and silently no-op against) the old row."""
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
+    from src.tracker import write_events_file
+    from src.utils import ledger
+    ledger.add_event("990104", 1, "旧", pipeline_dir=tmp_path)
+    out = write_events_file("990104", [{"title": "新事件", "brief": "b", "sources": []}])
+    assert out is not None
+    row = ledger.get_row("990104", 2, pipeline_dir=tmp_path)
+    assert row is not None and row["标题"] == "新事件"
+    assert "## 2." in out.read_text(encoding="utf-8")
+
+
 def test_append_events_continues_ledger_index(tmp_path, monkeypatch):
     monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
     from src.tracker import write_events_file, append_events_to_file

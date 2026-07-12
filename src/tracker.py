@@ -181,7 +181,7 @@ def format_events(date_str: str, events: list[dict]) -> str:
     for i, ev in enumerate(events, 1):
         sources = " ".join(f"[{url}]" for url in ev.get("sources", []))
         lines.append(
-            f"## {i}. {ev['title']}\n"
+            f"## {ev.get('index', i)}. {ev['title']}\n"
             f"**Sources**: {sources}\n"
             f"**Brief**: {ev['brief']}\n"
         )
@@ -189,16 +189,24 @@ def format_events(date_str: str, events: list[dict]) -> str:
 
 
 def write_events_file(date_str: str, events: list[dict]) -> Path | None:
-    """写 events md（人读内容）并同步账本行。空事件：只记"无事件"行，不写 md。"""
+    """写 events md（人读内容）并同步账本行。空事件：只记"无事件"行，不写 md。
+
+    编号从账本已有的最大事件编号之后续接（而非总是从 1 开始）：若该日期的
+    events md 已被归档（事件到终态后）但账本行仍在，从 1 编号会撞上旧行，
+    ledger.add_event 静默 no-op，新事件就此从账本中消失。全新日期 offset 为
+    0，行为不变。
+    """
     if not events:
         ledger.record_no_events(date_str)
         return None
-    numbered = [dict(e, index=i + 1) for i, e in enumerate(events)]
+    offset = ledger.max_index(date_str)
+    numbered = [dict(e, index=i + 1 + offset) for i, e in enumerate(events)]
     out = events_path(date_str)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(format_events(date_str, numbered), encoding="utf-8")
     for ev in numbered:
-        ledger.add_event(date_str, ev["index"], ev["title"])
+        if not ledger.add_event(date_str, ev["index"], ev["title"]):
+            print(f"  WARNING: 账本已存在 {date_str}-{ev['index']}，新事件未记录：{ev['title']}")
     return out
 
 

@@ -53,6 +53,10 @@ def move_assets(src: Path, dst: Path) -> None:
 
 
 def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = True) -> None:
+    if ledger.get_row(date_str, n) is None:
+        raise SystemExit(
+            f"账本中无 {date_str}-{n} 行——先运行 python src/pipeline_cli.py add {date_str} {n} <标题>"
+        )
     content = draft_path.read_text(encoding="utf-8")
     fm = read_frontmatter(content)
     validate_tags(fm.get("tags"), load_tag_registry())
