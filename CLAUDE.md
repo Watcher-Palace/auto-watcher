@@ -22,18 +22,19 @@ Deploy target (from `_config.yml`): `git@git_personal:Watcher-Palace/auto-watche
 
 ```
 _pipeline/
-  events/YYMMDD.md           # Stage 1: tracked Weibo events (one per date)
-  events/YYMMDD-status.txt   # per-event status, "N:selected" / "N:abort" / "N:published" (one per line). researched/drafted/reviewed/candidate are derived from file presence.
-  research/YYMMDD-N-title.md # Stage 2: research output
-  draft/YYMMDD-N-title-vN.md # Stage 3: draft post
-  draft/YYMMDD-N-assets/     # images for this draft
-  review/YYMMDD-N-title-vN.md# Stage 4: review notes
-  summary/YYMM.md            # On-demand monthly summary draft (Stage A; not the regular pipeline)
-  .state                     # last tracked date (plain text: "20260325")
-  done-dates.txt             # dates where all events are terminal (published/abort); append when a date is fully done
+  events.csv                 # 状态唯一权威（账本）：一行一事件；只经 pipeline_cli/代码写
+  events/YYMMDD.md           # 事件内容（brief/来源），人和 agent 读；状态代码不解析
+  research/YYMMDD-N-title.md # Stage 2 输出
+  draft/YYMMDD-N-title-vN.md # Stage 3 输出（+ YYMMDD-N-assets/）
+  review/YYMMDD-N-title-vN.md# Stage 4 输出
+  summary/YYMM.md            # 月度总结草稿（on-demand）
+  .tracker-state.json        # tracker 增量游标（内部）
 ```
 
-**Pipeline check:** Only scan dates NOT listed in `done-dates.txt`. When checking status, look at `events/YYMMDD.md` (for today's events if no status file yet) and `events/YYMMDD-status.txt` plus presence of research/draft/review files for in-flight dates.
+**Pipeline check:** `python src/pipeline_cli.py status` — 对账后列出在途事件与待提取经验。
+不要裸读/裸改 events.csv（对账内建于 CLI 读路径）。状态流：candidate → selected →
+research → draft-vN → review-vN → published/abort（终态；`无事件` 行标记查过但无事件的日期）。
+事件一到终态即按事件归档到 `_pipeline_archive/`；日期全终态后其 events md 一并归档。
 
 Published posts go to `source/_posts/YYMMDD.md`（同日第二篇起为 YYMMDD-N.md） with assets in `source/_posts/YYMMDD/`.
 
@@ -105,7 +106,7 @@ python src/publisher.py <YYMMDD> <N>
 ```
 The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm run deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 
-Each successful publish also appends the event to `_pipeline/harvest-queue.txt`; run the `blog-curate` skill periodically to distill queued corrections into skill notes (general principles only — see the skill's exception gate).
+Each successful publish marks the event 待提取 in events.csv; run the `blog-curate` skill periodically to distill queued corrections into skill notes (general principles only — see the skill's exception gate).
 
 ### On-demand — Monthly Summary (skill: `blog-summary`)
 

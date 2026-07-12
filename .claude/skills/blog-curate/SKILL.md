@@ -23,17 +23,17 @@ You are the curator for a feminist news blog's skill notes system. Your job is t
 
 ## Harvest (feed the notes)
 
-`_pipeline/harvest-queue.txt` lists published events (`YYMMDD-N`) whose corrections
-have not yet been distilled — `publisher.py` appends an entry on every successful
-publish. For each entry (files may sit in `_pipeline/` or `_pipeline_archive/`
-after archiving):
+`python src/pipeline_cli.py harvest` lists published events (`YYMMDD-N`) whose
+corrections have not yet been distilled (经验提取=待提取 in `_pipeline/events.csv`;
+the publisher marks each publish 待提取). For each entry (files may sit in
+`_pipeline/` or `_pipeline_archive/` after archiving):
 
 1. Read every review version's user input (`## 人类意见` / `<!-- [USER]: -->`) and
    diff draft v1 against the final version (frontmatter and structure included).
 2. Distill into the relevant skill's `notes.md` as **general principles only** —
    state the rule and its why; never case names, dates, or one-off specifics.
    If a correction cannot be stated as a general rule, do not record it.
-3. Remove processed entries from the queue.
+3. Mark each processed entry: `python src/pipeline_cli.py harvest done YYMMDD N`.
 
 **Exception gate (mandatory):** a rule that holds for most posts but conflicts
 with even one published post or user decision must NOT be silently adopted or

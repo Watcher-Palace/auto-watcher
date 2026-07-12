@@ -31,15 +31,12 @@ After any subagent stage completes (research / draft / review / revision), **STO
 
 ### 1a. Show pipeline status
 
-```python
-import sys
-sys.path.insert(0, '/home/jc/Projects/auto-watcher')
-from src.utils.pipeline import pipeline_summary, get_untracked_dates
-print(pipeline_summary())
-untracked = get_untracked_dates()
+```bash
+cd /home/jc/Projects/auto-watcher
+python src/pipeline_cli.py status
 ```
 
-Show the user the untracked dates. Default selection is yesterday.
+The output includes untracked dates (reconciled against the ledger), in-flight events, and pending-harvest events. Show the user the untracked dates. Default selection is yesterday.
 
 Ask: **"Which dates to track? (default: yesterday = YYMMDD, or enter comma-separated dates, or 'none' to skip)"**
 
@@ -63,6 +60,8 @@ If the user supplies public Weibo post URLs instead (e.g. while rate-limited), u
 python src/tracker.py --urls "url1,url2" YYMMDD
 ```
 
+If the user has no URL at all — a pure manual brief while the tracker is rate-limited — record it directly instead of running the tracker: `python src/pipeline_cli.py add YYMMDD N 标题` (adds the event to the ledger, pre-selected), then hand-write a matching `## N. 标题` entry in `events/YYMMDD.md` so the event content is readable.
+
 After running, display the events file contents so the user can review.
 
 ### 1c. Human gate — Approve events
@@ -70,13 +69,13 @@ After running, display the events file contents so the user can review.
 **Show the numbered event list and ask:**
 **"Which events to process? Enter numbers (e.g. '1 3') or 'all', or 'none' to stop."**
 
-Record each approved index in the unified status sidecar:
+Record each approved index in the ledger:
 
-```python
-from src.utils.pipeline import record_selected
-for i in approved_indexes:
-    record_selected(date_str, i)
+```bash
+python src/pipeline_cli.py select YYMMDD N [N...]
 ```
+
+To drop an event at any gate: `python src/pipeline_cli.py abort YYMMDD N`（记录 abort 并立即归档其工件）.
 
 ---
 
@@ -84,7 +83,7 @@ for i in approved_indexes:
 
 ### Filter terminal events
 
-Query `event_statuses(date_str)` from `src.utils.pipeline` — it returns `{index: state}` for the date. Dispatch only the **in-flight approved** states (`selected`, `researched`, `drafted`, `reviewed`). Skip:
+Query `event_statuses(date_str)` from `src.utils.ledger` — it returns `{index: state}` for the date. Dispatch only the **in-flight approved** states (`selected`, `researched`, `drafted`, `reviewed`). Skip:
 - `published` / `abort` — terminal, never re-dispatch.
 - `candidate` — not yet user-approved (Stage 1c), so do not dispatch.
 
