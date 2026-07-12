@@ -124,9 +124,16 @@ All verbatim quotes from parties, courts, or official notices MUST use `<font co
 
 The canonical tag list lives in `/home/jc/Projects/auto-watcher/src/tags.yml`, grouped by status / crime / legal / topic / context / identity / location. **Read it before picking tags.** Only use tags that already exist there — the publisher validates every draft against this registry and refuses to deploy if it sees an unknown tag.
 
-**Every v1 draft must carry 2+ tags** (every published post does; "加tag" was a recurring manual correction because v1 drafts shipped without any). The linter rejects empty tags.
+**Tags must genuinely fit.** Do NOT pad with tangentially-related tags to hit a count.
+Frontmatter may only contain registered tags. If fewer than 2 registered tags genuinely
+fit, or an important theme has no tag, add a proposal comment right after the frontmatter
+(one per line, several allowed):
 
-If the event genuinely needs a new tag, stop and ask the user before inventing one; do not silently coin new tags in a draft.
+    <!-- [TAG-PROPOSAL]: 标签名 — 理由 -->
+
+Registered tags + proposals together must be ≥ 2. Proposals are adjudicated by the user
+at the review gate; the publisher refuses to deploy a draft with unresolved proposals,
+and the linter accepts an empty tags list only when a proposal comment is present.
 
 Status tags (always available):
 - `PING` — 插眼等后续（follow-up expected）

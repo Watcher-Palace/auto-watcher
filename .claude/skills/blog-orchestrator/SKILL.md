@@ -152,6 +152,12 @@ first_line = review.read_text().splitlines()[0]
 
 Tell the user: **"Review v{N} written: {STATUS}. Review file: {path}. Approve revision? (y/n / edit-and-continue)"**
 
+If the review file has a `## 标签提案` section (or the draft contains
+`<!-- [TAG-PROPOSAL]: ... -->`), list each proposal and ask the user to approve or
+reject. Approved: add the tag to the matching group in `src/tags.yml`, add it to the
+draft's frontmatter `tags:`, and delete the proposal comment (mechanical edits — do
+them directly, no subagent). Rejected: delete the proposal comment.
+
 **Do not auto-trigger revision even if STATUS: ISSUES.** The user may want to annotate the review with `<!-- [USER]: ... -->`, edit suggestions, or stop the loop.
 
 **4b-iii. If user approves, dispatch revision (subagent):**
