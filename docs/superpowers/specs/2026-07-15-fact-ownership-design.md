@@ -99,17 +99,17 @@ reintroduce a model-dependent hop. The skill/agent split only pays when
 knowledge has multiple consumers — each stage skill has exactly one (its
 subagent), so the content migrates wholesale:
 
-- **`blog-research.md`** — `model: sonnet`; tools include WebSearch,
+- **`blog-researcher.md`** — `model: sonnet`; tools include WebSearch,
   WebFetch, Read, Write, Edit, Glob, Grep, Bash. Body = full research
   instructions (see below) + `## 累积经验` (migrated from
   `blog-research/notes.md`).
-- **`blog-write.md`** — `model: sonnet`; tools: Read, Write, Edit, Glob,
+- **`blog-writer.md`** — `model: sonnet`; tools: Read, Write, Edit, Glob,
   Grep, Bash. **No WebSearch, no WebFetch.** Body = full write instructions
   + `## 累积经验` (migrated from `blog-write/notes.md`).
   (Caveat noted: Bash could in principle fetch the web; removing the search
   tools kills the actual failure mode — habitual WebSearch — and the body
   rule forbids the rest.)
-- **`blog-review.md`** — `model: sonnet`; tools include WebSearch, WebFetch,
+- **`blog-reviewer.md`** — `model: sonnet`; tools include WebSearch, WebFetch,
   Read, Write, Edit, Glob, Grep, Bash. Body = full review instructions +
   `## 累积经验` (migrated from `blog-review/notes.md`).
 
@@ -118,10 +118,12 @@ runs on Sonnet" are harness-enforced facts, not instructions the
 orchestrator must remember. The orchestrator dispatches these subagent types
 passing only per-event parameters.
 
-**Naming:** agents keep the verb-form convention and **reuse the deleted
-skills' names** (`blog-research`, `blog-write`, `blog-review`) — agent and
-skill namespaces are separate (`.claude/agents/` vs `.claude/skills/`), so
-there is no collision, and existing references and habits stay valid.
+**Naming convention (project-wide):** skills are verb-form (`blog-act`),
+agents are actor-form (`blog-actor`) — the grammatical form signals what
+kind of thing is being invoked. Hence agents `blog-researcher` /
+`blog-writer` / `blog-reviewer`, and the orchestrator skill is renamed
+`blog-orchestrator` → **`blog-orchestrate`** (directory, frontmatter
+`name:`, and all references).
 
 **Deleted:** `.claude/skills/blog-research/`, `.claude/skills/blog-write/`,
 `.claude/skills/blog-review/` (SKILL.md + notes.md each), after migration.
@@ -131,7 +133,7 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
 `source/_drafts/template.md` (writer + reviewer) and `src/tags.yml`
 (writer; publisher validates against it). These remain read-on-instruction.
 
-### `blog-research` agent body (migrates `blog-research/SKILL.md`)
+### `blog-researcher` agent body (migrates `blog-research/SKILL.md`)
 
 - New input `mode: initial | update`. Update mode adds `review_path` and
   `draft_path` (context only).
@@ -153,7 +155,7 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
 - 5-angle strategy, coverage standard, Simplified-Chinese-only, output
   sections: unchanged.
 
-### `blog-write` agent body (migrates `blog-write/SKILL.md`)
+### `blog-writer` agent body (migrates `blog-write/SKILL.md`)
 
 - **Initial mode:** read the research file, write the draft. Delete the
   "track the story to today" instruction, the "Tracking to today (strictly
@@ -189,7 +191,7 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   (canonical format spec — single source of truth, never inlined) and
   `src/tags.yml` (tag registry) before writing.
 
-### `blog-review` agent body (migrates `blog-review/SKILL.md`)
+### `blog-reviewer` agent body (migrates `blog-review/SKILL.md`)
 
 - Keep the standalone review file (already the spec; annotated draft copies
   were drift). Harden the format — per item:
@@ -213,9 +215,11 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
 - Review process steps (independent verification, quote tracing, blue-marker
   check, template comparison), 标签提案 transcription, style notes: unchanged.
 
-### `.claude/skills/blog-orchestrator/SKILL.md`
+### `.claude/skills/blog-orchestrate/SKILL.md` (renamed from `blog-orchestrator/`)
 
-- **Stage 2:** dispatch the `blog-research` subagent type, `mode: initial`.
+- **Renamed** per the naming convention: directory, frontmatter `name:`, and
+  all references (CLAUDE.md, memory notes if any point at the old name).
+- **Stage 2:** dispatch the `blog-researcher` subagent type, `mode: initial`.
   Model comes from the agent definition.
 - **Stage 3 freshness check:** before dispatching a write, compare today with
   the research file's date (code helper). If older than 2 days, recommend an
@@ -252,7 +256,9 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   Stage 3: the writer does not search; the research file is the sole fact
   source. Stage 4: hardened review format, update-mode research hop.
 - Post Format pointer updated: judgment rules now live in the
-  `blog-write` agent definition (was: the `blog-write` skill).
+  `blog-writer` agent definition (was: the `blog-write` skill).
+- All `blog-orchestrator` references become `blog-orchestrate` (e.g. the
+  Monthly Summary section's "never run by blog-orchestrator").
 
 ### New code
 
@@ -310,7 +316,8 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   by the added pre-flight checks. No state-machine change: research files
   stay unversioned and are edited in place; `_derive_state` behavior is
   untouched.
-- `blog-orchestrator`, `blog-summary`, `blog-curate` remain **skills** —
+- `blog-orchestrate` (renamed), `blog-summary`, `blog-curate` remain
+  **skills** —
   main-thread procedures / user-invoked commands, which is what skills are
   for. The orchestrator in particular *cannot* be an agent: subagents cannot
   dispatch subagents (no Agent tool inside a subagent), and every stage
