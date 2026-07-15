@@ -307,8 +307,14 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   untouched.
 - `blog-orchestrator`, `blog-summary`, `blog-curate` remain **skills** —
   main-thread procedures / user-invoked commands, which is what skills are
-  for. (`blog-summary` still dispatches a generic Sonnet subagent; converting
-  it to an agent is optional-later, not in scope.)
+  for. The orchestrator in particular *cannot* be an agent: subagents cannot
+  dispatch subagents (no Agent tool inside a subagent), and every stage
+  boundary is a human gate — only the main thread holds the conversation
+  with the user; a fire-and-return worker would have to relay/re-dispatch
+  around each STOP or be tempted to auto-chain. Skills = main-thread
+  procedures that talk to the user; agents = autonomous workers with pinned
+  tools/models. (`blog-summary` still dispatches a generic Sonnet subagent;
+  converting it to an agent is optional-later, not in scope.)
 - The reviewer's independent web search (the control).
 - Human gates; Never Auto-Chain.
 - The earlier URL-specific ideas (skip-research mode, `Source-Mode` marker)
