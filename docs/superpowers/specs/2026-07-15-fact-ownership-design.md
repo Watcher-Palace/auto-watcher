@@ -121,9 +121,10 @@ passing only per-event parameters.
 **Naming convention (project-wide):** skills are verb-form (`blog-act`),
 agents are actor-form (`blog-actor`) — the grammatical form signals what
 kind of thing is being invoked. Hence agents `blog-researcher` /
-`blog-writer` / `blog-reviewer`, and the orchestrator skill is renamed
-`blog-orchestrator` → **`blog-orchestrate`** (directory, frontmatter
-`name:`, and all references).
+`blog-writer` / `blog-reviewer`, and two skills are renamed to verb form:
+`blog-orchestrator` → **`blog-orchestrate`** and `blog-summary` →
+**`blog-summarize`** (directory, frontmatter `name:`, and all references,
+including the `/blog-summary` invocation examples in CLAUDE.md).
 
 **Deleted:** `.claude/skills/blog-research/`, `.claude/skills/blog-write/`,
 `.claude/skills/blog-review/` (SKILL.md + notes.md each), after migration.
@@ -316,8 +317,8 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   by the added pre-flight checks. No state-machine change: research files
   stay unversioned and are edited in place; `_derive_state` behavior is
   untouched.
-- `blog-orchestrate` (renamed), `blog-summary`, `blog-curate` remain
-  **skills** —
+- `blog-orchestrate` (renamed), `blog-summarize` (renamed), `blog-curate`
+  remain **skills** —
   main-thread procedures / user-invoked commands, which is what skills are
   for. The orchestrator in particular *cannot* be an agent: subagents cannot
   dispatch subagents (no Agent tool inside a subagent), and every stage
@@ -325,7 +326,7 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   with the user; a fire-and-return worker would have to relay/re-dispatch
   around each STOP or be tempted to auto-chain. Skills = main-thread
   procedures that talk to the user; agents = autonomous workers with pinned
-  tools/models. (`blog-summary` still dispatches a generic Sonnet subagent;
+  tools/models. (`blog-summarize` still dispatches a generic Sonnet subagent;
   converting it to an agent is optional-later, not in scope.)
 - The reviewer's independent web search (the control).
 - Human gates; Never Auto-Chain.
