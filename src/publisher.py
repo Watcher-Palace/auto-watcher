@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 import shutil
 import subprocess
 import sys
@@ -9,6 +10,24 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.utils.pipeline import REPO_ROOT, PIPELINE
 from src.utils import ledger
 from src.utils.archive import finalize_event
+
+
+PIPELINE_COMMENT_RE = re.compile(r"<!--\s*\[(USER|REVIEWER|WRITER-)")
+
+
+def check_review_resolved(date_str: str, n: int) -> None:
+    """发布前置检查：最新评审（若存在）必须全部处置且无 未解决。"""
+    from src.utils.pipeline import latest_review
+    lr = latest_review(date_str, n)
+    if lr is None:
+        return
+    from src.review_linter import check_dispositions
+    violations, unresolved = check_dispositions(lr[0].read_text(encoding="utf-8"))
+    problems = violations + (["存在 未解决 处理项"] if unresolved else [])
+    if problems:
+        raise SystemExit(
+            f"评审 {lr[0].name} 未完全处置，拒绝发布：\n"
+            + "\n".join(f"  - {p}" for p in problems))
 
 
 def read_frontmatter(content: str) -> dict:
@@ -69,6 +88,10 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
             + "\n批准：将标签加入 src/tags.yml 相应分组和草稿 frontmatter，删除注释；"
               "否决：删除注释。"
         )
+    if PIPELINE_COMMENT_RE.search(content):
+        raise SystemExit(
+            "草稿含未消费的流程注释（[USER]/[REVIEWER]/[WRITER-*]），拒绝发布")
+    check_review_resolved(date_str, n)
     from src.linter import lint_text, lint_warnings
     from datetime import date as _date
     violations = lint_text(content, load_tag_registry(), _date.today())
