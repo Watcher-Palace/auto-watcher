@@ -100,3 +100,5 @@ Status tags (always available):
 ## 累积经验
 
 条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
+
+---
