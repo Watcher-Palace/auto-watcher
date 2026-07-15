@@ -43,3 +43,16 @@ def test_research_age_days(tmp_path, monkeypatch):
     old = time.time() - 3 * 86400
     os.utime(p, (old, old))
     assert pl.research_age_days("260701", 1) == 3
+
+
+def test_status_line_suffix_for_stale_research(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    p = tmp_path / "research" / "260701-1-t.md"
+    p.write_text("x", encoding="utf-8")
+    old = time.time() - 5 * 86400
+    os.utime(p, (old, old))
+    from src.pipeline_cli import research_age_suffix
+    assert research_age_suffix("260701", 1) == "（research 已 5 天）"
+    assert research_age_suffix("260701", 2) == ""   # no research file
+    os.utime(p, None)                               # fresh now
+    assert research_age_suffix("260701", 1) == ""   # < 2 days → no suffix

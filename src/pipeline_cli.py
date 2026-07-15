@@ -17,6 +17,13 @@ from src.utils import ledger
 from src.utils.archive import finalize_event, sweep
 
 
+def research_age_suffix(date_str: str, n) -> str:
+    """在途事件研究文件年龄提示；≥2 天提醒 orchestrator 建议刷新。"""
+    from src.utils.pipeline import research_age_days
+    age = research_age_days(date_str, int(n))
+    return f"（research 已 {age} 天）" if age is not None and age >= 2 else ""
+
+
 def cmd_status() -> int:
     rows = ledger.reconcile()
     maint = [r["维护日期"] for r in rows if r["维护日期"]]
@@ -29,7 +36,8 @@ def cmd_status() -> int:
         print("\n在途事件:")
         print(f"{'收录日期':<8} {'事件':<4} {'状态':<12} 标题")
         for r in open_rows:
-            print(f"{r['收录日期']:<8} {r['事件编号']:<4} {r['状态']:<12} {r['标题']}")
+            suffix = research_age_suffix(r["收录日期"], r["事件编号"])
+            print(f"{r['收录日期']:<8} {r['事件编号']:<4} {r['状态']:<12} {r['标题']}{suffix}")
     else:
         print("\n在途事件: 无")
     pending = ledger.pending_harvest()
