@@ -179,7 +179,10 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
     over reviewer suggestions, unchanged.
 - Template spec, style rules, linter gate, categories (incl. A/B and B/D
   boundary calibrations), tags + TAG-PROPOSAL protocol: **unchanged; the
-  writer keeps tag selection and proposal.**
+  writer keeps tag selection and proposal.** The migrated body explicitly
+  retains the read-first instructions for `source/_drafts/template.md`
+  (canonical format spec — single source of truth, never inlined) and
+  `src/tags.yml` (tag registry) before writing.
 
 ### `blog-reviewer` agent body (migrates `blog-review/SKILL.md`)
 
@@ -269,6 +272,21 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   - `research_age_days(date_str, n) -> int | None`: age of the research file
     (drives the Stage 3 freshness recommendation; also surfaced by
     `pipeline_cli.py status` for in-flight events past `selected`).
+- **`src/publisher.py` pre-flight: no unresolved comments at publish** —
+  before build/deploy, two deterministic checks (added alongside the
+  existing row/tag/TAG-PROPOSAL checks):
+  1. If a review exists for the event, the latest review must be fully
+     dispositioned: every 问题 item has a non-empty `处理：` line and none
+     is `未解决` (reuses the `--check-dispositions` logic, exposed as an
+     importable function from `review_linter`). A `STATUS: CLEAN` review
+     has no items and passes trivially; no review at all is not blocked
+     (unchanged behavior — the human gate covers that case).
+  2. The draft to be published contains no pipeline comment markers:
+     `<!-- [USER]:`, `<!-- [REVIEWER]:`, `<!-- [WRITER-`. These are
+     work-in-progress annotations and must all be consumed by revision
+     before deploy. (Publish-time only — a draft legitimately carries
+     `[USER]` annotations before revision, so this does not go in the
+     write-time linter.)
 - **`.claude/settings.json` (project, committed)** — permission allow-rules
   so subagent gate commands run without prompting:
   - `Bash(src/venv/bin/python src/linter.py:*)`
@@ -277,13 +295,16 @@ agent bodies would violate CLAUDE.md's anti-drift rule):
   Skills standardize on these exact command forms so the rules match.
 - **Tests** — hermetic pytest for `review_linter` (fixture review + draft
   files: valid, bad status, missing 类型, non-verbatim anchor, missing mark,
-  empty 处理) and the two pipeline helpers. Existing tests untouched.
+  empty 处理, 未解决 exit code), the two pipeline helpers, and the publisher
+  pre-flight (blocks on undispositioned review / 未解决 / lingering comment
+  markers; passes on CLEAN or no review). Existing tests untouched.
 
 ## What does not change
 
-- `src/utils/ledger.py`, `src/tracker.py`, `src/publisher.py`. No
-  state-machine change: research files stay unversioned and are edited in
-  place; `_derive_state` behavior is untouched.
+- `src/utils/ledger.py`, `src/tracker.py`; `src/publisher.py` changes only
+  by the added pre-flight checks. No state-machine change: research files
+  stay unversioned and are edited in place; `_derive_state` behavior is
+  untouched.
 - `blog-orchestrator`, `blog-summary`, `blog-curate` remain **skills** —
   main-thread procedures / user-invoked commands, which is what skills are
   for. (`blog-summary` still dispatches a generic Sonnet subagent; converting
@@ -304,8 +325,9 @@ veracity, mark/disposition completeness, freshness — is code.
 
 ## Out of scope (possible later)
 
-- Publisher pre-flight refusing to deploy unless the latest review is CLEAN
-  and fully dispositioned (today the user gate covers this).
+- Requiring that a review exist (and be CLEAN) before publish — today the
+  human gate covers this; the new pre-flight only blocks *unresolved*
+  comments, not the absence of a review.
 - Escalating research to Opus.
 - Retrofitting old archived reviews to the new format (never needed; archives
   are read-only history).
