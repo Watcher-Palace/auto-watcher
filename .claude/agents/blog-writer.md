@@ -97,6 +97,6 @@ Status tags (always available):
 - `PING` — 插眼等后续（follow-up expected）
 - `TODO` — 还需查证（unverified claim）
 
-## 累積経験
+## 累积经验
 
 条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
