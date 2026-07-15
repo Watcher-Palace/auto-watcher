@@ -90,29 +90,43 @@ A style-only review (zero 事实 items) skips the research hop entirely.
 
 ## Changes by file
 
-### `.claude/agents/` (new directory, three definitions)
+### `.claude/agents/` (new directory, three self-contained agents)
 
-Agent definitions pin tools and model in frontmatter, so "writer never
-searches" and "research runs on Sonnet" are harness-enforced facts, not
-instructions the orchestrator must remember.
+The three stage roles become **full agents, not skill-loading shims**. An
+agent definition's body is the subagent's system prompt, injected by the
+harness with certainty; a body that says "read SKILL.md first" would
+reintroduce a model-dependent hop. The skill/agent split only pays when
+knowledge has multiple consumers — each stage skill has exactly one (its
+subagent), so the content migrates wholesale:
 
 - **`blog-researcher.md`** — `model: sonnet`; tools include WebSearch,
-  WebFetch, Read, Write, Edit, Glob, Grep, Bash. Body: read
-  `blog-research/SKILL.md` + `notes.md` first, then execute the given mode.
+  WebFetch, Read, Write, Edit, Glob, Grep, Bash. Body = full research
+  instructions (see below) + `## 累积经验` (migrated from
+  `blog-research/notes.md`).
 - **`blog-writer.md`** — `model: sonnet`; tools: Read, Write, Edit, Glob,
-  Grep, Bash. **No WebSearch, no WebFetch.** Body: read
-  `blog-write/SKILL.md` + `notes.md` + `source/_drafts/template.md` first.
+  Grep, Bash. **No WebSearch, no WebFetch.** Body = full write instructions
+  + `## 累积经验` (migrated from `blog-write/notes.md`).
   (Caveat noted: Bash could in principle fetch the web; removing the search
-  tools kills the actual failure mode — habitual WebSearch — and the skill
+  tools kills the actual failure mode — habitual WebSearch — and the body
   rule forbids the rest.)
 - **`blog-reviewer.md`** — `model: sonnet`; tools include WebSearch, WebFetch,
-  Read, Write, Edit, Glob, Grep, Bash. Body: read `blog-review/SKILL.md` +
-  `notes.md` + `template.md` first.
+  Read, Write, Edit, Glob, Grep, Bash. Body = full review instructions +
+  `## 累积经验` (migrated from `blog-review/notes.md`).
 
-The orchestrator dispatches these subagent types and passes only per-event
-parameters; the read-skills-first preamble moves into the agent bodies.
+Frontmatter pins tools and model, so "writer never searches" and "research
+runs on Sonnet" are harness-enforced facts, not instructions the
+orchestrator must remember. The orchestrator dispatches these subagent types
+passing only per-event parameters.
 
-### `.claude/skills/blog-research/SKILL.md`
+**Deleted:** `.claude/skills/blog-research/`, `.claude/skills/blog-write/`,
+`.claude/skills/blog-review/` (SKILL.md + notes.md each), after migration.
+
+**Irreducible read-first files** (shared canonical specs; inlining them into
+agent bodies would violate CLAUDE.md's anti-drift rule):
+`source/_drafts/template.md` (writer + reviewer) and `src/tags.yml`
+(writer; publisher validates against it). These remain read-on-instruction.
+
+### `blog-researcher` agent body (migrates `blog-research/SKILL.md`)
 
 - New input `mode: initial | update`. Update mode adds `review_path` and
   `draft_path` (context only).
@@ -134,7 +148,7 @@ parameters; the read-skills-first preamble moves into the agent bodies.
 - 5-angle strategy, coverage standard, Simplified-Chinese-only, output
   sections: unchanged.
 
-### `.claude/skills/blog-write/SKILL.md`
+### `blog-writer` agent body (migrates `blog-write/SKILL.md`)
 
 - **Initial mode:** read the research file, write the draft. Delete the
   "track the story to today" instruction, the "Tracking to today (strictly
@@ -167,7 +181,7 @@ parameters; the read-skills-first preamble moves into the agent bodies.
   boundary calibrations), tags + TAG-PROPOSAL protocol: **unchanged; the
   writer keeps tag selection and proposal.**
 
-### `.claude/skills/blog-review/SKILL.md`
+### `blog-reviewer` agent body (migrates `blog-review/SKILL.md`)
 
 - Keep the standalone review file (already the spec; annotated draft copies
   were drift). Harden the format — per item:
@@ -203,19 +217,34 @@ parameters; the read-skills-first preamble moves into the agent bodies.
   the marked fact-base diff) → on approval dispatch writer revision. 0 →
   straight to writer revision on approval. Two STOPs per factual cycle,
   consistent with Never Auto-Chain.
-- Dispatch blocks lose the read-skills-first preambles (moved into agent
-  bodies) and the `model:` lines (pinned in agent definitions).
+- Dispatch blocks lose the read-skills-first preambles (instructions live in
+  the agent bodies) and the `model:` lines (pinned in agent frontmatter).
 - Notes section: batches of 2–3 unchanged, now covering Sonnet research.
+
+### `.claude/skills/blog-curate/SKILL.md`
+
+- Retargets from skill notes to the three agent files: curates each agent's
+  `## 累积经验` section and promotes `[CANDIDATE]` entries into that agent's
+  instruction sections (one file per role instead of SKILL.md + notes.md).
+- All curation logic unchanged: harvest flow, general-principles-only rule,
+  exception gate, `[NOTE]`/`[CANDIDATE]` tags, ~15-entry cap,
+  prefer-code-over-prose routing (linter / template.md / agent body), and the
+  ~180-line compaction flag (now applied to each agent file).
 
 ### `CLAUDE.md`
 
 - **Subagent Model Selection** rewritten: all pipeline subagents (research,
   write, review, summary) use Sonnet; Haiku survives only in the tracker's
-  LLM filtering (a `claude` CLI subprocess, not a subagent). Rationale: the
-  writer no longer backstops research, so research needs coverage judgment.
-- Stage 2 description: initial + update modes; Sonnet. Stage 3 description:
-  the writer does not search; research file is the sole fact source.
-- Stage 4 description: hardened review format, update-mode research hop.
+  LLM filtering (a `claude` CLI subprocess, not a subagent). Models for
+  research/write/review are pinned in agent frontmatter, not chosen at
+  dispatch. Rationale: the writer no longer backstops research, so research
+  needs coverage judgment.
+- Stage 2–4 descriptions: "invoke the blog-X skill before dispatching"
+  becomes "dispatch the blog-X agent". Stage 2: initial + update modes.
+  Stage 3: the writer does not search; the research file is the sole fact
+  source. Stage 4: hardened review format, update-mode research hop.
+- Post Format pointer updated: judgment rules now live in the
+  `blog-writer` agent definition (was: the `blog-write` skill).
 
 ### New code
 
@@ -252,9 +281,13 @@ parameters; the read-skills-first preamble moves into the agent bodies.
 
 ## What does not change
 
-- `src/utils/ledger.py`, `src/tracker.py`, `src/publisher.py`, `blog-summary`,
-  `blog-curate`. No state-machine change: research files stay unversioned and
-  are edited in place; `_derive_state` behavior is untouched.
+- `src/utils/ledger.py`, `src/tracker.py`, `src/publisher.py`. No
+  state-machine change: research files stay unversioned and are edited in
+  place; `_derive_state` behavior is untouched.
+- `blog-orchestrator`, `blog-summary`, `blog-curate` remain **skills** —
+  main-thread procedures / user-invoked commands, which is what skills are
+  for. (`blog-summary` still dispatches a generic Sonnet subagent; converting
+  it to an agent is optional-later, not in scope.)
 - The reviewer's independent web search (the control).
 - Human gates; Never Auto-Chain.
 - The earlier URL-specific ideas (skip-research mode, `Source-Mode` marker)
