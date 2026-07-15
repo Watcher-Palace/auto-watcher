@@ -96,12 +96,27 @@ def check_marks(text: str, research_text: str, version: int) -> list[str]:
 
 
 def check_dispositions(text: str) -> tuple[list[str], bool]:
+    """处理 行必须是四种形式之一：已修改 / 拒绝：<理由> / 已删除（查证失败） / 未解决：<缺口说明>。"""
     v, unresolved = [], False
     for it in parse_review(text).items:
-        if not it.disposition:
+        d = it.disposition
+        if not d:
             v.append(f"问题 {it.num}: 处理 行为空")
-        elif it.disposition.startswith("未解决"):
-            unresolved = True
+        elif d.startswith("已修改") or d.startswith("已删除（查证失败）"):
+            pass  # 合法；允许其后附加说明
+        elif d.startswith("拒绝："):
+            if not d[len("拒绝："):].strip():
+                v.append(f"问题 {it.num}: 拒绝： 后必须给出理由")
+        elif d.startswith("未解决："):
+            if d[len("未解决："):].strip():
+                unresolved = True
+            else:
+                v.append(f"问题 {it.num}: 未解决： 后必须给出缺口说明")
+        else:
+            v.append(
+                f"问题 {it.num}: 处理 值不在词汇表"
+                f"（已修改/拒绝：…/已删除（查证失败）/未解决：…）"
+            )
     return v, unresolved
 
 

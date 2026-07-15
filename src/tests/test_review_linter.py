@@ -99,6 +99,33 @@ def test_check_dispositions():
     assert violations == [] and unresolved is True
 
 
+def test_check_dispositions_vocabulary():
+    # arbitrary string not in the vocabulary → violation
+    arb = VALID.replace("处理：\n\n## 问题 2", "处理：随便写\n\n## 问题 2")
+    arb = arb[: arb.rfind("处理：")] + "处理：已修改\n"
+    violations, unresolved = check_dispositions(arb)
+    assert violations != [] and unresolved is False
+
+    # bare 拒绝： without a reason → violation
+    bare_reject = VALID.replace("处理：\n\n## 问题 2", "处理：拒绝：\n\n## 问题 2")
+    bare_reject = bare_reject[: bare_reject.rfind("处理：")] + "处理：已修改\n"
+    violations, _ = check_dispositions(bare_reject)
+    assert violations != []
+
+    # bare 未解决： without an explanation → violation, NOT unresolved
+    bare_unres = VALID.replace("处理：\n\n## 问题 2", "处理：未解决：\n\n## 问题 2")
+    bare_unres = bare_unres[: bare_unres.rfind("处理：")] + "处理：已修改\n"
+    violations, unresolved = check_dispositions(bare_unres)
+    assert violations != [] and unresolved is False
+
+    # 已删除（查证失败） is valid
+    deleted = VALID.replace(
+        "处理：\n\n## 问题 2", "处理：已删除（查证失败）\n\n## 问题 2")
+    deleted = deleted[: deleted.rfind("处理：")] + "处理：已修改\n"
+    violations, unresolved = check_dispositions(deleted)
+    assert violations == [] and unresolved is False
+
+
 def test_cli_exit_codes(tmp_path):
     review_dir = tmp_path / "review"
     draft_dir = tmp_path / "draft"
