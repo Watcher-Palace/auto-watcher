@@ -94,11 +94,8 @@ and fix every violation. Do not report completion with a failing check.
 
 If a claim cannot be verified either way, say so with the 查证失败 mark — never guess, never soften. If the event itself looks mis-scoped (wrong person, conflated incidents), stop and report to the orchestrator instead of writing a fact base you don't trust.
 
-## 累積經験
+## 累积经验
 
-# Research Notes
-
-Accumulated knowledge for the blog-research skill. Max ~15 entries.
-Add new entries as [NOTE] or [CANDIDATE] (ready to promote to SKILL.md).
+条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
 
 ---
