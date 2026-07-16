@@ -58,16 +58,19 @@ The cookie must come from the **mobile** Weibo domain (`m.weibo.cn`), not `weibo
 
 1. Open https://m.weibo.cn in a desktop browser and log in
 2. Open DevTools (`F12`) → **Application** tab → **Storage → Cookies → https://m.weibo.cn**
-3. Copy the values for these 5 fields:
+3. Copy the values for these 4 fields:
    - `_T_WM`
-   - `ALF`
    - `SSOloginstate`
    - `SUB`
    - `SUBP`
 4. Format as one line in `src/.env`:
    ```
-   WEIBO_COOKIE=_T_WM=xxx; ALF=xxx; SSOloginstate=xxx; SUB=xxx; SUBP=xxx
+   WEIBO_COOKIE=_T_WM=xxx; SSOloginstate=xxx; SUB=xxx; SUBP=xxx
    ```
+
+   (`ALF` also appears in the browser's cookie jar, but it is a client-side
+   expiry hint that the API does not validate — copying it is harmless, omitting
+   it is fine.)
 
 **Faster alternative:** in DevTools' **Network** tab, reload the page, click any `m.weibo.cn` request, and copy the entire `Cookie:` request header value.
 

@@ -75,7 +75,7 @@ https://m.weibo.cn/api/container/getIndex?type=uid&value={uid}&containerid=10760
 ```
 
 **Critical details:**
-- Cookie must be from `weibo.cn` domain (NOT weibo.com) — fields: `_T_WM`, `ALF`, `SSOloginstate`, `SUB`, `SUBP`
+- Cookie must be from `weibo.cn` domain (NOT weibo.com) — fields: `_T_WM`, `SSOloginstate`, `SUB`, `SUBP` (`ALF` is a client-side expiry hint the API does not check)
 - WebClient needs desktop Chrome UA + `Referer: https://m.weibo.cn/` — mobile UA triggers bot detection
 - Parse JSON directly; strip HTML from `mblog.text` via BeautifulSoup
 - **Include retweet body:** `mblog.retweeted_status.text` — most feminist content is in retweets, not top-level posts
@@ -185,7 +185,7 @@ _pipeline/
 ## Environment
 
 ```
-WEIBO_COOKIE=_T_WM=...; ALF=...; SSOloginstate=...; SUB=...; SUBP=...
+WEIBO_COOKIE=_T_WM=...; SSOloginstate=...; SUB=...; SUBP=...
 OPENROUTER_API_KEY=sk-or-...
 ```
 

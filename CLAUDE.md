@@ -83,7 +83,7 @@ Output: `_pipeline/events/YYMMDD.md` with numbered entries (`## N. 标题`).
 
 Implementation details (for debugging, not for manual reimplementation):
 - Weibo API: `https://m.weibo.cn/api/container/getIndex?type=uid&value={uid}&containerid=107603{uid}`
-- Cookie must be from `weibo.cn` domain (fields: `_T_WM`, `ALF`, `SSOloginstate`, `SUB`, `SUBP`)
+- Cookie must be from `weibo.cn` domain (fields: `_T_WM`, `SSOloginstate`, `SUB`, `SUBP`) — `ALF` is a client-side expiry hint the API does not check; omit it
 - Use desktop Chrome UA + `Referer: https://m.weibo.cn/` — mobile UA triggers bot detection
 - Extract both `mblog.text` AND `mblog.retweeted_status.text` — feminist content is often in retweets
 - Tracked account UID: set via `TRACKED_UIDS` env var in `src/.env` (not committed)
@@ -120,7 +120,7 @@ Each successful publish marks the event 待提取 in events.csv; run the `blog-c
 The file lives at `src/.env` (gitignored) — not the repo root.
 
 ```
-WEIBO_COOKIE=_T_WM=...; ALF=...; SSOloginstate=...; SUB=...; SUBP=...
+WEIBO_COOKIE=_T_WM=...; SSOloginstate=...; SUB=...; SUBP=...
 TRACKED_UIDS=uid1,uid2,uid3     # Weibo UIDs the tracker fetches
 ```
 
@@ -133,7 +133,7 @@ Tracker LLM filtering uses the `claude` CLI subprocess (Haiku) on the local Clau
 | Weibo fetch fails silently | Cookie must be from `weibo.cn`, not `weibo.com` |
 | Weibo fetch blocked | Use desktop Chrome UA, not mobile |
 | Weibo cookie expired (all UIDs fail, no captcha challenge) | Get fresh cookie from browser — do NOT switch to WebSearch for discovery |
-| Tracker exits with `RATE LIMITED` | Account-level throttle — a fresh cookie for the same account does NOT reset it. Persists 6–24h. Wait (`--daily` auto-resumes its cursor), or add events immediately via `--urls` (anonymous, unaffected). (Distinct from cookie expiry.) |
+| Tracker exits with `RATE LIMITED` | **Waiting does not help — there is no cooldown.** Try refreshing the account's cookie and re-run with `--merge`; that has worked, but stops working after repeated hits, and then the account is spent and needs replacing. Triggered by request volume AND frequency (threshold never measured). Repeated hits burn the account, so do not retry blind. `--urls` is anonymous and unaffected. (Distinct from cookie expiry.) See the `RateLimited` docstring in `src/tracker.py`. |
 | Tracker LLM filtering fails | Check the `claude` CLI is on PATH and the Claude Code subscription is active — not OpenRouter or any API key. |
 
 ## Subagent Model Selection

@@ -27,7 +27,25 @@ INTER_UID_DELAY_SEC = 5.0    # base; actual = uniform(base, base*3) → 5–15s 
 
 
 class RateLimited(Exception):
-    """Weibo per-cookie throttle hit (ok:-100 captcha challenge)."""
+    """Weibo throttle hit (ok:-100 captcha challenge).
+
+    What is actually known (observed, not measured):
+    - Triggers on request volume AND frequency. The threshold is unknown; no
+      one has measured it. PAGINATION_DELAY_SEC / INTER_UID_DELAY_SEC /
+      DAILY_BUDGET are guesses, not calibration.
+    - Waiting does NOT clear it. There is no cooldown window. (Earlier versions
+      of this file claimed "persists 6–24h" — that was fiction, never observed.)
+    - Refreshing the cookie for the same account cleared it the first few
+      times, then stopped working. Once refresh stops working the account is
+      spent and a NEW ACCOUNT is needed. Whether a spent account ever recovers
+      is unknown.
+
+    So the account is a consumable, and repeated hits are what burn it — the
+    cost of tripping this is not a wait, it is an account. Budget accordingly:
+    routine daily tracking is a handful of requests, while deep backfills are
+    where accounts die. --urls mode (src/wbfetch.py) is anonymous, uses no
+    account, and is unaffected.
+    """
 
 
 def parse_created_at(raw: str) -> datetime | None:
@@ -309,10 +327,13 @@ def run_tracker_range(
         skipped = ",".join(skipped_uids)
         print(
             f"\nRATE LIMITED. Partial results written above (skipped uids: {skipped}).\n"
-            f"Wait 6–24h, then complete with: python src/tracker.py [args] --uids {skipped} --merge\n"
-            "Do not retry now — additional requests extend the window.\n"
-            "The throttle is account-level: a new cookie for the same account does NOT reset it.\n"
-            "To add events immediately, use --urls (anonymous fetch, unaffected).",
+            "Waiting does NOT clear this — there is no cooldown window.\n"
+            "Try refreshing this account's cookie, then complete with:\n"
+            f"  python src/tracker.py [args] --uids {skipped} --merge\n"
+            "Cookie refresh has cleared it before, but stops working after repeated\n"
+            "hits — at that point the account is spent and needs replacing.\n"
+            "Do not retry blind: repeated hits are what burn the account.\n"
+            "To add events with no account at all, use --urls (anonymous, unaffected).",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -357,9 +378,9 @@ def run_tracker_daily(
     """Incremental fetch since last_seen_id per UID, budget-capped, merge-append.
 
     Budget exhaustion persists a resume cursor and returns normally (the next
-    run continues automatically). RateLimited persists the cursor and exits 2.
-    The throttle is account-level — a new cookie for the same account does not
-    reset it, so no cookie-swap advice is given.
+    run continues automatically). RateLimited persists the cursor and exits 2 —
+    but the cursor only helps if the account survives: waiting does not clear
+    the throttle, and repeated hits burn the account outright. See RateLimited.
     """
     from src.utils.tracker_state import load_state, save_state, state_path as _sp
     sp = state_path or _sp()
@@ -443,10 +464,13 @@ def run_tracker_daily(
     pending_uids = [u for u, s in state["uids"].items() if s.get("pending")]
     if rate_limited:
         print(
-            "\nRATE LIMITED (account-level throttle; a new cookie for the same "
-            "account does NOT reset it). Progress saved — the next --daily run "
-            "resumes automatically. Meanwhile you can add events manually with "
-            "--urls (anonymous, unaffected by the throttle).",
+            "\nRATE LIMITED. The resume cursor is saved, but do NOT simply re-run: "
+            "waiting does not clear the throttle, and a blind retry spends another "
+            "strike on the account. Try refreshing this account's cookie first — "
+            "that has worked before, but stops working after repeated hits, at "
+            "which point the account is spent and needs replacing. Weibo throttles "
+            "on request volume AND frequency, so consider a smaller --budget. "
+            "--urls (anonymous, no account) is unaffected.",
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -500,11 +524,13 @@ def main() -> None:
             run_tracker(date_arg, cookie)
     except RateLimited:
         print(
-            "\nRATE LIMITED. Weibo throttle is account-level and persists 6–24h\n"
-            "(a new cookie for the same account does NOT reset it).\n"
-            "Wait, then re-run with: python src/tracker.py [args] --merge\n"
-            "Do not retry now — additional requests extend the window.\n"
-            "To add events immediately, use --urls (anonymous fetch, unaffected).",
+            "\nRATE LIMITED. Waiting does NOT clear this — there is no cooldown window.\n"
+            "Try refreshing this account's cookie, then re-run with:\n"
+            "  python src/tracker.py [args] --merge\n"
+            "Cookie refresh has cleared it before, but stops working after repeated\n"
+            "hits — at that point the account is spent and needs replacing.\n"
+            "Do not retry blind: repeated hits are what burn the account.\n"
+            "To add events with no account at all, use --urls (anonymous, unaffected).",
             file=sys.stderr,
         )
         sys.exit(2)
