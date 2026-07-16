@@ -44,7 +44,7 @@ The canonical **format** spec — frontmatter, section structure, per-section co
 rules, inline `<font>` conventions, asset embedding — lives in
 `source/_drafts/template.md` (never rendered: `render_drafts: false`).
 Judgment rules — categories boundaries, tag selection and TAG-PROPOSAL protocol,
-style/no-inference rules — live in the `blog-write` skill. Edit those two files; do
+style/no-inference rules — live in the `blog-writer` agent (`.claude/agents/blog-writer.md`). Edit those two files; do
 not duplicate the spec here or it will drift.
 
 ## Landing-page Calendar
@@ -90,29 +90,29 @@ Implementation details (for debugging, not for manual reimplementation):
 - Incremental state (per-UID last-seen post ID + resume cursors) lives in `_pipeline/.tracker-state.json`
 - LLM filtering runs via the `claude` CLI subprocess (`--model claude-haiku-4-5-20251001`), using the local Claude Code subscription — no OpenRouter or external API key
 
-### Stage 2 — Research (skill: `blog-research`)
-Invoke the `blog-research` skill before dispatching any research subagent. Output to `_pipeline/research/YYMMDD-N-title.md` with sections: `## 事实`, `## 当事方`, `## 信息来源`.
+### Stage 2 — Research (agent: `blog-researcher`)
+Dispatched by the `blog-orchestrate` skill (Sonnet; tools/model pinned in `.claude/agents/blog-researcher.md`). Owns the fact base end-to-end: `mode: initial` establishes `_pipeline/research/YYMMDD-N-title.md` (sections `## 事实`, `## 当事方`, `## 信息来源`, tracked to today, blue-font latest development with explicit date); `mode: update` verifies review-disputed facts and edits the file in place with `补充/更正/查证失败（评审vN-问题K）` marks — never destructively.
 
-### Stage 3 — Write (skill: `blog-write`)
-Invoke the `blog-write` skill before dispatching any write subagent. Output to `_pipeline/draft/YYMMDD-N-title-vN.md`. The skill specifies required constraints — section names, URL format in 信息来源, per-section content — that must be embedded in every write-agent prompt.
+### Stage 3 — Write (agent: `blog-writer`)
+Dispatched by `blog-orchestrate` (Sonnet, **no web tools** — the research file is the sole fact source; a fact not in it does not go in the draft). Output to `_pipeline/draft/YYMMDD-N-title-vN.md`. If the fact base has gaps, the writer reports them instead of drafting. Format spec: `source/_drafts/template.md`; judgment rules live in `.claude/agents/blog-writer.md`.
 
-### Stage 4 — Review (skill: `blog-review`)
-Invoke the `blog-review` skill before dispatching any review subagent. Reviewer annotates suggestions as `<!-- [REVIEWER]: ... -->`. User annotates disagreements as `<!-- [USER]: ... -->` before revision.
+### Stage 4 — Review (agent: `blog-reviewer`)
+Dispatched by `blog-orchestrate` (Sonnet, independent web verification). Writes `_pipeline/review/YYMMDD-N-title-vN.md` in a strict format (line 1 `STATUS: CLEAN|ISSUES`; numbered `## 问题 K` items typed 事实/格式 with verbatim `原文` anchors and `处理：` lines), validated by `src/review_linter.py`. If any 事实 item exists, the revision cycle inserts an update-mode research pass before the writer revision. User annotates disagreements as `<!-- [USER]: ... -->` before revision.
 
 ### Stage 5 — Publish (`src/publisher.py`)
 Run:
 ```bash
 python src/publisher.py <YYMMDD> <N>
 ```
-The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm run deploy`. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
+The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm run deploy`. Pre-flight refuses to publish if the latest review has undispositioned or `未解决` items, or if the draft still contains `[USER]`/`[REVIEWER]`/`[WRITER-*]` comments. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 
 Each successful publish marks the event 待提取 in events.csv; run the `blog-curate` skill periodically to distill queued corrections into skill notes (general principles only — see the skill's exception gate).
 
-### On-demand — Monthly Summary (skill: `blog-summary`)
+### On-demand — Monthly Summary (skill: `blog-summarize`)
 
-**Not part of the regular pipeline** and never run by `blog-orchestrator` — invoked only on request: `/blog-summary YYMM` or natural language ("write summary of <month>", "write the May summary", "monthly summary"). If no month is given, ask which month — do not guess.
+**Not part of the regular pipeline** and never run by `blog-orchestrate` — invoked only on request: `/blog-summarize YYMM` or natural language ("write summary of <month>", "write the May summary", "monthly summary"). If no month is given, ask which month — do not guess.
 
-- **Stage A — generate:** dispatch a single **Sonnet** subagent (per the `blog-summary` skill) that computes category/tag statistics over the month's **published** posts and writes a neutral-descriptive prose summary draft to `_pipeline/summary/YYMM.md`. Human gate: review the draft before publishing.
+- **Stage A — generate:** dispatch a single **Sonnet** subagent (per the `blog-summarize` skill) that computes category/tag statistics over the month's **published** posts and writes a neutral-descriptive prose summary draft to `_pipeline/summary/YYMM.md`. Human gate: review the draft before publishing.
 - **Stage B — publish (after confirmation):** copy the draft to `source/summaries/YYMM.md`, then `pnpm build` + `pnpm run deploy`. The landing-page calendar then shows a `本月总结` link next to that month (see Landing-page Calendar). `publisher.py` is post-specific and is not used here.
 
 ## Environment Variables
@@ -140,11 +140,7 @@ Tracker LLM filtering uses the `claude` CLI subprocess (Haiku) on the local Clau
 
 Research files must be written entirely in **Simplified Chinese**. Do not write English prose — Chinese names/terms may appear but all explanatory text must be in Chinese.
 
-Use **Haiku** (`model: haiku`) for research subagents — fetch-search-extract tasks that don't require stylistic judgment.
-
-Use **Sonnet** (`model: sonnet`) for write and review subagents — these require nuanced judgment (e.g. no inference, feminist framing) that Haiku handles unreliably.
-
-Use **Sonnet** (`model: sonnet`) for the **`blog-summary`** generation subagent too — it reads and synthesizes the month's post bodies into neutral-descriptive prose, which Haiku handles unreliably.
+All pipeline subagents — research, write, review, summary — run on **Sonnet**; models and tool allowlists for research/write/review are pinned in `.claude/agents/` (the writer deliberately has no web tools). Research needs coverage judgment (the writer no longer backstops it), which Haiku handles unreliably. **Haiku** survives only in the tracker's LLM filtering (a `claude` CLI subprocess, not a subagent).
 
 When dispatching parallel subagents (research, write, or review), run in **batches of 2–3**, not all at once, so a quota hit loses only one batch rather than all work.
 
