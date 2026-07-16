@@ -1,11 +1,11 @@
 ---
-name: blog-summary
-description: On-demand monthly summary for the feminist blog — computes category/tag statistics and writes a neutral-descriptive prose summary page for one month, then publishes it (the landing-page calendar gains a 本月总结 link). Invoke for "/blog-summary YYMM", "write summary of <month>", "write the May summary", or "monthly summary". NOT part of the regular tracking→research→write→review→publish pipeline.
+name: blog-summarize
+description: On-demand monthly summary for the feminist blog — computes category/tag statistics and writes a neutral-descriptive prose summary page for one month, then publishes it (the landing-page calendar gains a 本月总结 link). Invoke for "/blog-summarize YYMM", "write summary of <month>", "write the May summary", or "monthly summary". NOT part of the regular tracking→research→write→review→publish pipeline.
 ---
 
 # Blog Summary Skill
 
-On-demand stage. **Not** part of the regular pipeline and **not** run by `blog-orchestrator`.
+On-demand stage. **Not** part of the regular pipeline and **not** run by `blog-orchestrate`.
 For one month it produces a summary **page** that combines deterministic category/tag
 statistics with a neutral-descriptive prose synthesis, publishes it to the Hexo site, and the
 landing-page calendar shows a `本月总结` link next to that month.

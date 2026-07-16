@@ -1,5 +1,5 @@
 ---
-name: blog-orchestrator
+name: blog-orchestrate
 description: Main orchestrator for the feminist blog pipeline — runs tracking, research, writing, reviewing, and publishing with human gates
 ---
 
@@ -91,9 +91,10 @@ For each approved (date, index, title) triple:
 
 ### 2. Research (subagent)
 
-Dispatch a `blog-research` subagent with **`model: haiku`** (mechanical fetch-search-extract). When processing multiple events, dispatch in **batches of 2–3** so a quota hit loses only one batch.
+Dispatch a `blog-researcher` subagent (tools and model are pinned in the agent definition). When processing multiple events, dispatch in **batches of 2–3** so a quota hit loses only one batch.
 
 ```
+mode: initial
 date: YYMMDD
 index: N
 title: <title>
@@ -101,15 +102,13 @@ brief: <one-sentence summary from events file>
 sources: <Weibo URLs found in events file for this event, if any>
 ```
 
-Wait for the research subagent to complete and confirm the research file exists at `_pipeline/research/YYMMDD-N-title.md`.
+Wait for the subagent to complete and confirm the research file exists at `_pipeline/research/YYMMDD-N-title.md`. Then STOP — the user reads the fact base before writing is approved.
 
 ### 3. Write (subagent)
 
-Dispatch a `blog-write` subagent in `initial` mode with **`model: sonnet`** (writing needs nuanced judgment — no inference, feminist framing — that Haiku handles unreliably). Dispatch in **batches of 2–3**.
+**Freshness check first:** `pipeline_cli.py status` flags in-flight events whose research file is ≥ 2 days old (`（research 已 N 天）`). If the event being dispatched is flagged, recommend an update-mode research refresh and let the user decide — never refresh automatically.
 
-The subagent prompt MUST begin by instructing it to read, in order:
-`.claude/skills/blog-write/SKILL.md`, `.claude/skills/blog-write/notes.md`,
-`source/_drafts/template.md` — before writing anything.
+Dispatch a `blog-writer` subagent (no web tools by design — the research file is its sole fact source). Dispatch in **batches of 2–3**.
 
 ```
 date: YYMMDD
@@ -119,7 +118,7 @@ mode: initial
 research_path: _pipeline/research/YYMMDD-N-title.md
 ```
 
-Wait for the write subagent to complete.
+Wait for the subagent to complete. If it reports fact-base gaps instead of writing a draft, relay the gaps to the user and (on approval) re-dispatch `blog-researcher` — do not ask the writer to improvise.
 
 ### 4a. Human gate — Annotate drafts
 
@@ -135,11 +134,7 @@ For each draft:
 
 **4b-i. Review (subagent):**
 
-Dispatch a `blog-review` subagent with **`model: sonnet`** (fact-checking and the no-inference rule need nuanced judgment):
-
-The subagent prompt MUST begin by instructing it to read, in order:
-`.claude/skills/blog-review/SKILL.md`, `.claude/skills/blog-review/notes.md`,
-`source/_drafts/template.md` — before starting the review.
+Dispatch a `blog-reviewer` subagent:
 
 ```
 date: YYMMDD
@@ -167,13 +162,29 @@ them directly, no subagent). Rejected: delete the proposal comment.
 
 **Do not auto-trigger revision even if STATUS: ISSUES.** The user may want to annotate the review with `<!-- [USER]: ... -->`, edit suggestions, or stop the loop.
 
-**4b-iii. If user approves, dispatch revision (subagent):**
+**4b-iii. If user approves — fact-base update first, then revision:**
 
-A revision is a `blog-write` subagent — use **`model: sonnet`**.
+Check whether the review disputes facts (deterministic, not judgment):
 
-The subagent prompt MUST begin by instructing it to read, in order:
-`.claude/skills/blog-write/SKILL.md`, `.claude/skills/blog-write/notes.md`,
-`source/_drafts/template.md` — before revising anything.
+```python
+from src.utils.pipeline import review_fact_items
+fact_items = review_fact_items(date_str, n)
+```
+
+If `fact_items` is non-empty, dispatch a `blog-researcher` subagent in update mode:
+
+```
+mode: update
+date: YYMMDD
+index: N
+title: <title>
+review_path: _pipeline/review/YYMMDD-N-title-vN.md
+draft_path: _pipeline/draft/YYMMDD-N-title-vN.md
+```
+
+Then **STOP** — report the marked fact-base changes (补充/更正/查证失败) and wait for the user to inspect them before approving the prose revision.
+
+On approval (or immediately, if `fact_items` was empty), dispatch a `blog-writer` subagent:
 
 ```
 date: YYMMDD
@@ -184,6 +195,8 @@ research_path: _pipeline/research/YYMMDD-N-title.md
 draft_path: _pipeline/draft/YYMMDD-N-title-vN.md   (current draft)
 review_path: _pipeline/review/YYMMDD-N-title-vN.md  (current review)
 ```
+
+If the writer reports 未解决 items, relay them to the user; the fix is another update-mode research dispatch, not writer improvisation.
 
 Return to step 4b-i.
 
@@ -223,5 +236,5 @@ LLM filtering in the tracker uses the `claude` CLI subprocess (Haiku), not an ex
 
 ## Notes
 
-- Subagent models and batch sizes are specified inline at each dispatch step above (Haiku for research, Sonnet for write/review, batches of 2–3).
+- Subagent tools and models are pinned in `.claude/agents/blog-researcher.md`, `blog-writer.md`, `blog-reviewer.md` (all Sonnet; the writer has no web tools). Dispatch in batches of 2–3.
 - After a full pipeline cycle, suggest running the `blog-curate` skill to maintain notes quality.
