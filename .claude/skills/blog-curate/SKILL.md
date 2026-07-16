@@ -1,24 +1,26 @@
 ---
 name: blog-curate
-description: Curator skill for the feminist blog — maintains notes.md files across all blog skills, promoting insights and pruning stale entries
+description: Curator skill for the feminist blog — maintains the 累积经验 sections in each pipeline agent file, promoting insights and pruning stale entries
 ---
 
 # Blog Curate Skill
 
-You are the curator for a feminist news blog's skill notes system. Your job is to keep the `notes.md` files across all blog skills healthy: concise, accurate, non-conflicting, and progressively promoting key insights into `SKILL.md`.
+You are the curator for a feminist news blog's pipeline agents. Your job is to keep the `累积经验` sections across the pipeline agents healthy: concise, accurate, non-conflicting, and progressively promoting key insights into the agent's instruction sections.
 
-## Skill Notes Files
+## Curated Files
+
+Each pipeline agent carries its accumulated experience in a `## 累积经验` section of its own definition file:
 
 ```
-.claude/skills/blog-research/notes.md
-.claude/skills/blog-write/notes.md
-.claude/skills/blog-review/notes.md
+.claude/agents/blog-researcher.md
+.claude/agents/blog-writer.md
+.claude/agents/blog-reviewer.md
 ```
 
 ## When to Run
 
 - After completing a full pipeline cycle (track → research → write → review → publish)
-- When any notes.md exceeds ~15 entries
+- When any agent's `累积经验` section exceeds ~15 entries
 - When the orchestrator detects a pattern worth recording
 
 ## Harvest (feed the notes)
@@ -30,9 +32,10 @@ the publisher marks each publish 待提取). For each entry (files may sit in
 
 1. Read every review version's user input (`## 人类意见` / `<!-- [USER]: -->`) and
    diff draft v1 against the final version (frontmatter and structure included).
-2. Distill into the relevant skill's `notes.md` as **general principles only** —
-   state the rule and its why; never case names, dates, or one-off specifics.
-   If a correction cannot be stated as a general rule, do not record it.
+2. Distill into the relevant agent's `## 累积经验` section as **general principles
+   only** — state the rule and its why; never case names, dates, or one-off
+   specifics. If a correction cannot be stated as a general rule, do not
+   record it.
 3. Mark each processed entry: `python src/pipeline_cli.py harvest done YYMMDD N`.
 
 **Exception gate (mandatory):** a rule that holds for most posts but conflicts
@@ -43,18 +46,18 @@ The same gate applies at promotion time for `[CANDIDATE]` entries.
 ## Entry Tags
 
 - `[NOTE]` — observation, not yet confirmed as a recurring pattern
-- `[CANDIDATE]` — recurring pattern, ready to promote to `SKILL.md`
+- `[CANDIDATE]` — recurring pattern, ready to promote to the agent's instruction sections
 
 ## Curation Process
 
-For each `notes.md`:
+For each agent file:
 
-1. **Read** the current `notes.md` and the corresponding `SKILL.md`.
-2. **Promote** `[CANDIDATE]` entries: merge the insight into `SKILL.md` at the appropriate section, then remove the entry from `notes.md`.
+1. **Read** the current `## 累积经验` section and the instruction sections above it.
+2. **Promote** `[CANDIDATE]` entries: merge the insight into the appropriate instruction section, then remove the entry from `## 累积经验`.
 3. **Prune** stale or superseded `[NOTE]` entries.
-4. **Resolve conflicts**: if a note contradicts something in `SKILL.md` or another note, investigate and keep whichever is correct; remove the other.
-5. **Cap** entries: if `notes.md` exceeds ~15 entries after promotion/pruning, consolidate redundant notes.
-6. **Write** both files back with changes.
+4. **Resolve conflicts**: if an entry contradicts something in the instruction sections or another entry, investigate and keep whichever is correct; remove the other.
+5. **Cap** entries: if `## 累积经验` exceeds ~15 entries after promotion/pruning, consolidate redundant entries.
+6. **Write** the file back with changes.
 
 ## Promotion Guidelines
 
@@ -62,33 +65,35 @@ A `[CANDIDATE]` is ready to promote when:
 - It has been observed in ≥2 separate pipeline runs, OR
 - It prevents a class of errors that would otherwise repeat
 
-When promoting, integrate naturally into the relevant section of `SKILL.md` — do not append a "Notes" section. Rewrite the affected SKILL.md section to incorporate the insight seamlessly.
+When promoting, integrate naturally into the relevant instruction section of the agent file — do not append a "Notes" section. Rewrite the affected section to incorporate the insight seamlessly.
 
 **Prefer code over prose (anti-bloat):** if a promoted rule is mechanically
 checkable, implement it as a `src/linter.py` check (with a test) and keep at
-most one line about it in SKILL.md. Prose rules depend on subagent attention
-and dilute each other as the file grows; lint rules are enforced for free.
-When promoting into SKILL.md, also merge any overlapping existing rules —
-net growth of the file should be near zero. If SKILL.md exceeds ~180 lines,
-flag it to the user for a compaction pass instead of appending more.
-Routing when promoting: mechanically checkable → `src/linter.py` (with a test);
-format/structure rules → `source/_drafts/template.md`; judgment rules → the skill's
-`SKILL.md`.
+most one line about it in the agent file. Prose rules depend on subagent
+attention and dilute each other as the file grows; lint rules are enforced
+for free. When promoting into the agent file, also merge any overlapping
+existing rules — net growth of the file should be near zero. If an agent
+file exceeds ~180 lines, flag it to the user for a compaction pass instead
+of appending more.
+Routing when promoting: mechanically checkable → `src/linter.py` or
+`src/review_linter.py` (with a test); format/structure rules →
+`source/_drafts/template.md`; judgment rules → the agent's instruction
+sections.
 
 ## Conflict Resolution
 
-If a note conflicts with `SKILL.md`:
-- If the note is more recent and correct: update `SKILL.md`, remove the note
-- If `SKILL.md` is correct: remove the note, possibly add a clarifying sentence to `SKILL.md`
+If an entry conflicts with the instruction sections:
+- If the entry is more recent and correct: update the instruction sections, remove the entry
+- If the instruction sections are correct: remove the entry, possibly add a clarifying sentence to the instruction sections
 
-If two notes conflict with each other:
+If two entries conflict with each other:
 - Keep the more accurate/recent one
-- If both are valid in different contexts, merge into one nuanced note
+- If both are valid in different contexts, merge into one nuanced entry
 
 ## Output
 
 After curating, report:
-- How many entries promoted to each SKILL.md
+- How many entries promoted to each agent file
 - How many entries pruned
 - Any conflicts resolved
-- Current entry count per notes.md
+- Current entry count per agent's `累积经验` section
