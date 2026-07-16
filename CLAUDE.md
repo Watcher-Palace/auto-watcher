@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A feminist news blog (Hexo, deployed to GitHub Pages) with a semi-automated pipeline: track Weibo events → research → write → review → publish. Research, writing, and review stages are done by Claude Code directly using WebSearch/WebFetch — not LLM APIs (Chinese models censor feminist content; use Claude Code directly).
+A feminist news blog (Hexo, deployed to GitHub Pages) with a semi-automated pipeline: track Weibo events → research → write → review → publish. Research, writing, and review stages are done by Claude Code subagents; the research and review agents use WebSearch/WebFetch, while the writer agent has no web access. None of this runs through external LLM APIs (Chinese models censor feminist content; use Claude Code directly).
 
 ## Blog Commands
 
@@ -106,7 +106,7 @@ python src/publisher.py <YYMMDD> <N>
 ```
 The script picks the latest draft for that event, copies it to `source/_posts/YYMMDD.md`, moves assets from `_pipeline/draft/YYMMDD-N-assets/`, then runs `pnpm build` + `pnpm run deploy`. Pre-flight refuses to publish if the latest review has undispositioned or `未解决` items, or if the draft still contains `[USER]`/`[REVIEWER]`/`[WRITER-*]` comments. The calendar regenerates automatically from post frontmatter (see Landing-page Calendar). Do not execute these steps manually.
 
-Each successful publish marks the event 待提取 in events.csv; run the `blog-curate` skill periodically to distill queued corrections into skill notes (general principles only — see the skill's exception gate).
+Each successful publish marks the event 待提取 in events.csv; run the `blog-curate` skill periodically to distill queued corrections into the agents' 累积经验 sections (general principles only — see the skill's exception gate).
 
 ### On-demand — Monthly Summary (skill: `blog-summarize`)
 
@@ -150,4 +150,4 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
 
 ## Keeping Docs Accurate (anti-drift)
 
-When a learned correction contradicts this file or a `SKILL.md`, fix that file directly — do not park the correction in a memory file as a permanent shadow copy. Auto-memory is for facts *not yet* in the canonical docs; once a fact lands here or in a skill, the memory should be deleted. This is the rule that keeps CLAUDE.md and the skills from drifting out of sync with reality (e.g. venv path, tracker LLM backend, script flags).
+When a learned correction contradicts this file, a `SKILL.md`, or an agent file (`.claude/agents/*.md`), fix that file directly — do not park the correction in a memory file as a permanent shadow copy. Auto-memory is for facts *not yet* in the canonical docs; once a fact lands here, in a skill, or in an agent file, the memory should be deleted. This is the rule that keeps CLAUDE.md, the skills, and the agents from drifting out of sync with reality (e.g. venv path, tracker LLM backend, script flags).

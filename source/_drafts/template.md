@@ -1,7 +1,7 @@
 ---
 title: （文章标题）
 date: 2026-01-01   # 最新事实性进展的发生日（YYYY-MM-DD，禁止时间成分；不是报道日/搜索日）
-categories: B      # 单字母 S/A/B/C/D/N；判级边界见 blog-write skill
+categories: B      # 单字母 S/A/B/C/D/N；判级边界见 blog-writer agent（.claude/agents/blog-writer.md）
 tags:              # 只用 src/tags.yml 已注册标签，且必须真正贴切（禁止凑数）
 - 犯罪
 # 需要新标签时不要自造：在 frontmatter 之后写

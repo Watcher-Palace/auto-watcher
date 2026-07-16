@@ -3,7 +3,7 @@ name: blog-summarize
 description: On-demand monthly summary for the feminist blog — computes category/tag statistics and writes a neutral-descriptive prose summary page for one month, then publishes it (the landing-page calendar gains a 本月总结 link). Invoke for "/blog-summarize YYMM", "write summary of <month>", "write the May summary", or "monthly summary". NOT part of the regular tracking→research→write→review→publish pipeline.
 ---
 
-# Blog Summary Skill
+# Blog Summarize Skill
 
 On-demand stage. **Not** part of the regular pipeline and **not** run by `blog-orchestrate`.
 For one month it produces a summary **page** that combines deterministic category/tag
@@ -193,7 +193,7 @@ layout: page
 - <YYYY-MM-DD> 《<标题>》 — PING/TODO：<未决事项>
 ```
 
-含义 column values (canonical, from the `blog-write` skill):
+含义 column values (canonical, from the `blog-writer` agent, `.claude/agents/blog-writer.md`):
 S 政府/国家层面政策或法律 · A 刑事案件；影响极为恶劣的舆论事件 · B 民事案件；影响较大的舆论事件 ·
 C 非官方组织；影响较小的舆论事件 · D 个人行为 · N 中立事件/等待后续
 

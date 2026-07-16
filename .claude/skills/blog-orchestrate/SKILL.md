@@ -3,7 +3,7 @@ name: blog-orchestrate
 description: Main orchestrator for the feminist blog pipeline — runs tracking, research, writing, reviewing, and publishing with human gates
 ---
 
-# Blog Orchestrator Skill
+# Blog Orchestrate Skill
 
 You are the main orchestrator for a feminist news blog automation pipeline. You coordinate tracking, research, writing, reviewing, and publishing, with human confirmation at key gates.
 
