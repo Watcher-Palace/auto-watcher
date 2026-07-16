@@ -9,6 +9,7 @@ from src.tracker import (
     bucket_posts_by_date, fetch_weibo_posts_paginated, CN_TZ,
     count_existing_events, append_events_to_file,
 )
+from src.utils.web import WebClient
 
 
 SAMPLE_CARDS = [
@@ -141,7 +142,7 @@ def test_fetch_paginated_stops_at_cutoff():
         return pages[idx] if idx < len(pages) else []
     with patch("src.tracker.fetch_weibo_posts", side_effect=fake_fetch), \
          patch("src.tracker.time.sleep"):
-        result = fetch_weibo_posts_paginated(MagicMock(), "u", cutoff, max_pages=5)
+        result, _ = fetch_weibo_posts_paginated(MagicMock(), "u", cutoff, max_pages=5)
     assert call_count["n"] == 2
     assert len(result) == 2
 
@@ -152,8 +153,63 @@ def test_fetch_paginated_dedupes_by_id():
                  "created_dt": datetime(2026, 5, 8, tzinfo=CN_TZ), "is_top": False}
     with patch("src.tracker.fetch_weibo_posts", return_value=[same_post]), \
          patch("src.tracker.time.sleep"):
-        result = fetch_weibo_posts_paginated(MagicMock(), "u", datetime(2020, 1, 1, tzinfo=CN_TZ), max_pages=5)
+        result, _ = fetch_weibo_posts_paginated(MagicMock(), "u", datetime(2020, 1, 1, tzinfo=CN_TZ), max_pages=5)
     assert len(result) == 1
+
+
+def _mk_post(pid, dt):
+    return {"id": pid, "url": f"u/{pid}", "text": "", "retweet_text": "",
+            "created_dt": dt, "is_top": False}
+
+
+def test_fetch_paginated_complete_when_cutoff_crossed():
+    """Crossing the cutoff attests full coverage of the range."""
+    pages = [[_mk_post("1", datetime(2026, 5, 8, tzinfo=CN_TZ))],
+             [_mk_post("2", datetime(2026, 5, 4, tzinfo=CN_TZ))]]
+    def fake_fetch(web, uid, page=1):
+        return pages[page - 1] if page <= len(pages) else []
+    with patch("src.tracker.fetch_weibo_posts", side_effect=fake_fetch), \
+         patch("src.tracker.time.sleep"):
+        _, complete = fetch_weibo_posts_paginated(
+            MagicMock(), "u", datetime(2026, 5, 6, tzinfo=CN_TZ), max_pages=5)
+    assert complete is True
+
+
+def test_fetch_paginated_incomplete_at_page_cap():
+    """Exhausting max_pages before the cutoff means unfetched posts remain."""
+    def fake_fetch(web, uid, page=1):
+        return [_mk_post(str(page), datetime(2026, 5, 8, 12, page, tzinfo=CN_TZ))]
+    with patch("src.tracker.fetch_weibo_posts", side_effect=fake_fetch), \
+         patch("src.tracker.time.sleep"):
+        posts, complete = fetch_weibo_posts_paginated(
+            MagicMock(), "u", datetime(2026, 5, 1, tzinfo=CN_TZ), max_pages=3)
+    assert len(posts) == 3
+    assert complete is False
+
+
+def test_fetch_paginated_complete_when_feed_ends():
+    """An empty page means the feed has no older posts — coverage complete."""
+    pages = [[_mk_post("1", datetime(2026, 5, 8, tzinfo=CN_TZ))], []]
+    def fake_fetch(web, uid, page=1):
+        return pages[page - 1] if page <= len(pages) else []
+    with patch("src.tracker.fetch_weibo_posts", side_effect=fake_fetch), \
+         patch("src.tracker.time.sleep"):
+        _, complete = fetch_weibo_posts_paginated(
+            MagicMock(), "u", datetime(2026, 5, 1, tzinfo=CN_TZ), max_pages=5)
+    assert complete is True
+
+
+def test_fetch_paginated_incomplete_on_fetch_error():
+    """A mid-walk fetch error leaves the rest of the range unattested."""
+    def fake_fetch(web, uid, page=1):
+        if page == 2:
+            raise WebClient.FetchError("boom")
+        return [_mk_post("1", datetime(2026, 5, 8, tzinfo=CN_TZ))]
+    with patch("src.tracker.fetch_weibo_posts", side_effect=fake_fetch), \
+         patch("src.tracker.time.sleep"):
+        _, complete = fetch_weibo_posts_paginated(
+            MagicMock(), "u", datetime(2026, 5, 1, tzinfo=CN_TZ), max_pages=5)
+    assert complete is False
 
 
 def test_run_tracker_writes_events_file(tmp_path, monkeypatch):
@@ -240,7 +296,7 @@ def test_run_tracker_range_uids_override(tmp_path, monkeypatch):
     called_uids = []
     def fake_paginate(web, uid, cutoff, max_pages=20):
         called_uids.append(uid)
-        return []
+        return [], True
     with patch("src.tracker.fetch_weibo_posts_paginated", side_effect=fake_paginate), \
          patch("src.tracker.filter_feminist_events", return_value=[]), \
          patch("src.tracker.time.sleep"):
@@ -259,7 +315,7 @@ def test_run_tracker_range_merge_appends(tmp_path, monkeypatch):
                    encoding="utf-8")
     post = {"id": "x", "url": "u", "text": "", "retweet_text": "",
             "created_dt": datetime(2026, 5, 7, 12, tzinfo=CN_TZ), "is_top": False}
-    with patch("src.tracker.fetch_weibo_posts_paginated", return_value=[post]), \
+    with patch("src.tracker.fetch_weibo_posts_paginated", return_value=([post], True)), \
          patch("src.tracker.filter_feminist_events",
                return_value=[{"title": "新增事件", "brief": "y", "sources": []}]), \
          patch("src.tracker.time.sleep"):
@@ -277,7 +333,7 @@ def test_run_tracker_range_inter_uid_delay(tmp_path, monkeypatch):
     (tmp_path / "_pipeline" / "events").mkdir(parents=True)
     sleeps = []
     def fake_sleep(s): sleeps.append(s)
-    with patch("src.tracker.fetch_weibo_posts_paginated", return_value=[]), \
+    with patch("src.tracker.fetch_weibo_posts_paginated", return_value=([], True)), \
          patch("src.tracker.filter_feminist_events", return_value=[]), \
          patch("src.tracker.time.sleep", side_effect=fake_sleep):
         from src.tracker import run_tracker_range, INTER_UID_DELAY_SEC
@@ -308,7 +364,7 @@ def test_run_tracker_range_writes_per_date_files(tmp_path, monkeypatch):
         ],
     }
     def fake_paginate(web, uid, cutoff, max_pages=20):
-        return posts_for_uid[uid]
+        return posts_for_uid[uid], True
     def fake_filter(posts):
         return [{"title": f"event-{len(posts)}", "brief": "x", "sources": []}]
 
@@ -326,6 +382,75 @@ def test_run_tracker_range_writes_per_date_files(tmp_path, monkeypatch):
     from src.utils import ledger
     assert ledger.get_row("260507", 1, pipeline_dir=tmp_path / "_pipeline")["标题"] == "event-2"
     assert ledger.get_row("260506", 1, pipeline_dir=tmp_path / "_pipeline")["标题"] == "event-1"
+
+
+def test_range_truncated_does_not_mark_unreached_dates(tmp_path, monkeypatch):
+    """A walk cut off at the page cap must not record 无事件 for dates it
+    never reached — only dates strictly newer than the oldest fetched post
+    are fully covered."""
+    import src.utils.pipeline as pipeline_mod
+    from src.utils import ledger
+    monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
+    (tmp_path / "_pipeline" / "events").mkdir(parents=True)
+    posts = [_mk_post("a", datetime(2026, 5, 7, 10, tzinfo=CN_TZ)),
+             _mk_post("b", datetime(2026, 5, 6, 10, tzinfo=CN_TZ))]
+    def fake_filter(bucket):
+        return [{"title": f"event-{bucket[0]['id']}", "brief": "x", "sources": []}]
+    with patch("src.tracker.fetch_weibo_posts_paginated", return_value=(posts, False)), \
+         patch("src.tracker.filter_feminist_events", side_effect=fake_filter), \
+         patch("src.tracker.time.sleep"):
+        from src.tracker import run_tracker_range
+        run_tracker_range(date(2026, 5, 7), days=3, cookie="c", uids=["u1"])
+    pipe = tmp_path / "_pipeline"
+    # 260507 fully covered → events written
+    assert ledger.get_row("260507", 1, pipeline_dir=pipe)["标题"] == "event-a"
+    # 260506 partial (oldest fetched post's own day) → its events still land
+    assert ledger.get_row("260506", 1, pipeline_dir=pipe)["标题"] == "event-b"
+    # 260505 never reached → no row of any kind, stays untracked
+    assert not any(r["收录日期"] == "260505" for r in ledger.read_rows(pipeline_dir=pipe))
+
+
+def test_range_complete_marks_no_events(tmp_path, monkeypatch):
+    """When the walk crossed the cutoff, an empty covered date IS 无事件."""
+    import src.utils.pipeline as pipeline_mod
+    from src.utils import ledger
+    monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
+    (tmp_path / "_pipeline" / "events").mkdir(parents=True)
+    posts = [_mk_post("a", datetime(2026, 5, 7, 10, tzinfo=CN_TZ))]
+    with patch("src.tracker.fetch_weibo_posts_paginated", return_value=(posts, True)), \
+         patch("src.tracker.filter_feminist_events",
+               return_value=[{"title": "T", "brief": "x", "sources": []}]), \
+         patch("src.tracker.time.sleep"):
+        from src.tracker import run_tracker_range
+        run_tracker_range(date(2026, 5, 7), days=2, cookie="c", uids=["u1"])
+    pipe = tmp_path / "_pipeline"
+    rows = {r["收录日期"]: r for r in ledger.read_rows(pipeline_dir=pipe)}
+    assert rows["260506"]["状态"] == "无事件"
+
+
+def test_range_rate_limited_writes_partials_but_no_no_events(tmp_path, monkeypatch):
+    """A rate-limited run has whole UIDs unfetched: fetched events still land,
+    but no date may be marked 无事件."""
+    import src.utils.pipeline as pipeline_mod
+    from src.utils import ledger
+    from src.tracker import RateLimited
+    monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
+    (tmp_path / "_pipeline" / "events").mkdir(parents=True)
+    def fake_paginate(web, uid, cutoff, max_pages=20):
+        if uid == "b":
+            raise RateLimited()
+        return [_mk_post("a", datetime(2026, 5, 7, 10, tzinfo=CN_TZ))], True
+    with patch("src.tracker.fetch_weibo_posts_paginated", side_effect=fake_paginate), \
+         patch("src.tracker.filter_feminist_events",
+               return_value=[{"title": "T", "brief": "x", "sources": []}]), \
+         patch("src.tracker.time.sleep"):
+        from src.tracker import run_tracker_range
+        with pytest.raises(SystemExit) as ei:
+            run_tracker_range(date(2026, 5, 7), days=2, cookie="c", uids=["a", "b"])
+    assert ei.value.code == 2
+    pipe = tmp_path / "_pipeline"
+    assert ledger.get_row("260507", 1, pipeline_dir=pipe)["标题"] == "T"
+    assert not any(r["状态"] == "无事件" for r in ledger.read_rows(pipeline_dir=pipe))
 
 
 def test_write_events_file_records_ledger_rows(tmp_path, monkeypatch):
@@ -367,6 +492,18 @@ def test_write_events_file_offsets_by_existing_ledger_rows(tmp_path, monkeypatch
     row = ledger.get_row("990104", 2, pipeline_dir=tmp_path)
     assert row is not None and row["标题"] == "新事件"
     assert "## 2." in out.read_text(encoding="utf-8")
+
+
+def test_append_events_empty_and_missing_file_records_nothing(tmp_path, monkeypatch):
+    """Append callers (daily buckets, URL mode) hold partial samples — an
+    empty result must NOT become a 无事件 row (that asserts a full-day check).
+    The date must stay untracked."""
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
+    from src.utils import ledger
+    out = append_events_to_file("990105", [])
+    assert out is None
+    assert not (tmp_path / "events" / "990105.md").exists()
+    assert not any(r["收录日期"] == "990105" for r in ledger.read_rows(pipeline_dir=tmp_path))
 
 
 def test_append_events_continues_ledger_index(tmp_path, monkeypatch):

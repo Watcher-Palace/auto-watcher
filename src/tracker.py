@@ -93,10 +93,18 @@ def fetch_weibo_posts_paginated(
     uid: str,
     cutoff: datetime,
     max_pages: int = PAGINATION_MAX_PAGES,
-) -> list[dict]:
-    """Walk pages until the oldest non-pinned post is older than cutoff."""
+) -> tuple[list[dict], bool]:
+    """Walk pages until the oldest non-pinned post is older than cutoff.
+
+    Returns (posts, complete). complete=False means the walk stopped short of
+    the cutoff (page cap exhausted, or a fetch error) — posts older than the
+    oldest one returned may exist unfetched, so callers must not treat the
+    uncovered dates as "checked, no events". An empty/overlapping page counts
+    as complete: the feed simply has nothing older.
+    """
     all_posts: list[dict] = []
     seen_ids: set[str] = set()
+    complete = False
     for page in range(1, max_pages + 1):
         try:
             posts = fetch_weibo_posts(web, uid, page=page)
@@ -104,9 +112,11 @@ def fetch_weibo_posts_paginated(
             print(f"  uid {uid} page {page}: fetch error {e}")
             break
         if not posts:
+            complete = True
             break
         new_posts = [p for p in posts if p["id"] and p["id"] not in seen_ids]
         if not new_posts:
+            complete = True
             break
         for p in new_posts:
             seen_ids.add(p["id"])
@@ -114,10 +124,11 @@ def fetch_weibo_posts_paginated(
         # Find oldest non-pinned post on this page
         dated = [p["created_dt"] for p in new_posts if p["created_dt"] and not p["is_top"]]
         if dated and min(dated) < cutoff:
+            complete = True
             break
         if page < max_pages:
             time.sleep(random.uniform(PAGINATION_DELAY_SEC, PAGINATION_DELAY_SEC * 3))
-    return all_posts
+    return all_posts, complete
 
 
 def bucket_posts_by_date(posts: list[dict], target_dates: list[str]) -> dict[str, list[dict]]:
@@ -239,13 +250,19 @@ def count_existing_events(path: Path) -> int:
 
 def append_events_to_file(date_str: str, new_events: list[dict]) -> Path | None:
     """Append events to an existing file, continuing the index from where it left off.
-    Creates the file if it doesn't exist."""
+    Creates the file if it doesn't exist.
+
+    Never records 无事件: append callers (--daily buckets, --urls, --merge)
+    hold partial samples of a day, which cannot attest "checked, no events".
+    An empty append onto a missing file is a no-op and the date stays
+    untracked. (Range mode marks 无事件 itself, gated on attested coverage.)
+    """
     out = events_path(date_str)
+    if not new_events:
+        return out if out.exists() else None
     out.parent.mkdir(parents=True, exist_ok=True)
     if not out.exists():
         return write_events_file(date_str, new_events)
-    if not new_events:
-        return out
     offset = max(count_existing_events(out), ledger.max_index(date_str))
     numbered = [dict(e, index=offset + i + 1) for i, e in enumerate(new_events)]
     # format_events re-numbers from 1, so we build the appended block manually
@@ -302,27 +319,54 @@ def run_tracker_range(
     web = WebClient(cookie=cookie)
     all_posts = []
     skipped_uids: list[str] = []
+    # Earliest date every fetched UID fully covered. A 无事件 row asserts
+    # "checked this day, found nothing", so it may only be written for dates
+    # >= covered_from. None = nothing attested (rate-limited / truncated with
+    # no datable posts).
+    covered_from: date | None = cutoff_date
     for i, uid in enumerate(uids):
         if i > 0:
             time.sleep(random.uniform(INTER_UID_DELAY_SEC, INTER_UID_DELAY_SEC * 3))
         print(f"Paginating uid {uid} until {cutoff.date()} ...")
         try:
-            posts = fetch_weibo_posts_paginated(web, uid, cutoff)
+            posts, complete = fetch_weibo_posts_paginated(web, uid, cutoff)
         except RateLimited:
             skipped_uids = uids[i:]
+            covered_from = None
             print(f"  uid {uid}: RATE LIMITED — writing partial results and stopping", file=sys.stderr)
             break
-        print(f"  uid {uid}: {len(posts)} posts collected")
         all_posts.extend(posts)
+        if complete:
+            print(f"  uid {uid}: {len(posts)} posts collected")
+            continue
+        # Truncated walk: only dates strictly newer than the oldest fetched
+        # post are fully covered (the oldest post's own day may have older
+        # unfetched posts).
+        dated = [p["created_dt"].date() for p in posts if p["created_dt"] and not p["is_top"]]
+        if dated:
+            uid_covered_from = min(dated) + timedelta(days=1)
+            if covered_from is not None:
+                covered_from = max(covered_from, uid_covered_from)
+            print(f"  uid {uid}: {len(posts)} posts collected（截断：未走到 {cutoff.date()}，"
+                  f"完整覆盖仅到 {uid_covered_from}）")
+        else:
+            covered_from = None
+            print(f"  uid {uid}: 截断且无带日期帖子，本轮不标记任何无事件", file=sys.stderr)
     buckets = bucket_posts_by_date(all_posts, target_dates)
     print(f"Total posts: {len(all_posts)}; bucketed dates: {sorted(buckets.keys())}")
     writer = append_events_to_file if merge else write_events_file
     for date_str in sorted(target_dates):
         bucket = buckets.get(date_str, [])
         events = filter_feminist_events(bucket) if bucket else []
-        out = writer(date_str, events)
-        action = "appended" if merge else "wrote"
-        print(f"  {date_str}: {len(bucket)} posts → {len(events)} events {action} → {out or '（无事件行）'}")
+        if events:
+            out = writer(date_str, events)
+            action = "appended" if merge else "wrote"
+            print(f"  {date_str}: {len(bucket)} posts → {len(events)} events {action} → {out}")
+        elif covered_from is not None and _parse_yymmdd(date_str) >= covered_from:
+            ledger.record_no_events(date_str)
+            print(f"  {date_str}: {len(bucket)} posts → 0 events →（无事件行）")
+        else:
+            print(f"  {date_str}: 覆盖不完整，跳过（未标记无事件，仍显示为未追踪）")
     if skipped_uids:
         skipped = ",".join(skipped_uids)
         print(
@@ -361,7 +405,7 @@ def run_tracker_urls(urls: list[str], date_str: str) -> None:
             print(f"  skip {u}: {e}", file=sys.stderr)
     events = filter_feminist_events(posts) if posts else []
     out = append_events_to_file(date_str, events)
-    print(f"{date_str}: {len(posts)} posts → {len(events)} events appended → {out or '（无事件行）'}")
+    print(f"{date_str}: {len(posts)} posts → {len(events)} events appended → {out or '（0 收录，未标记无事件）'}")
 
 
 DAILY_BUDGET = 40
@@ -458,7 +502,7 @@ def run_tracker_daily(
     for date_str in sorted(buckets):
         events = filter_feminist_events(buckets[date_str])
         out = append_events_to_file(date_str, events)
-        print(f"  {date_str}: {len(buckets[date_str])} posts → {len(events)} events appended → {out or '（无事件行）'}")
+        print(f"  {date_str}: {len(buckets[date_str])} posts → {len(events)} events appended → {out or '（0 收录，未标记无事件）'}")
     save_state(state, sp)
 
     pending_uids = [u for u, s in state["uids"].items() if s.get("pending")]

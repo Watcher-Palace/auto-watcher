@@ -116,6 +116,26 @@ def test_daily_pending_uids_fetched_first(env, monkeypatch):
     assert order[0] == "222"
 
 
+def test_daily_filtered_to_zero_does_not_mark_no_events(env, monkeypatch):
+    """Regression: a date whose sampled posts all get filtered out must NOT
+    be recorded 无事件 — --daily holds page tails, not full-day coverage
+    (real incident: 260710 marked 无事件 off a single overshoot post)."""
+    from src.utils import ledger
+    monkeypatch.setattr("src.tracker.filter_feminist_events", lambda posts: [])
+    pages = {1: [_post("300", 2)]}
+
+    def fake_fetch(web, uid, page=1):
+        return pages.get(page, [])
+
+    monkeypatch.setattr("src.tracker.fetch_weibo_posts", fake_fetch)
+    sp = env / ".tracker-state.json"
+
+    run_tracker_daily(cookie="c", budget=10, state_path=sp, today=date(2026, 7, 3))
+
+    assert not (env / "events" / "260702.md").exists()
+    assert not any(r["收录日期"] == "260702" for r in ledger.read_rows(pipeline_dir=env))
+
+
 def test_daily_first_run_walks_back_to_cutoff(env, monkeypatch):
     # no prior state: walk until posts older than DAILY_FIRST_RUN_DAYS
     pages = {
