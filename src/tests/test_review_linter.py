@@ -58,6 +58,11 @@ def test_validate_format_clean_with_items():
     assert validate_format(bad) != []
 
 
+def test_validate_format_issues_with_zero_items():
+    bad = "STATUS: ISSUES\n"
+    assert validate_format(bad) != []
+
+
 def test_validate_format_gap_in_numbering():
     bad = VALID.replace("## 问题 2", "## 问题 3")
     assert any("问题" in v for v in validate_format(bad))
@@ -151,3 +156,29 @@ def test_cli_exit_codes(tmp_path):
         [sys.executable, "src/review_linter.py", str(rp), "--check-dispositions"],
         capture_output=True, text=True)
     assert un.returncode == 2
+
+
+def test_cli_default_mode_requires_review_dir_bare_filename(tmp_path):
+    """回归：裸文件名（路径中无 /review/ 段）此前会让 draft == review_path 本身，
+    锚点检查对自身逐字通过，静默放行。修复后必须报违规而非 exit 0。"""
+    script = Path(__file__).parent.parent.parent / "src" / "review_linter.py"
+    rp = tmp_path / "260701-1-测试-v1.md"  # not nested under a review/ dir
+    rp.write_text(VALID, encoding="utf-8")
+    bad = subprocess.run(
+        [sys.executable, str(script), rp.name],
+        capture_output=True, text=True, cwd=tmp_path)
+    assert bad.returncode == 1, bad.stdout + bad.stderr
+    assert "review/" in "".join(bad.stdout)
+
+
+def test_cli_default_mode_absolute_review_path_still_passes(tmp_path):
+    """既有绝对路径调用（review_path.parent.name == "review"）修复后仍应正常通过。"""
+    review_dir = tmp_path / "review"
+    draft_dir = tmp_path / "draft"
+    review_dir.mkdir(); draft_dir.mkdir()
+    rp = review_dir / "260701-1-测试-v1.md"
+    (draft_dir / "260701-1-测试-v1.md").write_text(DRAFT, encoding="utf-8")
+    rp.write_text(VALID, encoding="utf-8")
+    ok = subprocess.run([sys.executable, "src/review_linter.py", str(rp)],
+                        capture_output=True, text=True)
+    assert ok.returncode == 0, ok.stdout + ok.stderr

@@ -34,9 +34,11 @@ def latest_draft(date_str: str, n: int) -> tuple[Path, int] | None:
     d = PIPELINE / "draft"
     if not d.exists():
         return None
-    matches = sorted(d.glob(f"{date_str}-{n}-*-v*.md"))
-    if not matches:
+    candidates = [p for p in d.glob(f"{date_str}-{n}-*-v*.md")
+                  if p.stem.rsplit("-v", 1)[-1].isdigit()]
+    if not candidates:
         return None
+    matches = sorted(candidates, key=lambda p: int(p.stem.rsplit("-v", 1)[-1]))
     p = matches[-1]
     v = int(p.stem.rsplit("-v", 1)[-1])
     return p, v
@@ -59,9 +61,11 @@ def latest_review(date_str: str, n: int) -> tuple[Path, int] | None:
     d = PIPELINE / "review"
     if not d.exists():
         return None
-    matches = sorted(d.glob(f"{date_str}-{n}-*-v*.md"))
-    if not matches:
+    candidates = [p for p in d.glob(f"{date_str}-{n}-*-v*.md")
+                  if p.stem.rsplit("-v", 1)[-1].isdigit()]
+    if not candidates:
         return None
+    matches = sorted(candidates, key=lambda p: int(p.stem.rsplit("-v", 1)[-1]))
     p = matches[-1]
     v = int(p.stem.rsplit("-v", 1)[-1])
     return p, v

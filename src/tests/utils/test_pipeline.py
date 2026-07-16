@@ -57,6 +57,18 @@ def test_latest_draft_returns_highest_version(tmp_path, monkeypatch):
     assert "v2" in path.name
 
 
+def test_latest_draft_sorts_numerically_not_lexicographically(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path / "_pipeline")
+    d = tmp_path / "_pipeline" / "draft"
+    d.mkdir(parents=True)
+    (d / "260325-1-测试-v1.md").touch()
+    (d / "260325-1-测试-v2.md").touch()
+    (d / "260325-1-测试-v10.md").touch()
+    path, v = latest_draft("260325", 1)
+    assert v == 10
+    assert "v10" in path.name
+
+
 def test_review_path():
     p = review_path("260325", 1, "兰州铁路 女性事件", 2)
     assert p.name == "260325-1-兰州铁路 女性事件-v2.md"

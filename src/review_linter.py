@@ -62,6 +62,8 @@ def validate_format(text: str) -> list[str]:
         v.append("第 1 行必须是 STATUS: CLEAN 或 STATUS: ISSUES")
     if r.status == "CLEAN" and r.items:
         v.append("STATUS: CLEAN 不得包含 问题 项")
+    if r.status == "ISSUES" and not r.items:
+        v.append("STATUS: ISSUES 必须至少包含一个 问题 项")
     nums = [it.num for it in r.items]
     if nums != list(range(1, len(nums) + 1)):
         v.append(f"问题编号必须从 1 连续递增，实际为 {nums}")
@@ -135,11 +137,15 @@ def main(argv: list[str]) -> int:
         version = int(review_path.stem.rsplit("-v", 1)[-1])
         violations += check_marks(text, research.read_text(encoding="utf-8"), version)
     else:
-        draft = Path(str(review_path).replace("/review/", "/draft/"))
-        if draft.exists():
-            violations += validate_anchors(text, draft.read_text(encoding="utf-8"))
+        resolved = review_path.resolve()
+        if resolved.parent.name != "review":
+            violations.append("评审文件必须位于 review/ 目录下（用于推导同版本草稿路径）")
         else:
-            violations.append(f"找不到同版本草稿：{draft}")
+            draft = resolved.parent.parent / "draft" / resolved.name
+            if draft.exists():
+                violations += validate_anchors(text, draft.read_text(encoding="utf-8"))
+            else:
+                violations.append(f"找不到同版本草稿：{draft}")
     for x in violations:
         print(f"  - {x}")
     if violations:

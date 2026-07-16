@@ -198,6 +198,8 @@ review_path: _pipeline/review/YYMMDD-N-title-vN.md  (current review)
 
 If the writer reports 未解决 items, relay them to the user; the fix is another update-mode research dispatch, not writer improvisation.
 
+If publish is later blocked by leftover `<!-- [USER]: ... -->` comments after a CLEAN review (no revision ran to consume them), resolve them with the user directly or dispatch a revision; do not edit the draft unilaterally.
+
 Return to step 4b-i.
 
 ---
