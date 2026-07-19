@@ -156,9 +156,15 @@ Tell the user: **"Review v{N} written: {STATUS}. Review file: {path}. Approve re
 
 If the review file has a `## 标签提案` section (or the draft contains
 `<!-- [TAG-PROPOSAL]: ... -->`), list each proposal and ask the user to approve or
-reject. Approved: add the tag to the matching group in `src/tags.yml`, add it to the
-draft's frontmatter `tags:`, and delete the proposal comment (mechanical edits — do
-them directly, no subagent). Rejected: delete the proposal comment.
+reject. **Never edit the draft in place — 工作留痕：裁定进 review，改动进下一版。**
+Approved: add the tag to the matching group in `src/tags.yml` (registry edit only),
+and record the approval as a `<!-- [USER]: ... -->` annotation under the review's
+`## 标签提案` section; the writer adds the tag to frontmatter and deletes the
+proposal comment in the next draft version. Rejected: record the rejection as a
+`<!-- [USER]: ... -->` annotation; the writer deletes the comment in the next
+version. Only if no further draft version will exist (CLEAN review, no revision
+round) may the orchestrator apply the frontmatter/comment edits directly, with
+explicit user confirmation.
 
 **Do not auto-trigger revision even if STATUS: ISSUES.** The user may want to annotate the review with `<!-- [USER]: ... -->`, edit suggestions, or stop the loop.
 

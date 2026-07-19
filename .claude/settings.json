@@ -6,7 +6,16 @@
       "Bash(src/venv/bin/python /home/jc/Projects/auto-watcher/src/linter.py:*)",
       "Bash(src/venv/bin/python /home/jc/Projects/auto-watcher/src/review_linter.py:*)",
       "Bash(cd /home/jc/Projects/auto-watcher && src/venv/bin/python src/linter.py:*)",
-      "Bash(cd /home/jc/Projects/auto-watcher && src/venv/bin/python src/review_linter.py:*)"
+      "Bash(cd /home/jc/Projects/auto-watcher && src/venv/bin/python src/review_linter.py:*)",
+      "Bash(python src/linter.py:*)",
+      "Bash(python src/review_linter.py:*)",
+      "Bash(python /home/jc/Projects/auto-watcher/src/linter.py:*)",
+      "Bash(python /home/jc/Projects/auto-watcher/src/review_linter.py:*)",
+      "Bash(src/venv/bin/python src/linter.py:*)",
+      "Bash(src/venv/bin/python src/review_linter.py:*)",
+      "Bash(./src/venv/bin/python src/linter.py:*)",
+      "Bash(./src/venv/bin/python src/review_linter.py:*)",
+      "Bash(source src/venv/bin/activate)"
     ]
   }
 }
