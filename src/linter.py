@@ -1,8 +1,8 @@
 """Mechanical draft linter — catches format violations before the Sonnet review.
 
 Checks are deterministic only (no judgment calls): em dashes, 舆论 without
-concrete metrics, source-line format, unregistered tags, standalone 前情/后续
-sections, invalid categories, future dates, missing required sections.
+concrete metrics, source-line format, unregistered tags, invalid categories,
+future dates, missing required sections.
 """
 from __future__ import annotations
 import re
@@ -97,9 +97,7 @@ def lint_warnings(content: str) -> list[str]:
     """Reviewer-waivable issues: reported, but never block a draft."""
     body = content.split("---", 2)[-1] if content.startswith("---") else content
     warnings: list[str] = []
-    for banned in ("前情", "后续"):
-        if banned in _sections(body):
-            warnings.append(f"独立 ## {banned} 章节（默认应并入 ## 概述 的 #### 子节；评审可放行）")
+    # user decision 2026-07-19: standalone ## 前情 / ## 后续 are legal per template
     return warnings
 
 

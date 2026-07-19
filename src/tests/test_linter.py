@@ -47,12 +47,12 @@ def test_unknown_tag_flagged():
     assert any("不存在的标签" in x for x in v)
 
 
-def test_standalone_qianqing_is_warning_not_error():
-    # user decision 2026-07: 前情/后续 is reviewer-waivable — warn, don't block
+def test_standalone_qianqing_is_legal():
+    # user decision 2026-07-19: standalone 前情/后续 are legal per template — no warning
     from src.linter import lint_warnings
     draft = make_draft(body="\n## 前情\n旧事。\n")
     assert lint_text(draft, REGISTRY, TODAY) == []
-    assert any("前情" in x for x in lint_warnings(draft))
+    assert lint_warnings(draft) == []
 
 
 def test_future_date_flagged():

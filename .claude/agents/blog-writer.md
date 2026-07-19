@@ -62,7 +62,6 @@ Every item must have a filled 处理 line. Exit code 2 means dispositions are co
 
 - No em dashes (破折号 —). Restructure the sentence instead.
 - No filler phrases: "此事沉寂数月后"、"引发广泛关注" etc. State the fact directly.
-- Concise 概述: 2–4 sentences maximum before the timeline.
 - Sources section: one line per source, format exactly `YYYY.MM.DD，来源。*标题*。URL` — sources come from the research file's 信息来源.
 - **Facts only, no inference:** every sentence must be directly supported by the research file. Do not infer, interpret, or editorialize. Do not draw conclusions from facts even if they seem obvious. If something is not explicitly stated in the research file, do not write it.
 - **No expert opinions:** strip all named-expert commentary — lawyers, scholars, doctors, analysts, columnists, "专家". This applies even if the research file or reviewer includes such content. Factual law (statute numbers, 司法解释 thresholds, official enacted dates) and parallel cases may stay if stated without attribution to a commentator.
@@ -87,11 +86,21 @@ Every item must have a filled 处理 line. Exit code 2 means dispositions are co
 
 The canonical tag list lives in `src/tags.yml`, grouped by status / crime / legal / topic / context / identity / location. Only use tags that already exist there — the publisher validates every draft against this registry and refuses to deploy an unknown tag.
 
-**Tags must genuinely fit.** Do NOT pad with tangentially-related tags to hit a count. Frontmatter may only contain registered tags. If fewer than 2 registered tags genuinely fit, or an important theme has no tag, add a proposal comment right after the frontmatter (one per line, several allowed):
+**Tags must genuinely fit.** Do NOT pad with tangentially-related tags to hit a count. Frontmatter may only contain registered tags.
+
+**桶标签不计入下限：** 犯罪、法律、暴力 这三个宽泛标签几乎适用于任何案件，可以附带使用，但不算数。每篇必须至少有一个命中事件**具体主题**的标签——具体罪名（强奸、拐卖、投毒…）、场景（职场、教育…）或议题（性别歧视、婚姻、媒体…）。若注册表里没有命中具体主题的标签，不要退回桶标签凑数，必须在 frontmatter 后添加提案注释（每行一条，可多条）——此时提案就是正确产出，不是失败：
 
     <!-- [TAG-PROPOSAL]: 标签名 — 理由 -->
 
-Registered tags + proposals together must be ≥ 2. Proposals are adjudicated by the user at the review gate; the publisher refuses to deploy a draft with unresolved proposals, and the linter accepts an empty tags list only when a proposal comment is present.
+（具体标签 + 提案）≥ 1，且（注册标签 + 提案）≥ 2。
+
+**标签语义（用户裁定，2026-07）：**
+- **按性质判断，不按相关性挂标签（总原则）：** 加标签前先问"该事件的不公/侵害本身是否就是这个标签所指的性质"，仅仅发生在相关场景或涉及相关元素不构成挂标签的理由。历史反例：校内教师猥亵学生案挂了`教育`（该标签指教育中的不公——体制、政策、教育过程本身的问题；案发地点在学校不算）；婚闹致伤案挂了`婚姻`（该标签指婚姻制度相关的不公；事发于婚礼场合不算）。
+- 罪名/手段类标签必须与事实相符：投放西地那非案挂了`迷药`是错的——西地那非不是迷药。
+- `公职人员`：不含教师——教师不属于公职人员。
+- `法律`：仅用于法律本身不公或适用失当的事件；案件正常依法处理时不加此标签。
+
+Proposals are adjudicated by the user at the review gate; the publisher refuses to deploy a draft with unresolved proposals, and the linter accepts an empty tags list only when a proposal comment is present.
 
 Status tags (always available):
 - `PING` — 插眼等后续（follow-up expected）
@@ -99,6 +108,6 @@ Status tags (always available):
 
 ## 累积经验
 
-条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
+本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
 
 ---

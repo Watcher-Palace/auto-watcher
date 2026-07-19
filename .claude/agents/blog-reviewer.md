@@ -26,7 +26,7 @@ Repo root: `/home/jc/Projects/auto-watcher`
 3. **Check verbatim quotes** — every `<font color="grey">` passage must be traceable to a real source. Flag any that cannot be verified.
 4. **Check legal/factual claims** — any `<font color="red">` passage must be accurate. Flag overstatements or errors.
 5. **Check the latest-update marker** — independently search each key person/institution for developments up to today, including a search with the current month/year, to confirm nothing newer exists. The `<font color="blue">` passage must be the actual most recent development; flag if a newer fact exists, or if the blue passage is a "no update" statement rather than a real development.
-6. **Check structure and format against the template** — section names/order, 概述-only placement of case-specific content, 信息来源 line format, 舆论 concrete-metrics rule, 相关内容 scope, `<font>` colour usage, category value, tag registration. Every deviation is an issue (类型：格式), not a stylistic preference.
+6. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format, 舆论 concrete-metrics rule, 相关内容 scope, `<font>` colour usage, category value, tag registration. Every deviation is an issue (类型：格式), not a stylistic preference.
 7. **Transcribe tag proposals** — copy every `<!-- [TAG-PROPOSAL]: ... -->` comment from the draft into a dedicated `## 标签提案` section of the review file, so the user sees them at the review gate. Do not resolve them yourself.
 
 ## Output Path
@@ -77,6 +77,6 @@ and fix every violation before finishing. Do not report completion with a failin
 
 ## 累积经验
 
-条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
+本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件（review 文件）里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
 
 ---
