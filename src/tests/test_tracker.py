@@ -560,3 +560,62 @@ def test_filter_raises_on_malformed_reply():
          patch("time.sleep"), \
          pytest.raises(Exception):
         filter_feminist_events([{"url": "u", "text": "t", "retweet_text": ""}])
+
+
+# ---- 跨运行去重（write/append 前按来源 URL 对照已有记录） ----
+
+def _dedup_env(tmp_path, monkeypatch):
+    from src.utils import pipeline as pipeline_mod
+    monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
+    monkeypatch.setattr(pipeline_mod, "ARCHIVE", tmp_path / "_pipeline_archive")
+    return tmp_path / "_pipeline"
+
+
+def test_dedupe_skips_urls_already_in_live_file(tmp_path, monkeypatch):
+    pdir = _dedup_env(tmp_path, monkeypatch)
+    from src.tracker import write_events_file
+    from src.utils import ledger
+    write_events_file("990201", [{"title": "甲", "brief": "b", "sources": ["https://weibo.com/1/A"]}])
+    write_events_file("990201", [
+        {"title": "甲重复", "brief": "b", "sources": ["https://weibo.com/1/A"]},
+        {"title": "乙", "brief": "b", "sources": ["https://weibo.com/1/B"]},
+    ])
+    assert ledger.get_row("990201", 2, pipeline_dir=pdir)["标题"] == "乙"
+    assert ledger.get_row("990201", 3, pipeline_dir=pdir) is None  # 甲重复 未入账
+
+
+def test_dedupe_all_duplicates_writes_nothing_and_no_wushijian(tmp_path, monkeypatch):
+    pdir = _dedup_env(tmp_path, monkeypatch)
+    from src.tracker import write_events_file
+    from src.utils import ledger
+    write_events_file("990202", [{"title": "甲", "brief": "b", "sources": ["https://weibo.com/1/A"]}])
+    write_events_file("990202", [{"title": "甲又来", "brief": "b", "sources": ["https://weibo.com/1/A"]}])
+    assert ledger.get_row("990202", 2, pipeline_dir=pdir) is None
+    assert ledger.get_row("990202", "无事件", pipeline_dir=pdir) is None
+
+
+def test_dedupe_checks_archived_events_md(tmp_path, monkeypatch):
+    pdir = _dedup_env(tmp_path, monkeypatch)
+    arch = tmp_path / "_pipeline_archive" / "events"
+    arch.mkdir(parents=True)
+    (arch / "990203.md").write_text(
+        "# Events — 99-02-03\n\n## 1. 旧事\n**Sources**: [https://weibo.com/1/C]\n**Brief**: b\n",
+        encoding="utf-8",
+    )
+    from src.tracker import append_events_to_file
+    from src.utils import ledger
+    append_events_to_file("990203", [
+        {"title": "旧事重复", "brief": "b", "sources": ["https://weibo.com/1/C"]},
+        {"title": "新事", "brief": "b", "sources": ["https://weibo.com/1/D"]},
+    ])
+    rows = ledger.event_statuses("990203", pipeline_dir=pdir)
+    titles = [ledger.get_row("990203", n, pipeline_dir=pdir)["标题"] for n in rows]
+    assert "新事" in titles and "旧事重复" not in titles
+
+
+def test_dedupe_keeps_events_without_sources(tmp_path, monkeypatch):
+    _dedup_env(tmp_path, monkeypatch)
+    from src.tracker import write_events_file, dedupe_events
+    write_events_file("990204", [{"title": "甲", "brief": "b", "sources": ["https://weibo.com/1/A"]}])
+    kept = dedupe_events("990204", [{"title": "手工条目", "brief": "b", "sources": []}])
+    assert [e["title"] for e in kept] == ["手工条目"]

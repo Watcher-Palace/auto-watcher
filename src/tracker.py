@@ -268,6 +268,38 @@ def format_events(date_str: str, events: list[dict]) -> str:
     return "\n".join(lines)
 
 
+_SOURCES_LINE_RE = re.compile(r"^\*\*Sources\*\*:(.*)$", re.MULTILINE)
+
+
+def known_source_urls(date_str: str) -> set[str]:
+    """All source URLs already recorded for a date — live events md AND the
+    archived one (a fully-terminal date keeps its md only in the archive)."""
+    from src.utils import pipeline as _pl
+    urls: set[str] = set()
+    for path in (events_path(date_str), _pl.ARCHIVE / "events" / f"{date_str}.md"):
+        if path.exists():
+            for m in _SOURCES_LINE_RE.finditer(path.read_text(encoding="utf-8")):
+                urls.update(re.findall(r"\[([^\]]+)\]", m.group(1)))
+    return urls
+
+
+def dedupe_events(date_str: str, events: list[dict]) -> list[dict]:
+    """Cross-run dedup: drop events whose source posts are already recorded for
+    this date in a previous run (overlapping runs re-filter the same posts and
+    would otherwise re-open adjudicated events as fresh candidates). Events
+    without sources are kept — nothing to match on (e.g. manual briefs)."""
+    known = known_source_urls(date_str)
+    if not known:
+        return events
+    kept = []
+    for ev in events:
+        if set(ev.get("sources") or []) & known:
+            print(f"  {date_str}: 跳过重复事件（来源已记录）：{ev['title']}")
+        else:
+            kept.append(ev)
+    return kept
+
+
 def write_events_file(date_str: str, events: list[dict]) -> Path | None:
     """写 events md（人读内容）并同步账本行。空事件：只记"无事件"行，不写 md。
 
@@ -279,6 +311,11 @@ def write_events_file(date_str: str, events: list[dict]) -> Path | None:
     if not events:
         ledger.record_no_events(date_str)
         return None
+    events = dedupe_events(date_str, events)
+    if not events:
+        # 有事件但全是重复：不是"无事件"，不写、不记 无事件 行
+        out = events_path(date_str)
+        return out if out.exists() else None
     offset = ledger.max_index(date_str)
     numbered = [dict(e, index=i + 1 + offset) for i, e in enumerate(events)]
     out = events_path(date_str)
@@ -309,6 +346,9 @@ def append_events_to_file(date_str: str, new_events: list[dict]) -> Path | None:
     untracked. (Range mode marks 无事件 itself, gated on attested coverage.)
     """
     out = events_path(date_str)
+    if not new_events:
+        return out if out.exists() else None
+    new_events = dedupe_events(date_str, new_events)
     if not new_events:
         return out if out.exists() else None
     out.parent.mkdir(parents=True, exist_ok=True)
