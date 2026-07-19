@@ -513,3 +513,50 @@ def test_append_events_continues_ledger_index(tmp_path, monkeypatch):
     write_events_file("990103", [{"title": "甲", "brief": "b", "sources": []}])
     append_events_to_file("990103", [{"title": "乙", "brief": "b", "sources": []}])
     assert ledger.get_row("990103", 2, pipeline_dir=tmp_path)["标题"] == "乙"
+
+
+# ---- _extract_events_json：LLM 回复的健壮解析 ----
+
+_EV = {"title": "某案", "brief": "一句概述", "sources": ["https://weibo.com/x"]}
+_EV_JSON = json.dumps([_EV], ensure_ascii=False)
+
+
+def test_extract_fenced_json_with_bracket_prose():
+    from src.tracker import _extract_events_json
+    content = f"帖子[1]和[5]为同一事件，合并如下：\n```json\n{_EV_JSON}\n```"
+    assert _extract_events_json(content) == [_EV]
+
+
+def test_extract_bare_array_after_bracket_echoes():
+    # 260706 实际故障形态：回复先引用 "[1]" 式帖子编号，再给裸数组
+    from src.tracker import _extract_events_json
+    content = f"[1] 是旧闻回顾，排除。[2] 收录。\n{_EV_JSON}"
+    assert _extract_events_json(content) == [_EV]
+
+
+def test_extract_array_with_trailing_bracket_refs():
+    from src.tracker import _extract_events_json
+    content = f"{_EV_JSON}\n（由帖子[2]与[7]合并）"
+    assert _extract_events_json(content) == [_EV]
+
+
+def test_extract_plain_empty_array():
+    from src.tracker import _extract_events_json
+    assert _extract_events_json("[]") == []
+    assert _extract_events_json("无符合条件的内容，返回空数组：\n[]") == []
+
+
+def test_extract_no_valid_array_returns_none():
+    from src.tracker import _extract_events_json
+    assert _extract_events_json("你好，未发现相关内容。") is None
+    assert _extract_events_json("见帖子[3]与[9]。") is None
+
+
+def test_filter_raises_on_malformed_reply():
+    # 解析不出合法数组必须抛错触发重试，绝不能静默返回 []（会被记成无事件）
+    from src.tracker import filter_feminist_events
+    fake = MagicMock(returncode=0, stdout="见帖子[3]。", stderr="")
+    with patch("subprocess.run", return_value=fake), \
+         patch("time.sleep"), \
+         pytest.raises(Exception):
+        filter_feminist_events([{"url": "u", "text": "t", "retweet_text": ""}])

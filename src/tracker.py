@@ -145,13 +145,63 @@ def bucket_posts_by_date(posts: list[dict], target_dates: list[str]) -> dict[str
     return dict(buckets)
 
 
+def _extract_events_json(content: str) -> list[dict] | None:
+    """Pull the events array out of an LLM reply.
+
+    The reply may wrap the array in a ``` fence or surround it with prose that
+    itself contains bracketed fragments (e.g. echoed "[1]" post indices), so
+    never slice blindly from the first '[' to the last ']'. Returns None when
+    no valid events array is found (caller retries).
+    """
+    def _valid(arr) -> bool:
+        return isinstance(arr, list) and all(
+            isinstance(e, dict) and {"title", "brief", "sources"} <= e.keys()
+            for e in arr
+        )
+
+    # Fenced blocks first — the least ambiguous form.
+    for m in re.finditer(r"```(?:json)?\s*(.*?)```", content, re.DOTALL):
+        try:
+            arr = json.loads(m.group(1).strip())
+        except json.JSONDecodeError:
+            continue
+        if _valid(arr):
+            return arr
+    # Otherwise walk balanced [...] candidates from the end of the reply
+    # backwards — the final answer comes last, earlier brackets are usually
+    # echoed prose references.
+    end = len(content)
+    for _ in range(10):
+        end = content.rfind("]", 0, end)
+        if end == -1:
+            return None
+        depth = 0
+        start = -1
+        for i in range(end, -1, -1):
+            if content[i] == "]":
+                depth += 1
+            elif content[i] == "[":
+                depth -= 1
+                if depth == 0:
+                    start = i
+                    break
+        if start != -1:
+            try:
+                arr = json.loads(content[start:end + 1])
+            except json.JSONDecodeError:
+                arr = None
+            if arr is not None and _valid(arr):
+                return arr
+    return None
+
+
 def filter_feminist_events(posts: list[dict]) -> list[dict]:
     """Use claude CLI to filter and deduplicate feminist-relevant events."""
     if not posts:
         return []
     import subprocess
     posts_text = "\n\n".join(
-        f"[{i+1}] URL: {p['url']}\nText: {p['text']}\nRetweet: {p['retweet_text']}"
+        f"#{i+1} URL: {p['url']}\nText: {p['text']}\nRetweet: {p['retweet_text']}"
         for i, p in enumerate(posts)
     )
     keywords = "、".join(FEMINIST_KEYWORDS)
@@ -189,11 +239,12 @@ def filter_feminist_events(posts: list[dict]) -> list[dict]:
             if result.returncode != 0:
                 raise RuntimeError(result.stderr.strip())
             content = result.stdout.strip()
-            start = content.find("[")
-            end = content.rfind("]") + 1
-            if start == -1 or end == 0:
-                return []
-            return json.loads(content[start:end])
+            events = _extract_events_json(content)
+            if events is None:
+                raise ValueError(
+                    f"no valid JSON events array in LLM reply: {content[:200]!r}"
+                )
+            return events
         except Exception as e:
             if attempt == 2:
                 raise
