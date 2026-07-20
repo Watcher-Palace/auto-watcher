@@ -11,9 +11,11 @@ from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.publisher import read_frontmatter, load_tag_registry
+from src.publisher import read_frontmatter, load_tag_registry, load_tag_group
 
 VALID_CATEGORIES = {"S", "A", "B", "C", "D", "N"}
+# 犯罪 tag 必须同时带一个具体罪名，或说明为什么没有罪名（用户裁定 2026-07-20）
+CHARGE_GAP_TAGS = {"未立案", "罪名未公开"}
 METRIC_RE = re.compile(r"(阅读量|讨论量|转发量|评论量|投票|票数)")
 SOURCE_LINE_RE = re.compile(r"^(- )?\d{4}\.\d{1,2}\.\d{1,2}，.+?。\*.+?\*。\S+")
 TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
@@ -75,6 +77,16 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
         for t in tags:
             if t not in registry:
                 violations.append(f"未注册 tag：{t}（见 src/tags.yml）")
+
+    if "犯罪" in tags:
+        charges = load_tag_group("charge")
+        has_charge = any(t in charges for t in tags)
+        has_gap = any(t in CHARGE_GAP_TAGS for t in tags)
+        if not (has_charge or has_gap):
+            violations.append(
+                "有 犯罪 tag 但无具体罪名 —— 加官方指控/判决的完整罪名（见 src/tags.yml "
+                "charge 组），无刑事立案加 未立案，已立案但官方未公布罪名加 罪名未公开"
+            )
 
     d = fm.get("date")
     if isinstance(d, datetime) or (isinstance(d, str) and re.search(r"\d{2}:\d{2}", d)):

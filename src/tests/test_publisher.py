@@ -47,7 +47,7 @@ def test_publish_finalizes_terminal_date(tmp_path, monkeypatch):
     draft = root / "draft" / "990101-1-测试-v1.md"
     # minimal draft that passes the lint gate
     draft.write_text(
-        "---\ntitle: 测试\ndate: 2020-01-01\ncategories: B\ntags:\n- 犯罪\n---\n\n"
+        "---\ntitle: 测试\ndate: 2020-01-01\ncategories: B\ntags:\n- 性侵\n---\n\n"
         "## 概述\n正文。\n\n"
         "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n",
         encoding="utf-8",
@@ -76,7 +76,7 @@ def test_publish_refuses_missing_ledger_row(tmp_path, monkeypatch):
     (tmp_path / "_pipeline_archive").mkdir()
     draft = root / "draft" / "990101-1-测试-v1.md"
     draft.write_text(
-        "---\ntitle: 测试\ndate: 2020-01-01\ncategories: B\ntags:\n- 犯罪\n---\n\n"
+        "---\ntitle: 测试\ndate: 2020-01-01\ncategories: B\ntags:\n- 性侵\n---\n\n"
         "## 概述\n正文。\n\n"
         "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n",
         encoding="utf-8",
@@ -101,7 +101,7 @@ def test_publish_refuses_unresolved_tag_proposal(tmp_path, monkeypatch):
     (tmp_path / "_pipeline_archive").mkdir()
     draft = root / "draft" / "990101-1-测试-v1.md"
     draft.write_text(
-        "---\ntitle: t\ndate: 2020-01-01\ncategories: B\ntags:\n- 犯罪\n---\n\n"
+        "---\ntitle: t\ndate: 2020-01-01\ncategories: B\ntags:\n- 性侵\n---\n\n"
         "<!-- [TAG-PROPOSAL]: 新标签 — 理由 -->\n\n"
         "## 概述\n正文。\n\n"
         "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n",

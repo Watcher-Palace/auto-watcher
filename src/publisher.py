@@ -49,6 +49,16 @@ def load_tag_registry() -> set[str]:
     return allowed
 
 
+def load_tag_group(group: str) -> set[str]:
+    """Tags of one group in tags.yml (e.g. 'charge'). Empty set if absent."""
+    registry_path = Path(__file__).parent / "tags.yml"
+    if not registry_path.exists():
+        return set()
+    data = yaml.safe_load(registry_path.read_text(encoding="utf-8")) or {}
+    value = data.get(group)
+    return set(value) if isinstance(value, list) else set()
+
+
 def validate_tags(tags, registry: set[str]) -> None:
     if not registry:
         return

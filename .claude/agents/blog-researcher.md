@@ -61,6 +61,7 @@ Research is sufficient when you have:
 - Any official response (police, court, institution, government body)
 - Statute/ruling facts (法条、司法解释、判决结果) if the case involves criminal law — do NOT collect named-expert commentary; it is banned from posts
 - Weibo topic hashtag name and read count if one exists
+- **记者行为必须带媒体归属（用户裁定，2026-07-20）：** 事实条目里凡出现"记者致电/采访/暗访/检索文书"，必须写明是哪家媒体的记者（"大江新闻记者致电……""南都湾财社记者致电……"），转载页要追到正文/文末署名的原始采写媒体。本博客没有记者，无主语的"记者"会被读者误解为本站采写，写手拿到没有归属的记者事实只能按缺口退回。确实查不到署名的，在该条注明"（采写媒体未署名）"。
 
 ### Output
 

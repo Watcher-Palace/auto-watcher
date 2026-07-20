@@ -3,7 +3,7 @@ import pytest
 from src.utils import ledger
 
 VALID_DRAFT = (
-    "---\ntitle: 发布标题\ndate: 2020-01-01\ncategories: B\ntags:\n- 犯罪\n---\n\n"
+    "---\ntitle: 发布标题\ndate: 2020-01-01\ncategories: B\ntags:\n- 性侵\n---\n\n"
     "## 概述\n正文。\n\n"
     "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n"
 )
