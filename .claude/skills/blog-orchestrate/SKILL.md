@@ -91,7 +91,7 @@ For each approved (date, index, title) triple:
 
 ### 2. Research (subagent)
 
-Dispatch a `blog-researcher` subagent (tools and model are pinned in the agent definition). When processing multiple events, dispatch in **batches of 2–3** so a quota hit loses only one batch.
+Dispatch a `blog-researcher` subagent (tools and model are pinned in the agent definition). When processing multiple events, dispatch in **batches of up to 3** — wait for the batch to finish before dispatching the next (user directive 2026-07-20).
 
 ```
 mode: initial
@@ -108,7 +108,7 @@ Wait for the subagent to complete and confirm the research file exists at `_pipe
 
 **Freshness check first:** `pipeline_cli.py status` flags in-flight events whose research file is ≥ 2 days old (`（research 已 N 天）`). If the event being dispatched is flagged, recommend an update-mode research refresh and let the user decide — never refresh automatically.
 
-Dispatch a `blog-writer` subagent (no web tools by design — the research file is its sole fact source). Dispatch in **batches of 2–3**.
+Dispatch a `blog-writer` subagent (no web tools by design — the research file is its sole fact source). Dispatch in **batches of up to 3** (user directive 2026-07-20).
 
 ```
 date: YYMMDD
@@ -244,5 +244,5 @@ LLM filtering in the tracker uses the `claude` CLI subprocess (Haiku), not an ex
 
 ## Notes
 
-- Subagent tools and models are pinned in `.claude/agents/blog-researcher.md`, `blog-writer.md`, `blog-reviewer.md` (all Sonnet; the writer has no web tools). Dispatch in batches of 2–3.
+- Subagent tools and models are pinned in `.claude/agents/blog-researcher.md`, `blog-writer.md`, `blog-reviewer.md` (all Sonnet; the writer has no web tools). Dispatch in batches of up to 3 (user directive 2026-07-20).
 - After a full pipeline cycle, suggest running the `blog-curate` skill to maintain notes quality.

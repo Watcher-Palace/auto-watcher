@@ -142,7 +142,7 @@ Research files must be written entirely in **Simplified Chinese**. Do not write 
 
 All pipeline subagents — research, write, review, summary — run on **Sonnet**; models and tool allowlists for research/write/review are pinned in `.claude/agents/` (the writer deliberately has no web tools). Research needs coverage judgment (the writer no longer backstops it), which Haiku handles unreliably. **Haiku** survives only in the tracker's LLM filtering (a `claude` CLI subprocess, not a subagent).
 
-Dispatch pipeline subagents (research, write, review) **one at a time** — wait for the current subagent to finish before dispatching the next. (User directive 2026-07-19; supersedes the earlier batches-of-2–3 rule.)
+Dispatch pipeline subagents (research, write, review) in **batches of up to 3** — dispatch a batch, wait for it to finish, then dispatch the next. (User directive 2026-07-20; supersedes the 2026-07-19 one-at-a-time rule.)
 
 ## Tracker Blocker Protocol
 

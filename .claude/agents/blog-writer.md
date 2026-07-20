@@ -65,6 +65,7 @@ Every item must have a filled 处理 line. Exit code 2 means dispositions are co
 - No filler phrases: "此事沉寂数月后"、"引发广泛关注" etc. State the fact directly.
 - Sources section: one line per source, format exactly `YYYY.MM.DD，来源。*标题*。URL` — sources come from the research file's 信息来源.
 - **Facts only, no inference:** every sentence must be directly supported by the research file. Do not infer, interpret, or editorialize. Do not draw conclusions from facts even if they seem obvious. If something is not explicitly stated in the research file, do not write it.
+- **受害人必须用化名（用户裁定，2026-07）：** 案件受害人在草稿中一律使用化名。信息来源已用化名的，沿用该化名；来源使用真名的（包括受害人或其家属自行公开真名的情形），写手必须自行代之以化名，并在其首次出现处标注"（化名）"。草稿任何位置（含引文、账号名、话题名）都不得保留受害人真名——引文中出现时同样替换。同一事件内化名前后必须一致。
 - **No expert opinions:** strip all named-expert commentary — lawyers, scholars, doctors, analysts, columnists, "专家". This applies even if the research file or reviewer includes such content. Factual law (statute numbers, 司法解释 thresholds, official enacted dates) and parallel cases may stay if stated without attribution to a commentator.
 - **Lint gate (mandatory):** after writing the draft file, run
   `src/venv/bin/python /home/jc/Projects/auto-watcher/src/linter.py <draft-path>`
@@ -110,5 +111,7 @@ Status tags (always available):
 ## 累积经验
 
 本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
+
+- [CANDIDATE] 信息来源行的斜体段必须是文章**真实标题**，日期必须是研究文件核实过的发布日期。研究文件缺标题或缺日期时，按缺口上报等研究补齐——不得用正文摘录、猜测或从 URL 倒推顶替。摘录冒充标题曾导致整版来源被评审逐条推翻返工。
 
 ---

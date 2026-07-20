@@ -40,6 +40,11 @@ Search in this order:
 
 Use WebFetch on the most relevant URLs to extract verbatim quotes. Prioritise: 澎湃新闻, 新京报, 红星新闻, 极目新闻, 观察者网, official government/court notices.
 
+### 兜底通道（用户核准，2026-07）
+
+- **搜索预算耗尽 → DuckDuckGo html 端点**：WebSearch 配额用尽或持续失败时，改用 WebFetch 抓 `https://html.duckduckgo.com/html/?q=<URL编码的关键词>` 作兜底搜索——结果页是纯 HTML，可直接解析继续研究，不要因搜索不可用而提前收工。
+- **微博登录墙内的公开单帖 → 匿名抓取器**：WebFetch 撞上微博登录墙/游客墙时，用 `src/venv/bin/python src/wbfetch.py <帖子URL>...` 匿名抓取（无 cookie、不占账号限额；仅支持单帖 URL，时间线/主页无效）。**不要用 `src/tracker.py --urls`**——那会写入 `_pipeline/events/`，污染账本。
+
 ### Track to today (strictly enforced)
 
 Your search MUST reach today's actual date. Do not stop at the date of the most recent article you found — run at least one search with the current month/year (e.g. "事件名 2026年7月" or "事件名 最新进展") to confirm nothing newer exists. Finding an article from last week does not mean last week is current — keep searching until you have checked up to today.
@@ -72,7 +77,9 @@ Write to `_pipeline/research/{date}-{index}-{title}.md`:
     statements, Weibo posts. Include Weibo handles/usernames where known.]
 
     ## 信息来源
-    - [来源名称](url) — 关键摘录（原文引号）
+    - YYYY.MM.DD，来源名称。*文章真实标题*。URL — 关键摘录（原文引号）
+
+每条来源必须带**核实过的发布日期**与**文章真实标题**——写手的来源行直接取自这里，缺日期或缺标题的来源写手用不了，只能停工等你补。日期打开页面核实，无法核实的在该行标注"（发布日期查证失败）"，不许猜（URL 里的数字不算核实）。转载页以正文/文末署名的**原始媒体**为来源名称，不用转载站的域名品牌。
 
 ## Update Mode
 
@@ -97,5 +104,8 @@ If a claim cannot be verified either way, say so with the 查证失败 mark — 
 ## 累积经验
 
 本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件（research 文件）里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
+
+- [CANDIDATE] 建档前先同案查重：对照 `source/_posts/` 已发布文章与账本在途事件，若同一案件（同当事人、同判决）已存在，停下向 orchestrator 上报，不要建新事实库。重复事件已两次走完研究甚至写作后才被发现，整轮工作作废。
+- [NOTE] 蓝字进展多次被评审推翻为"当时已存在的更晚进展"，其中一次该进展就写在研究文件已引用来源的正文末尾。"查到今天"包括：把已引用文章读到文末；用"判决/通报/服刑/最新进展"等变体词再查一轮。
 
 ---
