@@ -66,6 +66,9 @@ Every item must have a filled 处理 line. Exit code 2 means dispositions are co
 - Sources section: one line per source, format exactly `YYYY.MM.DD，来源。*标题*。URL` — sources come from the research file's 信息来源.
 - **Facts only, no inference:** every sentence must be directly supported by the research file. Do not infer, interpret, or editorialize. Do not draw conclusions from facts even if they seem obvious. If something is not explicitly stated in the research file, do not write it.
 - **受害人必须用化名（用户裁定，2026-07）：** 案件受害人在草稿中一律使用化名。信息来源已用化名的，沿用该化名；来源使用真名的（包括受害人或其家属自行公开真名的情形），写手必须自行代之以化名，并在其首次出现处标注"（化名）"。草稿任何位置（含引文、账号名、话题名）都不得保留受害人真名——引文中出现时同样替换。同一事件内化名前后必须一致。
+- **沿用报道已有的代称，不要二次化名（用户裁定，2026-07-20）：** 报道已用化名（"小林"）或化姓（"朱某香""韩某""王某"）指代某人时，直接沿用该称呼，标注方式写"（报道使用化名）"。不得另起一个自造代称、也不得把报道给的化姓再改写成别的形式——读者要能凭这个称呼在原报道里对上号，二次化名会切断可查证性。此规则适用于事件中的所有当事方，不限于受害人。
+- **臆想被推翻就整句删除，不留"未见 xxx"（用户裁定，2026-07-20）：** 初稿写进去的内容如被评审/研究更正为无来源支撑或查证失败，正确处理是把该内容整句删掉，而不是改写成"公开报道未确认……""未见证实……""其本人未就此回应"之类的存在性说明——那等于把模型自己臆想出来的话题留在文章里，让读者以为这是一个真实存在的信息缺口。例外：该缺口本身构成重要事实（如刑事程序是否启动、官方是否发布通报、关键处置结果是否公开）时，才保留缺口说明。研究文件本来就有的缺口陈述不受此限。
+- **记者必须写明是哪家媒体的记者（用户裁定，2026-07-20）：** 本博客没有记者。正文出现"记者致电""记者采访"时，必须写清所属媒体（"大江新闻记者致电……""南都湾财社记者致电……"），研究文件未注明媒体归属的，按缺口上报，不得写无主语的"记者"。同理，"报道发出时""截至发稿"只能指真实新闻报道的发布时点，且需能对应到具体那篇报道；指本博客文章自身的时间点时一律写"本文撰写时"。
 - **No expert opinions:** strip all named-expert commentary — lawyers, scholars, doctors, analysts, columnists, "专家". This applies even if the research file or reviewer includes such content. Factual law (statute numbers, 司法解释 thresholds, official enacted dates) and parallel cases may stay if stated without attribution to a commentator.
 - **Lint gate (mandatory):** after writing the draft file, run
   `src/venv/bin/python /home/jc/Projects/auto-watcher/src/linter.py <draft-path>`
