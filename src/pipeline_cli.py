@@ -29,7 +29,7 @@ def cmd_status() -> int:
     maint = [r["维护日期"] for r in rows if r["维护日期"]]
     print(f"最后维护: {max(maint) if maint else '（无记录）'}")
     untracked = ledger.get_untracked_dates()
-    print("未追踪(近7天): " + (", ".join(untracked) if untracked else "无"))
+    print("未追踪(近15天): " + (", ".join(untracked) if untracked else "无"))
     open_rows = [r for r in rows
                  if r["事件编号"] and r["状态"] not in ledger.TERMINAL_STATES]
     if open_rows:

@@ -30,9 +30,9 @@ class WebClient:
         except requests.RequestException as e:
             raise WebClient.FetchError(str(e)) from e
 
-    def fetch_json(self, url: str, timeout: int = 10) -> dict:
+    def fetch_json(self, url: str, timeout: int = 10, headers: dict | None = None) -> dict:
         try:
-            resp = self.session.get(url, timeout=timeout)
+            resp = self.session.get(url, timeout=timeout, headers=headers)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as e:

@@ -212,26 +212,6 @@ def test_fetch_paginated_incomplete_on_fetch_error():
     assert complete is False
 
 
-def test_run_tracker_writes_events_file(tmp_path, monkeypatch):
-    import src.utils.pipeline as pipeline_mod
-    from src.utils import ledger
-    monkeypatch.setattr(pipeline_mod, "PIPELINE", tmp_path / "_pipeline")
-    (tmp_path / "_pipeline" / "events").mkdir(parents=True)
-
-    with patch("src.tracker.fetch_weibo_posts", return_value=[]):
-        with patch("src.tracker.filter_feminist_events", return_value=[
-            {"title": "测试事件", "brief": "简短描述", "sources": ["https://example.com"]}
-        ]):
-            from src.tracker import run_tracker
-            run_tracker("260325", cookie="")
-
-    events_file = tmp_path / "_pipeline" / "events" / "260325.md"
-    assert events_file.exists()
-    assert "测试事件" in events_file.read_text(encoding="utf-8")
-    row = ledger.get_row("260325", 1, pipeline_dir=tmp_path / "_pipeline")
-    assert row["标题"] == "测试事件" and row["状态"] == "candidate"
-
-
 def test_count_existing_events_returns_max_index(tmp_path):
     f = tmp_path / "events.md"
     f.write_text("# Events\n\n## 1. A\n\n## 2. B\n\n## 3. C\n", encoding="utf-8")
@@ -619,3 +599,95 @@ def test_dedupe_keeps_events_without_sources(tmp_path, monkeypatch):
     write_events_file("990204", [{"title": "甲", "brief": "b", "sources": ["https://weibo.com/1/A"]}])
     kept = dedupe_events("990204", [{"title": "手工条目", "brief": "b", "sources": []}])
     assert [e["title"] for e in kept] == ["手工条目"]
+
+
+# ---- single-day date-filtered mode (searchProfile) ----
+
+def test_parse_searchprofile_items_maps_fields():
+    from src.tracker import parse_searchprofile_items
+    items = [{
+        "id": 5001, "idstr": "5001", "mblogid": "Qabc",
+        "created_at": "Tue Jul 07 23:33:31 +0800 2026",
+        "text_raw": "正文", "text": "<span>正文</span>",
+        "retweeted_status": {"text_raw": "转发正文"},
+    }]
+    p = parse_searchprofile_items(items, "u1")[0]
+    assert p["id"] == "5001"
+    assert p["url"] == "https://weibo.com/u1/Qabc"
+    assert p["text"] == "正文" and p["retweet_text"] == "转发正文"
+    assert p["created_dt"].date() == date(2026, 7, 7)
+    assert p["is_top"] is False
+
+
+def test_fetch_by_day_rejects_non_ok_response():
+    """{} (expired-cookie soft-fail) must raise, never return [] silently —
+    a silent [] would let the caller attest 无事件 for an unchecked day."""
+    from src.tracker import fetch_weibo_posts_by_day
+    web = MagicMock()
+    web.fetch_json.return_value = {}
+    with pytest.raises(WebClient.FetchError):
+        fetch_weibo_posts_by_day(web, "u1", date(2026, 7, 7))
+
+
+def test_fetch_by_day_captcha_raises_ratelimited():
+    from src.tracker import fetch_weibo_posts_by_day, RateLimited
+    web = MagicMock()
+    web.fetch_json.return_value = {"ok": -100, "url": "https://weibo.com/captcha"}
+    with pytest.raises(RateLimited):
+        fetch_weibo_posts_by_day(web, "u1", date(2026, 7, 7))
+
+
+def test_fetch_by_day_paginates_until_empty():
+    from src.tracker import fetch_weibo_posts_by_day
+    web = MagicMock()
+    web.fetch_json.side_effect = [
+        {"ok": 1, "data": {"list": [{"idstr": "1", "mblogid": "a",
+            "created_at": "Tue Jul 07 10:00:00 +0800 2026", "text_raw": "x"}]}},
+        {"ok": 1, "data": {"list": []}},
+    ]
+    with patch("src.tracker.time.sleep"):
+        posts = fetch_weibo_posts_by_day(web, "u1", date(2026, 7, 7))
+    assert len(posts) == 1
+    assert web.fetch_json.call_count == 2
+
+
+def test_run_tracker_day_writes_events_and_ledger(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
+    (tmp_path / "events").mkdir(parents=True)
+    monkeypatch.setenv("TRACKED_UIDS", "u1")
+    from src.tracker import run_tracker_day
+    from src.utils import ledger
+    post = {"id": "1", "url": "u", "text": "t", "retweet_text": "",
+            "created_dt": datetime(2026, 7, 7, 12, tzinfo=CN_TZ), "is_top": False}
+    with patch("src.tracker.fetch_weibo_posts_by_day", return_value=[post]), \
+         patch("src.tracker.filter_feminist_events",
+               return_value=[{"title": "测试事件", "brief": "b", "sources": ["s"]}]), \
+         patch("src.tracker.time.sleep"):
+        run_tracker_day("260707", cookie="c")
+    events_file = tmp_path / "events" / "260707.md"
+    assert events_file.exists() and "测试事件" in events_file.read_text(encoding="utf-8")
+    rows = [r for r in ledger.read_rows(pipeline_dir=tmp_path) if r["收录日期"] == "260707"]
+    assert rows and rows[0]["标题"] == "测试事件" and rows[0]["状态"] == "candidate"
+
+
+def test_run_tracker_day_attests_no_events_only_when_covered(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.utils.pipeline.PIPELINE", tmp_path)
+    (tmp_path / "events").mkdir(parents=True)
+    monkeypatch.setenv("TRACKED_UIDS", "u1")
+    from src.tracker import run_tracker_day
+    from src.utils import ledger
+    # clean fetch + 0 events → 无事件 row
+    with patch("src.tracker.fetch_weibo_posts_by_day", return_value=[]), \
+         patch("src.tracker.filter_feminist_events", return_value=[]), \
+         patch("src.tracker.time.sleep"):
+        run_tracker_day("260707", cookie="c")
+    rows = [r for r in ledger.read_rows(pipeline_dir=tmp_path) if r["收录日期"] == "260707"]
+    assert rows and rows[0]["状态"] == "无事件"
+    # fetch error → no attestation at all
+    with patch("src.tracker.fetch_weibo_posts_by_day",
+               side_effect=WebClient.FetchError("boom")), \
+         patch("src.tracker.filter_feminist_events", return_value=[]), \
+         patch("src.tracker.time.sleep"):
+        run_tracker_day("260703", cookie="c")
+    rows = [r for r in ledger.read_rows(pipeline_dir=tmp_path) if r["收录日期"] == "260703"]
+    assert rows == []

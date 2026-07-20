@@ -221,7 +221,9 @@ def mark_harvested(date_str: str, n: int, pipeline_dir: Path | None = None) -> N
     update_row(date_str, n, pipeline_dir, **{"经验提取": HARVEST_DONE})
 
 
-def get_untracked_dates(days: int = 7, pipeline_dir: Path | None = None) -> list[str]:
+def get_untracked_dates(days: int = 15, pipeline_dir: Path | None = None) -> list[str]:
+    # 15 matches the --daily bucket window: a hole must survive that long
+    # before it can silently age out of the status report (260707 did, at 7).
     covered = {r["收录日期"] for r in read_rows(pipeline_dir)}
     today = date.today()
     out = []

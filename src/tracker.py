@@ -19,11 +19,16 @@ from src.utils.pipeline import events_path
 from src.utils import ledger
 
 WEIBO_API = "https://m.weibo.cn/api/container/getIndex"
+# Date-filtered per-UID post search (the weibo.com profile 筛选 feature).
+# Accepts the same weibo.cn-domain cookie; visitors get an empty {} instead
+# of data, so ok!=1 must be treated as an error, never as "no posts".
+SEARCHPROFILE_API = "https://weibo.com/ajax/statuses/searchProfile"
 FEMINIST_KEYWORDS = ["女性", "女权", "性别", "婚姻", "家暴", "性侵", "拐卖", "生育", "就业歧视"]
 CN_TZ = timezone(timedelta(hours=8))
 PAGINATION_MAX_PAGES = 20
 PAGINATION_DELAY_SEC = 3.0   # base; actual = uniform(base, base*3) → 3–9s per page
 INTER_UID_DELAY_SEC = 5.0    # base; actual = uniform(base, base*3) → 5–15s between UIDs
+URL_FETCH_DELAY_SEC = 3.0    # base; actual = uniform(base, base*3) → 3–9s between --urls fetches
 
 
 class RateLimited(Exception):
@@ -86,6 +91,59 @@ def fetch_weibo_posts(web: WebClient, uid: str, page: int = 1) -> list[dict]:
         raise RateLimited()
     cards = data.get("data", {}).get("cards", [])
     return parse_weibo_cards(cards, uid)
+
+
+def parse_searchprofile_items(items: list[dict], uid: str) -> list[dict]:
+    """Map weibo.com ajax searchProfile items to the tracker post shape."""
+    posts = []
+    for m in items:
+        retweet = m.get("retweeted_status") or {}
+        posts.append({
+            "id": str(m.get("idstr") or m.get("id") or ""),
+            "url": f"https://weibo.com/{uid}/{m.get('mblogid', '')}",
+            "text": m.get("text_raw") or WebClient.extract_text(m.get("text", "")),
+            "retweet_text": retweet.get("text_raw")
+                or (WebClient.extract_text(retweet.get("text", "")) if retweet else ""),
+            "created_dt": parse_created_at(m.get("created_at", "")),
+            "is_top": bool(m.get("isTop")),
+        })
+    return posts
+
+
+def fetch_weibo_posts_by_day(
+    web: WebClient,
+    uid: str,
+    day: date,
+    max_pages: int = PAGINATION_MAX_PAGES,
+) -> list[dict]:
+    """Date-filtered profile fetch (searchProfile) — O(当日帖量) requests,
+    no backfill walk from today. Works with the existing weibo.cn cookie.
+
+    An expired/rejected cookie yields HTTP 200 with `{}` (no `ok` field), so
+    anything but ok=1 raises instead of returning [] — a silent [] would let
+    callers wrongly attest 无事件 for a day that was never actually checked.
+    """
+    t0 = int(datetime.combine(day, datetime.min.time(), tzinfo=CN_TZ).timestamp())
+    headers = {
+        "Referer": f"https://weibo.com/u/{uid}",
+        "Accept": "application/json, text/plain, */*",
+    }
+    posts: list[dict] = []
+    for page in range(1, max_pages + 1):
+        url = (f"{SEARCHPROFILE_API}?uid={uid}&page={page}"
+               f"&starttime={t0}&endtime={t0 + 86400 - 1}")
+        data = web.fetch_json(url, headers=headers)
+        if data.get("ok") == -100 and "captcha" in (data.get("url") or ""):
+            raise RateLimited()
+        if data.get("ok") != 1:
+            raise WebClient.FetchError(
+                f"searchProfile refused (cookie expired/未登录?): {str(data)[:200]}")
+        lst = (data.get("data") or {}).get("list") or []
+        if not lst:
+            break
+        posts.extend(parse_searchprofile_items(lst, uid))
+        time.sleep(random.uniform(PAGINATION_DELAY_SEC, PAGINATION_DELAY_SEC * 3))
+    return posts
 
 
 def fetch_weibo_posts_paginated(
@@ -372,21 +430,44 @@ def append_events_to_file(date_str: str, new_events: list[dict]) -> Path | None:
     return out
 
 
-def run_tracker(date_str: str, cookie: str) -> None:
-    """Single-date mode: fetch current page only, write to date_str events file."""
-    tracked_uids = [u.strip() for u in os.environ.get("TRACKED_UIDS", "").split(",") if u.strip()]
+def run_tracker_day(
+    date_str: str,
+    cookie: str,
+    uids: list[str] | None = None,
+    merge: bool = False,
+) -> None:
+    """Single-day mode: date-filtered fetch per UID via searchProfile.
+
+    Coverage attestation: all UIDs fetched cleanly + 0 events → 无事件 row;
+    any fetch error → no attestation (the date stays visibly untracked).
+    """
+    if uids is None:
+        uids = [u.strip() for u in os.environ.get("TRACKED_UIDS", "").split(",") if u.strip()]
+    day = _parse_yymmdd(date_str)
     web = WebClient(cookie=cookie)
-    all_posts = []
-    for i, uid in enumerate(tracked_uids):
+    all_posts: list[dict] = []
+    covered = True
+    for i, uid in enumerate(uids):
         if i > 0:
             time.sleep(random.uniform(INTER_UID_DELAY_SEC, INTER_UID_DELAY_SEC * 3))
         try:
-            all_posts.extend(fetch_weibo_posts(web, uid))
+            posts = fetch_weibo_posts_by_day(web, uid, day)
         except WebClient.FetchError as e:
-            print(f"Warning: failed to fetch uid {uid}: {e}")
+            covered = False
+            print(f"  uid {uid}: fetch error {e}", file=sys.stderr)
+            continue
+        print(f"  uid {uid}: {len(posts)} posts on {day}")
+        all_posts.extend(posts)
     events = filter_feminist_events(all_posts)
-    out = write_events_file(date_str, events)
-    print(f"Wrote {len(events)} events" + (f" to {out}" if out else " (无事件，已记录)"))
+    if events:
+        writer = append_events_to_file if merge else write_events_file
+        out = writer(date_str, events)
+        print(f"{date_str}: {len(all_posts)} posts → {len(events)} events → {out}")
+    elif covered:
+        ledger.record_no_events(date_str)
+        print(f"{date_str}: {len(all_posts)} posts → 0 events →（无事件行）")
+    else:
+        print(f"{date_str}: 覆盖不完整，未标记无事件（仍显示为未追踪）", file=sys.stderr)
 
 
 def run_tracker_range(
@@ -489,7 +570,9 @@ def run_tracker_urls(urls: list[str], date_str: str) -> None:
     """
     from src.wbfetch import WbFetchError
     posts = []
-    for u in urls:
+    for i, u in enumerate(urls):
+        if i > 0:
+            time.sleep(random.uniform(URL_FETCH_DELAY_SEC, URL_FETCH_DELAY_SEC * 3))
         try:
             posts.append(_fetch_url_post(u))
         except WbFetchError as e:
@@ -623,11 +706,13 @@ def _parse_yymmdd(s: str) -> date:
 def main() -> None:
     load_dotenv(Path(__file__).parent / ".env")
     parser = argparse.ArgumentParser(description="Track feminist events from Weibo UIDs.")
-    parser.add_argument("date", nargs="?", help="single date YYMMDD (default: yesterday)")
+    parser.add_argument("date", nargs="*",
+                        help="one or more dates YYMMDD (default: yesterday); date-filtered "
+                             "fetch per day, O(当日帖量) requests even for old dates")
     parser.add_argument("--days", type=int, help="walk back N days from --end (range mode)")
     parser.add_argument("--end", help="end date YYMMDD for range mode (default: yesterday)")
-    parser.add_argument("--uids", help="comma-separated UID override (range mode); for partial re-runs")
-    parser.add_argument("--merge", action="store_true", help="append to existing events files (range mode)")
+    parser.add_argument("--uids", help="comma-separated UID override; for partial re-runs")
+    parser.add_argument("--merge", action="store_true", help="append to existing events files")
     parser.add_argument("--daily", action="store_true",
                         help="incremental fetch since last seen post per UID (cron-safe; resumes cursors)")
     parser.add_argument("--budget", type=int, default=None,
@@ -646,7 +731,7 @@ def main() -> None:
                 urls = [l.strip() for l in Path(raw[1:]).read_text(encoding="utf-8").splitlines() if l.strip()]
             else:
                 urls = [u.strip() for u in raw.split(",") if u.strip()]
-            date_arg = args.date or (date.today() - timedelta(days=1)).strftime("%y%m%d")
+            date_arg = args.date[0] if args.date else (date.today() - timedelta(days=1)).strftime("%y%m%d")
             run_tracker_urls(urls, date_arg)
         elif args.daily:
             run_tracker_daily(cookie, budget=args.budget or DAILY_BUDGET)
@@ -655,8 +740,12 @@ def main() -> None:
             uids = [u.strip() for u in args.uids.split(",") if u.strip()] if args.uids else None
             run_tracker_range(end_date, args.days, cookie, uids=uids, merge=args.merge)
         else:
-            date_arg = args.date or (date.today() - timedelta(days=1)).strftime("%y%m%d")
-            run_tracker(date_arg, cookie)
+            dates = args.date or [(date.today() - timedelta(days=1)).strftime("%y%m%d")]
+            uids = [u.strip() for u in args.uids.split(",") if u.strip()] if args.uids else None
+            for i, date_arg in enumerate(dates):
+                if i > 0:
+                    time.sleep(random.uniform(INTER_UID_DELAY_SEC, INTER_UID_DELAY_SEC * 3))
+                run_tracker_day(date_arg, cookie, uids=uids, merge=args.merge)
     except RateLimited:
         print(
             "\nRATE LIMITED. Waiting does NOT clear this — there is no cooldown window.\n"

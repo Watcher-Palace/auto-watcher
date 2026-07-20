@@ -74,7 +74,7 @@ Tests are hermetic (network and the `claude` CLI are mocked). The same command r
 Run (venv lives at `src/venv/`, not `.venv/`; date arg is positional YYMMDD, there is no `--date` flag):
 ```bash
 source src/venv/bin/activate
-python src/tracker.py [YYMMDD]            # single date (default: yesterday)
+python src/tracker.py [YYMMDD ...]        # one or more dates (default: yesterday); date-filtered fetch (searchProfile), cheap even for old dates — use this to backfill historical dates
 python src/tracker.py --days N [--end YYMMDD] [--merge]  # date range
 python src/tracker.py --daily [--budget N]  # incremental since last seen post (cron-safe; auto-resumes budget/rate-limit cursors)
 python src/tracker.py --urls <url1,url2|@file> [YYMMDD]  # anonymous fetch of public post URLs (no cookie/account; immune to the rate limit)
@@ -142,7 +142,7 @@ Research files must be written entirely in **Simplified Chinese**. Do not write 
 
 All pipeline subagents — research, write, review, summary — run on **Sonnet**; models and tool allowlists for research/write/review are pinned in `.claude/agents/` (the writer deliberately has no web tools). Research needs coverage judgment (the writer no longer backstops it), which Haiku handles unreliably. **Haiku** survives only in the tracker's LLM filtering (a `claude` CLI subprocess, not a subagent).
 
-When dispatching parallel subagents (research, write, or review), run in **batches of 2–3**, not all at once, so a quota hit loses only one batch rather than all work.
+Dispatch pipeline subagents (research, write, review) **one at a time** — wait for the current subagent to finish before dispatching the next. (User directive 2026-07-19; supersedes the earlier batches-of-2–3 rule.)
 
 ## Tracker Blocker Protocol
 
