@@ -16,7 +16,11 @@ from src.publisher import read_frontmatter, load_tag_registry, load_tag_group
 VALID_CATEGORIES = {"S", "A", "B", "C", "D", "N"}
 # 犯罪 tag 必须同时带一个具体罪名，或说明为什么没有罪名（用户裁定 2026-07-20）
 CHARGE_GAP_TAGS = {"未立案", "罪名未公开"}
-METRIC_RE = re.compile(r"(阅读量|讨论量|转发量|评论量|投票|票数)")
+# 具体数据：计量词，或"数字+转发/评论/点赞/观看"这类计数写法
+METRIC_RE = re.compile(
+    r"(阅读量|讨论量|转发量|评论量|访问量|播放量|观看量|点赞量|投票|票数"
+    r"|[\d.]+\s*[万亿]?\s*(?:条)?\s*(?:转发|评论|点赞|观看|播放|次浏览))"
+)
 SOURCE_LINE_RE = re.compile(r"^(- )?\d{4}\.\d{1,2}\.\d{1,2}，.+?。\*.+?\*。\S+")
 TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
 
