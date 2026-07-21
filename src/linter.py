@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.publisher import read_frontmatter, load_tag_registry, load_tag_group
 
-VALID_CATEGORIES = {"S", "A", "B", "C", "D", "N"}
+VALID_CATEGORIES = {"S", "A", "B", "C", "D", "M", "N"}
 # 犯罪 tag 必须同时带一个具体罪名，或说明为什么没有罪名（用户裁定 2026-07-20）
 CHARGE_GAP_TAGS = {"未立案", "罪名未公开"}
 # 具体数据：计量词，或"数字+转发/评论/点赞/观看"这类计数写法
@@ -23,6 +23,7 @@ METRIC_RE = re.compile(
 )
 SOURCE_LINE_RE = re.compile(r"^(- )?\d{4}\.\d{1,2}\.\d{1,2}，.+?。\*.+?\*。\S+")
 TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
+ASSET_REF_RE = re.compile(r"\{%\s*asset_path\s+(.+?)\s*%\}")
 
 
 def _sections(body: str) -> dict[str, str]:
@@ -69,7 +70,7 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
     cat_list = cats if isinstance(cats, list) else [cats]
     for c in cat_list:
         if c not in VALID_CATEGORIES:
-            violations.append(f"categories 非法值：{c!r}（允许 S/A/B/C/D/N）")
+            violations.append(f"categories 非法值：{c!r}（允许 S/A/B/C/D/M/N）")
 
     tags = fm.get("tags") or []
     if not tags and not TAG_PROPOSAL_RE.search(content):
@@ -117,6 +118,31 @@ def lint_warnings(content: str) -> list[str]:
     return warnings
 
 
+def assets_dir_for(path: Path) -> Path:
+    """草稿 `_pipeline/draft/{date}-{n}-title-vN.md` → `{date}-{n}-assets/`；
+    已发布 `source/_posts/{slug}.md` → `source/_posts/{slug}/`。"""
+    m = re.match(r"(\d{6})-(\d+)-", path.name)
+    if m and path.parent.name == "draft":
+        return path.parent / f"{m.group(1)}-{m.group(2)}-assets"
+    return path.parent / path.stem
+
+
+def lint_assets(path: Path, content: str) -> tuple[list[str], list[str]]:
+    """引用的资产必须真实存在；抓到但没用上的资产只警告，不拦。"""
+    refs = {m.group(1).strip().strip("\"'") for m in ASSET_REF_RE.finditer(content)}
+    assets = assets_dir_for(path)
+    present = {p.name for p in assets.iterdir()} if assets.is_dir() else set()
+    violations = [
+        f"引用的资产文件不存在：{name}（应放在 {assets.name}/）"
+        for name in sorted(refs - present)
+    ]
+    warnings = [
+        f"资产未被引用：{assets.name}/{name}（研究阶段抓了图，正文没嵌）"
+        for name in sorted(present - refs)
+    ]
+    return violations, warnings
+
+
 def lint_file(path: Path) -> list[str]:
     return lint_text(path.read_text(encoding="utf-8"), load_tag_registry(), date.today())
 
@@ -127,9 +153,13 @@ def main(argv: list[str]) -> int:
         return 2
     rc = 0
     for p in argv:
-        content = Path(p).read_text(encoding="utf-8")
+        path = Path(p)
+        content = path.read_text(encoding="utf-8")
         vs = lint_text(content, load_tag_registry(), date.today())
         ws = lint_warnings(content)
+        asset_vs, asset_ws = lint_assets(path, content)
+        vs += asset_vs
+        ws += asset_ws
         if vs:
             rc = 1
             print(f"LINT FAIL {p}")

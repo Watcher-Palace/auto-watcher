@@ -81,7 +81,19 @@ def move_assets(src: Path, dst: Path) -> None:
     shutil.move(str(src), str(dst))
 
 
-def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = True) -> None:
+def check_todo_tag(tags, allow_todo: bool) -> None:
+    """TODO = 我们的调查没做完（不是事件没进展），默认拒绝发布。"""
+    if "TODO" in (tags or []) and not allow_todo:
+        raise SystemExit(
+            "草稿挂 TODO（待查证）——本站调查未完成，拒绝发布。\n"
+            "  查证完成/存疑内容已删除 → 从 frontmatter 移除 TODO 后重跑；\n"
+            "  事件本身待后续进展 → 该用 PING，不是 TODO；\n"
+            "  确需带 TODO 上线 → 加 --allow-todo 显式放行。"
+        )
+
+
+def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = True,
+            allow_todo: bool = False) -> None:
     if ledger.get_row(date_str, n) is None:
         raise SystemExit(
             f"账本中无 {date_str}-{n} 行——先运行 python src/pipeline_cli.py add {date_str} {n} <标题>"
@@ -89,6 +101,7 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
     content = draft_path.read_text(encoding="utf-8")
     fm = read_frontmatter(content)
     validate_tags(fm.get("tags"), load_tag_registry())
+    check_todo_tag(fm.get("tags"), allow_todo)
     from src.linter import TAG_PROPOSAL_RE
     proposals = TAG_PROPOSAL_RE.findall(content)
     if proposals:
@@ -143,8 +156,10 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).parent / ".env")
     import sys as _sys
-    date_str = _sys.argv[1]
-    n = int(_sys.argv[2])
+    args = [a for a in _sys.argv[1:] if not a.startswith("--")]
+    allow_todo = "--allow-todo" in _sys.argv[1:]
+    date_str = args[0]
+    n = int(args[1])
     drafts = sorted(
         (PIPELINE / "draft").glob(f"{date_str}-{n}-*.md"),
         key=lambda p: p.stat().st_mtime,
@@ -155,4 +170,4 @@ if __name__ == "__main__":
         _sys.exit(1)
     draft_path = drafts[0]
     title = draft_path.stem.split("-", 2)[-1].rsplit("-v", 1)[0]
-    publish(date_str, n, title, draft_path)
+    publish(date_str, n, title, draft_path, allow_todo=allow_todo)

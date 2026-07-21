@@ -65,3 +65,19 @@ def test_sweep_archives_all_terminal_events(env):
     moved = sweep(pipeline_dir=pipe, archive_dir=arch)
     assert (arch / "events" / "990101.md").exists()
     assert moved and not (pipe / "review" / "990101-1-标题一-v1.md").exists()
+
+
+def test_assets_dir_archived_with_event(tmp_path, monkeypatch):
+    """附件目录 {date}-{n}-assets/ 随事件一起归档（用户裁定 2026-07-21）。"""
+    pipeline = tmp_path / "_pipeline"
+    (pipeline / "draft").mkdir(parents=True)
+    (pipeline / "draft" / "260716-5-测试案-v1.md").write_text("x", encoding="utf-8")
+    assets = pipeline / "draft" / "260716-5-assets"
+    assets.mkdir()
+    (assets / "260716-5-通报.jpg").write_bytes(b"x")
+    archive_dir = tmp_path / "_pipeline_archive"
+
+    archive_event("260716", 5, pipeline, archive_dir)
+
+    assert not assets.exists()
+    assert (archive_dir / "draft" / "260716-5-assets" / "260716-5-通报.jpg").exists()

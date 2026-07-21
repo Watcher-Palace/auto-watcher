@@ -160,3 +160,55 @@ def test_crime_tag_with_charge_passes():
 def test_crime_tag_with_gap_tag_passes():
     v = lint_text(make_draft(tags=("犯罪", "未立案")), REGISTRY | {"犯罪", "未立案"}, TODAY)
     assert v == []
+
+
+# --- 资产引用（用户裁定 2026-07-21：附件要配套 lint） ---
+
+from src.linter import lint_assets
+
+
+def _write_draft(tmp_path, body, name="260716-5-测试案-v1.md"):
+    d = tmp_path / "draft"
+    d.mkdir(exist_ok=True)
+    p = d / name
+    p.write_text(make_draft(body=body), encoding="utf-8")
+    return p
+
+
+def test_asset_reference_without_file_flagged(tmp_path):
+    body = '\n<img src="{% asset_path 260716-5-通报.jpg %}" width="300" alt="通报">\n'
+    p = _write_draft(tmp_path, body)
+    violations, _ = lint_assets(p, p.read_text(encoding="utf-8"))
+    assert any("260716-5-通报.jpg" in v for v in violations)
+
+
+def test_asset_reference_with_file_passes(tmp_path):
+    body = '\n<img src="{% asset_path 260716-5-通报.jpg %}" width="300" alt="通报">\n'
+    p = _write_draft(tmp_path, body)
+    assets = p.parent / "260716-5-assets"
+    assets.mkdir()
+    (assets / "260716-5-通报.jpg").write_bytes(b"x")
+    violations, _ = lint_assets(p, p.read_text(encoding="utf-8"))
+    assert violations == []
+
+
+def test_unreferenced_asset_warns(tmp_path):
+    p = _write_draft(tmp_path, "")
+    assets = p.parent / "260716-5-assets"
+    assets.mkdir()
+    (assets / "260716-5-未用.jpg").write_bytes(b"x")
+    violations, warnings = lint_assets(p, p.read_text(encoding="utf-8"))
+    assert violations == []
+    assert any("260716-5-未用.jpg" in w for w in warnings)
+
+
+def test_published_post_asset_dir_resolved(tmp_path):
+    posts = tmp_path / "_posts"
+    posts.mkdir()
+    p = posts / "260716-5.md"
+    body = '\n<img src="{% asset_path 260716-5-通报.jpg %}" width="300" alt="通报">\n'
+    p.write_text(make_draft(body=body), encoding="utf-8")
+    (posts / "260716-5").mkdir()
+    (posts / "260716-5" / "260716-5-通报.jpg").write_bytes(b"x")
+    violations, _ = lint_assets(p, p.read_text(encoding="utf-8"))
+    assert violations == []

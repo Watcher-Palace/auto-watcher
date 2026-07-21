@@ -107,3 +107,20 @@ def test_publish_proceeds_past_preflight_with_clean_review(tmp_path, monkeypatch
     publish("990101", 1, "测试", draft, deploy=False)  # must not raise
 
     assert (tmp_path / "source" / "_posts" / "990101.md").exists()
+
+
+def test_todo_tag_blocks():
+    with pytest.raises(SystemExit):
+        publisher.check_todo_tag(["犯罪", "TODO"], allow_todo=False)
+
+
+def test_todo_tag_allowed_with_flag():
+    publisher.check_todo_tag(["犯罪", "TODO"], allow_todo=True)  # no raise
+
+
+def test_ping_tag_does_not_block():
+    publisher.check_todo_tag(["犯罪", "PING"], allow_todo=False)  # no raise
+
+
+def test_no_tags_does_not_block():
+    publisher.check_todo_tag(None, allow_todo=False)  # no raise

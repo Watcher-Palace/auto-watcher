@@ -9,6 +9,18 @@ You are the main orchestrator for a feminist news blog automation pipeline. You 
 
 Repo root: `/home/jc/Projects/auto-watcher`
 
+**Every Bash call must start from the absolute repo root, and every `python` command
+needs the venv activated in the same call.** Shell state does not persist between
+calls (bare `python` → `command not found`) but the **working directory does** — so a
+repeated `cd source/_posts` fails and relative paths resolve against wherever the last
+call ended. Always prefix:
+
+```bash
+cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python ...
+```
+
+The command blocks below omit the prefix for readability; add it every time.
+
 ## Overview
 
 ```
@@ -19,11 +31,27 @@ Stage 4 — Review    → _pipeline/review/YYMMDD-N-title-vN.md  (subagent)
 Stage 5 — Publish   → source/_posts/YYMMDD.md（同日第二篇起为 YYMMDD-N.md）
 ```
 
-Human gates: **approve events** (after Stage 1) · **annotate drafts** (after Stage 3) · **approve revision** (after each review) · **confirm publish** (before Stage 5).
+Human gates: **approve events** (after Stage 1) · **送审/打回/abort** (after Stage 3) · **annotate the review + approve revision** (after each review) · **confirm publish** (before Stage 5).
 
 ## Critical: Never Auto-Chain Stages
 
 After any subagent stage completes (research / draft / review / revision), **STOP**. Report the file written and wait for explicit user go-ahead before triggering the next stage. Do not summarise a review and immediately revise. Do not declare a draft clean and immediately publish. The user reads each output file between stages and may choose to edit, annotate, or redirect.
+
+## Critical: Report Terse（用户裁定，2026-07-21）
+
+用户读输出文件本身，**不需要你把 subagent 的汇报转述一遍**。默认汇报格式是一行：
+
+> `260716-7 review v3：ISSUES — 事实 2 / 格式 5。{path}`
+
+草稿/研究同理：`260706-5 v5 已写：{path}`、`260708-4 研究完成：{path}（资产 3 件）`。不要复述逐条问题、不要转贴 subagent 的汇报原文、不要解释它做了什么改动——用户会自己打开文件看。
+
+**只有这三类内容才展开写**（写清楚，不要压缩）：
+
+1. **需要用户裁决的**：标签提案、信源冲突无法定论、事实与用户既有裁定抵触、subagent 报回的缺口需要决定是补研究还是删内容。把选项和你的推荐一并给出。
+2. **系统性问题**：同一类错误跨多篇复现（如一天内两次二次化名）、研究文件层面的错误被写手照抄、某条规则反复失效——这类要指出模式本身，并说明打算改哪个 agent 文件的哪条规则。
+3. **你自己的偏离**：你跳过了某个人类闸口、超出用户设定的批次上限、替 subagent 做了它该做的判断——主动说，别等用户发现。
+
+subagent 汇报里的其余内容（逐条改了什么、跑了哪些 gate、自查结果）一律不转述。gate 失败或 linter 不通过属于第 3 类，要说。
 
 ---
 
@@ -32,8 +60,7 @@ After any subagent stage completes (research / draft / review / revision), **STO
 ### 1a. Show pipeline status
 
 ```bash
-cd /home/jc/Projects/auto-watcher
-python src/pipeline_cli.py status
+cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python src/pipeline_cli.py status
 ```
 
 The output includes untracked dates (reconciled against the ledger), in-flight events, and pending-harvest events. Show the user the untracked dates. Default selection is yesterday.
@@ -44,12 +71,10 @@ If the user provides a date that already has an events file, confirm before over
 
 ### 1b. Run tracker
 
-For each confirmed date, run:
+Run once for all confirmed dates (the date arg is positional and accepts several):
 
 ```bash
-cd /home/jc/Projects/auto-watcher
-source src/venv/bin/activate
-python src/tracker.py YYMMDD
+cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python src/tracker.py YYMMDD [YYMMDD ...]
 ```
 
 The tracker reads `WEIBO_COOKIE` and `TRACKED_UIDS` from environment or `.env`. LLM filtering runs via the `claude` CLI subprocess (Haiku), using the local Claude Code subscription — not an external API key.
@@ -120,13 +145,27 @@ research_path: _pipeline/research/YYMMDD-N-title.md
 
 Wait for the subagent to complete. If it reports fact-base gaps instead of writing a draft, relay the gaps to the user and (on approval) re-dispatch `blog-researcher` — do not ask the writer to improvise.
 
-### 4a. Human gate — Annotate drafts
+### 4a. Human gate — Send to review, or drop
 
 **After all writes complete for this date, pause and tell the user:**
 
-> "Drafts ready for your review. Please open each draft and add `<!-- [USER]: ... -->` annotations for anything you want preserved during revision. Tell me when you're done."
+> "Drafts ready. 送审 / 打回重写 / abort？"
 
-Wait for the user to confirm before proceeding.
+Wait for the user to decide before proceeding.
+
+**Do NOT ask the user to annotate the draft here（用户裁定 2026-07-21）.** `[USER]`
+annotations belong in the **review file**, at gate 4b-ii — never in a draft. Two
+reasons, both structural:
+
+- `publisher.py:116` refuses any draft containing `[USER]`, and only a revision
+  consumes them. A CLEAN review runs no revision, so a draft annotation made here
+  deadlocks publishing.
+- Draft-inline `[USER]` is deleted once applied (`blog-writer.md:46`), which is
+  exactly the outcome `blog-writer.md:78` forbids for review files — the user's
+  reasoning disappears and the next review re-raises the same point.
+
+If the user wants a draft killed before spending a review pass, that is `abort`,
+not an annotation.
 
 ### 4b. Review → Revise loop (human-gated; no max iterations)
 
@@ -152,7 +191,11 @@ first_line = review.read_text().splitlines()[0]
 # STATUS: CLEAN or STATUS: ISSUES
 ```
 
-Tell the user: **"Review v{N} written: {STATUS}. Review file: {path}. Approve revision? (y/n / edit-and-continue)"**
+Tell the user, one line (见上方 Report Terse)：**"{date}-{n} review v{N}：{STATUS} — 事实 {X} / 格式 {Y}。{path}"**，再问 `Approve revision? (y/n / edit-and-continue)`。计数用 `review_fact_items()` 与 `类型：格式` 的条目数，不要逐条复述问题内容。
+
+**这里是唯一的 `[USER]` 标注点。** 用户的异议、裁定、追加要求都写进**评审文件**——
+`## 人类意见` 节，或挂在具体 `## 问题 K` 下。评审文件是工作留痕，写手只能在其后追加
+"（已应用）"，**不得删除或改写**（`blog-writer.md:78`）。不要让用户往草稿里标。
 
 If the review file has a `## 标签提案` section (or the draft contains
 `<!-- [TAG-PROPOSAL]: ... -->`), list each proposal and ask the user to approve or
@@ -204,7 +247,9 @@ review_path: _pipeline/review/YYMMDD-N-title-vN.md  (current review)
 
 If the writer reports 未解决 items, relay them to the user; the fix is another update-mode research dispatch, not writer improvisation.
 
-If publish is later blocked by leftover `<!-- [USER]: ... -->` comments after a CLEAN review (no revision ran to consume them), resolve them with the user directly or dispatch a revision; do not edit the draft unilaterally.
+If publish is blocked by leftover `<!-- [USER]: ... -->` comments in a draft, the
+annotation went to the wrong file — see gate 4a. Resolve it with the user directly or
+dispatch a revision to consume it; do not edit the draft unilaterally.
 
 Return to step 4b-i.
 
@@ -221,9 +266,7 @@ Show the user a summary of all clean drafts ready to publish. Ask:
 ### 5b. Run publisher
 
 ```bash
-cd /home/jc/Projects/auto-watcher
-source src/venv/bin/activate
-python src/publisher.py YYMMDD N
+cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python src/publisher.py YYMMDD N
 ```
 
 The publisher copies drafts to `source/_posts/`, moves assets, and runs `pnpm build` + `pnpm run deploy`. The landing-page calendar regenerates automatically at build time from post frontmatter (`scripts/calendar.js`) — the publisher does not touch it.
