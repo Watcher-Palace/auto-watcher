@@ -120,7 +120,7 @@ For each approved (date, index, title) triple:
 
 ### 2. Research (subagent)
 
-Dispatch a `blog-researcher` subagent (tools and model are pinned in the agent definition). When processing multiple events, dispatch in **batches of up to 3** — wait for the batch to finish before dispatching the next (user directive 2026-07-20).
+Dispatch a `blog-researcher` subagent (tools and model are pinned in the agent definition). 多事件时按批派发（批量规则见 Notes）。
 
 ```
 mode: initial
@@ -137,7 +137,7 @@ Wait for the subagent to complete and confirm the research file exists at `_pipe
 
 **Freshness check first:** `pipeline_cli.py status` flags in-flight events whose research file is ≥ 2 days old (`（research 已 N 天）`). If the event being dispatched is flagged, recommend an update-mode research refresh and let the user decide — never refresh automatically.
 
-Dispatch a `blog-writer` subagent (no web tools by design — the research file is its sole fact source). Dispatch in **batches of up to 3** (user directive 2026-07-20).
+Dispatch a `blog-writer` subagent (no web tools by design — the research file is its sole fact source). （批量规则见 Notes）
 
 ```
 date: YYMMDD
