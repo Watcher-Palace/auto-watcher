@@ -257,3 +257,30 @@ def test_title_equals_slug_fails(tmp_path):
     p = d / "990101-1-内部标签-v1.md"
     p.write_text(_doc(BODY_OK, title="内部标签"), encoding="utf-8")
     assert any("内部索引标签" in v for v in lint_slug_title(p, "内部标签"))
+
+
+# --- C1：草稿 ↔ 研究文件交叉对账（审计裁定 2026-07-22） ---
+
+from src.linter import crosscheck_research
+
+RESEARCH = ("## 事实\n白女士报案。\n## 信息来源\n"
+            "- 2026.1.1，澎湃新闻。*真标题*。https://a/b — 摘录\n")
+
+
+def test_crosscheck_source_url_missing():
+    draft = _doc(BODY_OK.replace("https://a/", "https://other/"))
+    vs, _ = crosscheck_research(draft, RESEARCH)
+    assert any("URL" in v for v in vs)
+
+
+def test_crosscheck_source_title_date_mismatch():
+    draft = _doc("## 概述\nx<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，澎湃新闻。*错标题*。https://a/b\n")
+    vs, _ = crosscheck_research(draft, RESEARCH)
+    assert any("标题" in v or "日期" in v for v in vs)
+
+
+def test_crosscheck_names_warn():
+    draft = _doc("## 概述\n林悦（化名）与高某某。<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，澎湃新闻。*真标题*。https://a/b\n")
+    _, ws = crosscheck_research(draft, RESEARCH)
+    assert any("林悦" in w for w in ws) and any("高某某" in w for w in ws)
+    assert not any("白女士" in w for w in ws)
