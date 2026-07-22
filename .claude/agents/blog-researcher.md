@@ -85,7 +85,7 @@ Research is sufficient when you have:
 
 - **抓什么**：与事实节直接对应的证据。官方通报/警情通报截图、裁判文书与起诉书、当事方公开发布的证据（聊天记录、录音截图、伤情或诊断证明、报警回执）、媒体拍摄的现场照。**不抓**装饰性配图、表情包、与事实无关的插图、纯文字新闻页截图。
 - **存哪**：`_pipeline/draft/{date}-{index}-assets/`（目录不存在就 `mkdir -p` 建；发布时 `publisher.py` 会把它搬到 `source/_posts/{date}/`）。文件名用 `{date}-{index}-简短说明.jpg` 形式，不要沿用原站的随机文件名。
-- **怎么抓**：普通网页图用 `curl -L --referer <页面URL> -o <目标路径> <图片URL>`（多数站点防盗链，缺 Referer 会拿到占位图，下载后检查文件大小与类型）；微博单帖的图先跑 `/home/jc/Projects/auto-watcher/src/venv/bin/python src/wbfetch.py <帖子URL>` 取其返回的 `image_urls`，再逐个下载。
+- **怎么抓**：普通网页图用 `/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/imgfetch.py <图片URL> <目标路径> --referer <页面URL>`（多数站点防盗链，缺 Referer 会拿到占位图；脚本自动校验类型与大小，FAIL 就换源，换不到就如实记失败，不要绕过校验硬存）；微博单帖的图先跑 `/home/jc/Projects/auto-watcher/src/venv/bin/python src/wbfetch.py <帖子URL>` 取其返回的 `image_urls`，再逐个用 imgfetch 下载。
 - **涉隐私的照抓，不自行取舍（用户裁定）**：受害人正脸、身份证/门牌/车牌等未打码的图**照样抓下来**，但必须在资产条目里写明"含身份信息，需打码或由用户裁定是否使用"——筛选权在人，不在你，也不在写手。
 - **抓不到就如实记**：403、需登录、图床失效等，写明失败原因，不要留空让下游以为没有图。
 
