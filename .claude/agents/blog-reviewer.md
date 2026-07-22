@@ -64,7 +64,7 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
 **Validation gate (mandatory):** after writing the review file, run
 
-    src/venv/bin/python /home/jc/Projects/auto-watcher/src/review_linter.py <review-path>
+    /home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/review_linter.py <review-path>
 
 and fix every violation before finishing. Do not report completion with a failing check.
 
