@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.review_linter import (
     parse_review, validate_format, validate_anchors,
-    check_marks, check_dispositions,
+    check_marks, check_dispositions, check_tag_proposals,
 )
 
 VALID = """STATUS: ISSUES
@@ -169,6 +169,14 @@ def test_cli_default_mode_requires_review_dir_bare_filename(tmp_path):
         capture_output=True, text=True, cwd=tmp_path)
     assert bad.returncode == 1, bad.stdout + bad.stderr
     assert "review/" in "".join(bad.stdout)
+
+
+def test_tag_proposals_must_transcribe():
+    draft = "---\ntags:\n---\n<!-- [TAG-PROPOSAL]: 新标签 — 理由 -->\n正文"
+    review_missing = "STATUS: CLEAN\n"
+    review_ok = "STATUS: CLEAN\n\n## 标签提案\n- 新标签 — 理由\n"
+    assert any("新标签" in v for v in check_tag_proposals(review_missing, draft))
+    assert check_tag_proposals(review_ok, draft) == []
 
 
 def test_cli_default_mode_absolute_review_path_still_passes(tmp_path):

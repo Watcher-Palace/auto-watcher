@@ -17,6 +17,7 @@ TYPE_RE = re.compile(r"^类型：(.+?)\s*$", re.MULTILINE)
 QUOTE_RE = re.compile(r"^原文：`(.+?)`\s*$", re.MULTILINE | re.DOTALL)
 DISP_RE = re.compile(r"^处理：(.*?)\s*$", re.MULTILINE)
 VALID_TYPES = {"事实", "格式"}
+TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
 
 
 @dataclass
@@ -97,6 +98,16 @@ def check_marks(text: str, research_text: str, version: int) -> list[str]:
     return v
 
 
+def check_tag_proposals(review_text: str, draft_text: str) -> list[str]:
+    """草稿的 [TAG-PROPOSAL] 注释必须逐条转录进评审文件的 ## 标签提案 节，否则会随草稿修订消失。"""
+    vs = []
+    for prop in TAG_PROPOSAL_RE.findall(draft_text):
+        name = prop.split("—")[0].split("-")[0].strip()
+        if name and name not in review_text:
+            vs.append(f"草稿的标签提案未转录进评审 ## 标签提案：{name}")
+    return vs
+
+
 def check_dispositions(text: str) -> tuple[list[str], bool]:
     """处理 行必须是四种形式之一：已修改 / 拒绝：<理由> / 已删除（查证失败） / 未解决：<缺口说明>。"""
     v, unresolved = [], False
@@ -143,7 +154,9 @@ def main(argv: list[str]) -> int:
         else:
             draft = resolved.parent.parent / "draft" / resolved.name
             if draft.exists():
-                violations += validate_anchors(text, draft.read_text(encoding="utf-8"))
+                draft_text = draft.read_text(encoding="utf-8")
+                violations += validate_anchors(text, draft_text)
+                violations += check_tag_proposals(text, draft_text)
             else:
                 violations.append(f"找不到同版本草稿：{draft}")
     for x in violations:
