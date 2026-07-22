@@ -32,10 +32,12 @@ Publishing deploys to GitHub Pages — an outward-facing action. Never delegate 
 subagent and never auto-chain it from Stage A. After the user confirms, run from repo root:
 
 ```bash
-cp _pipeline/summary/{YYMM}.md source/summaries/{YYMM}.md
-pnpm build      # regenerates the calendar; the 本月总结 link now appears for this month
-pnpm run deploy
+cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python src/publish_summary.py {YYMM}
 ```
+
+This copies the draft to `source/summaries/{YYMM}.md` (validating that its `summary_month`
+frontmatter matches `{YYMM}`), then runs `pnpm build` (regenerates the calendar; the 本月总结
+link now appears for this month) and `pnpm run deploy`.
 
 `publisher.py` is post-specific (writes to `source/_posts/`, moves assets, validates tags) and
 is **not** used here.
