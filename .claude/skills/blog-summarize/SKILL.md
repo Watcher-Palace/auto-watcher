@@ -20,7 +20,7 @@ Repo root: `/home/jc/Projects/auto-watcher`
 2. **Dispatch ONE subagent with `model: sonnet`.** Its prompt is the entire
    **Generation procedure** section below, with `{YYMM}`, `{YYYY-MM}`, and `{YYYY年M月}`
    replaced for the target month. Sonnet because the prose requires reading and grouping post
-   bodies (matches the repo convention: research=Haiku, write/review=Sonnet).
+   bodies.
 
 3. When the subagent finishes, confirm the draft exists at `_pipeline/summary/{YYMM}.md` and
    show it to the user. **STOP — human gate.** Do not publish until the user reviews and
