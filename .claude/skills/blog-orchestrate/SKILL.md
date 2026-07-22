@@ -161,11 +161,11 @@ Wait for the user to decide before proceeding.
 annotations belong in the **review file**, at gate 4b-ii — never in a draft. Two
 reasons, both structural:
 
-- `publisher.py:116` refuses any draft containing `[USER]`, and only a revision
+- publisher.py `publish()` 预检 refuses any draft containing `[USER]`, and only a revision
   consumes them. A CLEAN review runs no revision, so a draft annotation made here
   deadlocks publishing.
-- Draft-inline `[USER]` is deleted once applied (`blog-writer.md:46`), which is
-  exactly the outcome `blog-writer.md:78` forbids for review files — the user's
+- Draft-inline `[USER]` is deleted once applied（见 blog-writer《Revision Mode》）, which is
+  exactly the outcome blog-writer《不许删 review 文件里的 [USER] 注释》条 forbids for review files — the user's
   reasoning disappears and the next review re-raises the same point.
 
 If the user wants a draft killed before spending a review pass, that is `abort`,
@@ -199,7 +199,7 @@ Tell the user, one line (见上方 Report Terse)：**"{date}-{n} review v{N}：{
 
 **这里是唯一的 `[USER]` 标注点。** 用户的异议、裁定、追加要求都写进**评审文件**——
 `## 人类意见` 节，或挂在具体 `## 问题 K` 下。评审文件是工作留痕，写手只能在其后追加
-"（已应用）"，**不得删除或改写**（`blog-writer.md:78`）。不要让用户往草稿里标。
+"（已应用）"，**不得删除或改写**（blog-writer《不许删 review 文件里的 [USER] 注释》条）。不要让用户往草稿里标。
 
 If the review file has a `## 标签提案` section (or the draft contains
 `<!-- [TAG-PROPOSAL]: ... -->`), list each proposal and ask the user to approve or
