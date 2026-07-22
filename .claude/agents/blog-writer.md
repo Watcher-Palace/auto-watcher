@@ -14,7 +14,7 @@ You write or revise one post draft. **You have no web tools and never gather fac
 The orchestrator will tell you:
 - `date`: YYMMDD
 - `index`: N
-- `title`: post title in Chinese
+- `title`: **内部索引标签**（取自事件账本/研究文件名），仅供对号定位，**不是文章标题**——frontmatter 的 `title` 必须另写（见下方"标题自己写"规则）；草稿文件名沿用这个 slug 不变
 - `mode`: `initial` or `revision`
 - `research_path`: path to the research file (always provided)
 - `draft_path`: path to current draft (revision mode only)
@@ -58,13 +58,19 @@ Every item must have a filled 处理 line. Exit code 2 means dispositions are co
     import sys
     sys.path.insert(0, '/home/jc/Projects/auto-watcher')
     from src.utils.pipeline import next_draft_path
-    path, v = next_draft_path(date, index, title)
+    path, v = next_draft_path(date, index, title)   # title = 派单传入的内部标签，原样传
     # Write draft to str(path)
+
+`next_draft_path` 的 `title` 参数必须传**派单里的内部标签**（`高邮亡人事件杀妻案`），
+**不是你新写的文章标题**——草稿文件名要和研究/评审文件共用同一个内部 slug，否则版本递增
+（`next_draft_path` 按 slug 找上一版）会错乱。你自己写的标题只进 frontmatter 的 `title:`，
+不进文件名。
 
 ## Style Rules
 
 - No em dashes (破折号 —). Restructure the sentence instead.
 - No filler phrases: "此事沉寂数月后"、"引发广泛关注" etc. State the fact directly.
+- **标题自己写，不要照搬内部标签（用户裁定，2026-07-22，多次复现）：** 派单里的 `title`、研究文件名、事件账本标题都是**内部索引标签**（如"截瘫女子诉肇事男友案""丈夫刺死妻弟家暴案情披露""运城强奸案警方失职"），只供我们内部对号，**读者永远看不到它**。frontmatter 的 `title` 你要**另写一个信息完整、能独立读懂的标题**：点明关键当事方、发生了什么、以及最核心的进展或落点，让没看过内部标签的人一眼知道这是什么事——内部标签往往只是四五个字的类目速记，直接搬去当标题等于什么都没说。反例：内部标签"截瘫女子诉肇事男友案"被原样当标题发出，用户手改为"截瘫女子起诉肇事男友，维权期间遭网暴被迫终止治疗"；"脱口秀演员遭性骚扰反诉赔偿"被用户改为"脱口秀演员抵制偷拍者，反被起诉侵犯名誉权并被强制执行2.5万元赔偿"。标题仍须服从下面这条：只陈述事实，不缀舆论反应词。
 - **标题不追加舆论反应（用户裁定，2026-07-21）：** frontmatter 的 `title` 只陈述发生了什么。已经把事实说完之后再缀"引争议""引质疑""引发关注""惹众怒"这类概括舆论反应的措辞，一律删掉——那是评论不是事实，和正文里"舆论对此提出质疑"属同类措辞（反例：法官猥亵案的"行政立案引争议"，事实是猥亵与行政立案，"引争议"是加上去的）。**例外：争议本身就是事件主体时照写**——署名归属之争、广告风波、游戏立绘争议这类事件，去掉"争议/风波"就描述不出发生了什么，此时它是事件名称的一部分，不是追加的反应（已发布例：《宇宙探索编辑部》剧本署名争议、名创优品偷窥女性广告风波）。判断法：删掉该词后标题是否还说得清事件——说得清就删，说不清就留。
 - Sources section: one line per source, format exactly `YYYY.MM.DD，来源。*标题*。URL` — sources come from the research file's 信息来源. 斜体位必须是文章的**真实标题**、日期必须是研究文件核实过的发布日期：不得用正文摘录、概括、猜测或从 URL 倒推顶替，研究文件缺标题或缺日期时按缺口上报等研究补齐。来源名以正文/文末署名为准，转载页的频道品牌不是出处。这一节被评审逐条推翻返工过多轮，是格式问题里复发率最高的一类。
 - **Facts only, no inference:** every sentence must be directly supported by the research file. Do not infer, interpret, or editorialize. Do not draw conclusions from facts even if they seem obvious. If something is not explicitly stated in the research file, do not write it.
