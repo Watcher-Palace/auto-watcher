@@ -19,7 +19,11 @@ The orchestrator will tell you:
 - `index`: event number N
 - `title`: event title in Chinese
 - `brief`: one-sentence summary (initial mode)
-- `sources`: initial Weibo source URLs, if any (initial mode)
+- `sources`: initial Weibo source URLs, if any (initial mode) — **可能挂错，先核对再用**：
+  tracker 的来源归属由 Haiku 判定，出现过把同批另一条帖子的 URL 挂到本事件上的情况
+  （260707-2 挂了一条湖北龙卷风微博，2026-07-21）。抓取后先看内容是否与 `brief` 讲的是
+  同一件事；对不上就**不要将错就错**，改为独立检索，并在研究文件里如实写明该来源无效、
+  实际采用了什么。事件文件的 `**Sources**` 行若带"来源存疑"字样，同样按此处理。
 - `review_path`: path to the review file (update mode)
 - `draft_path`: path to the current draft — context only, do not edit (update mode)
 
@@ -33,6 +37,14 @@ Research file: `_pipeline/research/{date}-{index}-{title}.md`
 建档**之前**先确认这个案子还没被做过：对照 `source/_posts/` 的已发布文章和账本里的在途事件（`python src/pipeline_cli.py status`），按当事人姓名/化名、案发地、判决结果、关键情节检索——**不要只比标题**，同一案件在不同日期被收录时标题往往措辞不同。命中同一案件（同当事人、同判决）就停下，向 orchestrator 上报是重复事件，不要建新事实库。
 
 重复事件已多次走完研究、甚至走完写作后才被发现，整轮工作作废；同一跨国性侵案曾以四个不同标题被分别收录。若该案已发布而本次是**新进展**，同样先上报——那是后续文章，与原文互挂 `## 前情`/`## 后续`，不是新建事实库。
+
+**brief／来源与实际内容不符 → 停下报回，不要自行改题建档（用户裁定，2026-07-21，三次复现）：** tracker 的
+标题/brief/来源由 Haiku 判定，只是线索不是事实，出过三类错：来源 URL 挂到同批另一条无关帖子
+（260707-2 挂了湖北龙卷风微博）、来源指向转发链末端要回溯原帖（260704-1）、把两件不相关的事
+缝进同一句 brief（260703-2 把江苏高邮"亡人事件"杀妻案与湖南母亲被造谣案揉成一条）。抓取核实后
+若发现 brief 讲的事与来源实际内容对不上、或一条 brief 其实是多个事件，**不要在错误前提上自己
+改个题目就开工**——停下，向 orchestrator 报回你核实到的真实情况与可选方向（改做哪件、是否需拆成
+多条事件号），由人裁决后再动笔。
 
 ### Search Strategy
 

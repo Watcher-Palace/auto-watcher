@@ -213,7 +213,8 @@ def _extract_events_json(content: str) -> list[dict] | None:
     """
     def _valid(arr) -> bool:
         return isinstance(arr, list) and all(
-            isinstance(e, dict) and {"title", "brief", "sources"} <= e.keys()
+            isinstance(e, dict) and {"title", "brief"} <= e.keys()
+            and ("source_indices" in e or "sources" in e)
             for e in arr
         )
 
@@ -253,6 +254,44 @@ def _extract_events_json(content: str) -> list[dict] | None:
     return None
 
 
+def _resolve_sources(events: list[dict], posts: list[dict]) -> list[dict]:
+    """Turn the LLM's post references into source URLs, in code.
+
+    The LLM used to copy the URL strings back verbatim, and on 2026-07-21 one
+    event (260707-2) came back carrying a *different* post's URL from the same
+    batch — a valid link to the wrong story, which no downstream stage can tell
+    from a correct one. It now returns 1-based post indices instead: short to
+    echo and range-checkable. Legacy URL replies are still accepted but must
+    appear in the batch that was actually sent.
+
+    Anything that does not resolve is dropped and the event's brief is marked
+    来源存疑 — never silently written through as if it were sourced.
+    """
+    known = {p["url"] for p in posts}
+    for ev in events:
+        urls: list[str] = []
+        bad: list[str] = []
+        for idx in ev.pop("source_indices", None) or []:
+            try:
+                i = int(idx)
+            except (TypeError, ValueError):
+                bad.append(str(idx))
+                continue
+            if 1 <= i <= len(posts):
+                urls.append(posts[i - 1]["url"])
+            else:
+                bad.append(f"#{idx}")
+        for u in ev.get("sources") or []:
+            (urls if u in known else bad).append(u)
+        ev["sources"] = list(dict.fromkeys(urls))
+        if bad:
+            ev["brief"] = (ev.get("brief", "").rstrip()
+                           + f"（来源存疑：LLM 给出的来源 {'、'.join(bad)} 不在本次抓取结果中，已剔除）")
+        elif not ev["sources"]:
+            ev["brief"] = ev.get("brief", "").rstrip() + "（来源存疑：LLM 未给出任何可用来源）"
+    return events
+
+
 def filter_feminist_events(posts: list[dict]) -> list[dict]:
     """Use claude CLI to filter and deduplicate feminist-relevant events."""
     if not posts:
@@ -279,9 +318,12 @@ def filter_feminist_events(posts: list[dict]) -> list[dict]:
   {{
     "title": "标题简述（10字以内）",
     "brief": "一两句话概述，注明最新进展",
-    "sources": ["url1", "url2"]
+    "source_indices": [1, 5]
   }}
 ]
+
+`source_indices` 填该事件依据的帖子**序号**（上面每条帖子开头的 `#N` 里的 N，从 1 开始），
+不要填 URL。只填真正讲述该事件的帖子序号——填错序号会让事件挂上另一件事的来源。
 
 如无符合条件的内容，返回空数组 []。
 
@@ -302,7 +344,7 @@ def filter_feminist_events(posts: list[dict]) -> list[dict]:
                 raise ValueError(
                     f"no valid JSON events array in LLM reply: {content[:200]!r}"
                 )
-            return events
+            return _resolve_sources(events, posts)
         except Exception as e:
             if attempt == 2:
                 raise

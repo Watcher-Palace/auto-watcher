@@ -532,6 +532,65 @@ def test_extract_no_valid_array_returns_none():
     assert _extract_events_json("见帖子[3]与[9]。") is None
 
 
+# ---- 来源归属：LLM 返回帖子序号，代码映射回 URL ----
+# 背景（2026-07-21）：Haiku 曾把另一条帖子的 URL 抄到别的事件上（260707-2 挂到了
+# 同批次一条湖北龙卷风微博）。序号比 9 位 bid 好誊写，且能范围校验。
+
+_POSTS = [
+    {"url": "https://weibo.com/1/AAA", "text": "a", "retweet_text": ""},
+    {"url": "https://weibo.com/1/BBB", "text": "b", "retweet_text": ""},
+    {"url": "https://weibo.com/1/CCC", "text": "c", "retweet_text": ""},
+]
+
+
+def _resolve(events):
+    from src.tracker import _resolve_sources
+    return _resolve_sources(events, _POSTS)
+
+
+def test_resolve_maps_indices_to_urls():
+    ev = _resolve([{"title": "t", "brief": "b", "source_indices": [1, 3]}])[0]
+    assert ev["sources"] == ["https://weibo.com/1/AAA", "https://weibo.com/1/CCC"]
+    assert "来源存疑" not in ev["brief"]
+    assert "source_indices" not in ev
+
+
+def test_resolve_flags_out_of_range_index():
+    ev = _resolve([{"title": "t", "brief": "b", "source_indices": [2, 99]}])[0]
+    assert ev["sources"] == ["https://weibo.com/1/BBB"]
+    assert "来源存疑" in ev["brief"]
+
+
+def test_resolve_flags_event_left_without_any_source():
+    ev = _resolve([{"title": "t", "brief": "b", "source_indices": [0]}])[0]
+    assert ev["sources"] == []
+    assert "来源存疑" in ev["brief"]
+
+
+def test_resolve_accepts_legacy_urls_only_if_in_input_set():
+    # 旧格式（直接给 URL）仍接受，但必须落在抓取结果内——凭空捏造的 bid 会被剔除
+    ev = _resolve([{"title": "t", "brief": "b",
+                    "sources": ["https://weibo.com/1/BBB",
+                                "https://weibo.com/1/ZZZ"]}])[0]
+    assert ev["sources"] == ["https://weibo.com/1/BBB"]
+    assert "来源存疑" in ev["brief"]
+
+
+def test_resolve_dedupes_and_preserves_order():
+    ev = _resolve([{"title": "t", "brief": "b", "source_indices": [3, 1, 3]}])[0]
+    assert ev["sources"] == ["https://weibo.com/1/CCC", "https://weibo.com/1/AAA"]
+
+
+def test_filter_resolves_indices_end_to_end():
+    from src.tracker import filter_feminist_events
+    reply = json.dumps([{"title": "t", "brief": "b", "source_indices": [2]}],
+                       ensure_ascii=False)
+    fake = MagicMock(returncode=0, stdout=reply, stderr="")
+    with patch("subprocess.run", return_value=fake):
+        events = filter_feminist_events(_POSTS)
+    assert events[0]["sources"] == ["https://weibo.com/1/BBB"]
+
+
 def test_filter_raises_on_malformed_reply():
     # 解析不出合法数组必须抛错触发重试，绝不能静默返回 []（会被记成无事件）
     from src.tracker import filter_feminist_events
