@@ -24,6 +24,12 @@ METRIC_RE = re.compile(
 SOURCE_LINE_RE = re.compile(r"^(- )?\d{4}\.\d{1,2}\.\d{1,2}，.+?。\*.+?\*。\S+")
 TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
 ASSET_REF_RE = re.compile(r"\{%\s*asset_path\s+(.+?)\s*%\}")
+# C3（审计裁定，2026-07-22）：填充语/蓝字进展标记为 FAIL；舆论反应措辞为 WARN
+FILLER_FAIL_RE = re.compile(r"此事沉寂数月后|网友纷纷表示")
+OPINION_WARN_RE = re.compile(r"引发广泛关注|引起广泛关注|引发关注|引发热议")
+TITLE_OPINION_RE = re.compile(r"引争议|引发争议|引质疑|引发质疑|引发关注|引发热议|惹众怒")
+BLUE_RE = re.compile(r'<font color="blue">(.*?)</font>', re.S)
+NO_PROGRESS_RE = re.compile(r"暂无|尚未|无最新进展|未发布通报")
 
 
 def _sections(body: str) -> dict[str, str]:
@@ -107,15 +113,38 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
     if isinstance(d, date) and d > today:
         violations.append(f"date 在未来：{d.isoformat()}")
 
+    if FILLER_FAIL_RE.search(prose):
+        violations.append("填充语出现（此事沉寂数月后/网友纷纷表示 类）——直接陈述事实")
+    blues = BLUE_RE.findall(prose)
+    if len(blues) != 1:
+        violations.append(f"蓝字标记应恰好 1 处（现 {len(blues)} 处）——标最新真实进展")
+    elif NO_PROGRESS_RE.search(blues[0]):
+        violations.append("蓝字内容是'暂无进展'类句子——蓝字必须是真实事实进展")
+
     return violations
 
 
 def lint_warnings(content: str) -> list[str]:
     """Reviewer-waivable issues: reported, but never block a draft."""
-    body = content.split("---", 2)[-1] if content.startswith("---") else content
-    warnings: list[str] = []
     # user decision 2026-07-19: standalone ## 前情 / ## 后续 are legal per template
+    fm = read_frontmatter(content)
+    prose = re.sub(r"<!--.*?-->", "", content, flags=re.S)
+    warnings: list[str] = []
+    title = str(fm.get("title") or "")
+    m = TITLE_OPINION_RE.search(title)
+    if m:
+        warnings.append(f"标题含舆论反应词（{m.group()}）——除非争议即事件主体，删掉")
+    if OPINION_WARN_RE.search(prose):
+        warnings.append("正文含舆论反应措辞（引发关注类）——舆论事件难免时可保留，否则删")
     return warnings
+
+
+def lint_slug_title(path: Path, fm_title: str) -> list[str]:
+    """草稿文件名形如 YYMMDD-N-标签-vN.md 时，标题不得与内部索引标签相同。"""
+    m = re.match(r"\d{6}-\d+-(.+)-v\d+$", path.stem)
+    if m and fm_title.strip() == m.group(1):
+        return ["title 与内部索引标签相同——标题必须另写（信息完整、能独立读懂）"]
+    return []
 
 
 def assets_dir_for(path: Path) -> Path:
@@ -156,6 +185,7 @@ def main(argv: list[str]) -> int:
         path = Path(p)
         content = path.read_text(encoding="utf-8")
         vs = lint_text(content, load_tag_registry(), date.today())
+        vs += lint_slug_title(path, str((read_frontmatter(content) or {}).get("title") or ""))
         ws = lint_warnings(content)
         asset_vs, asset_ws = lint_assets(path, content)
         vs += asset_vs

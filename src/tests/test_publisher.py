@@ -48,7 +48,7 @@ def test_publish_finalizes_terminal_date(tmp_path, monkeypatch):
     # minimal draft that passes the lint gate
     draft.write_text(
         "---\ntitle: 测试\ndate: 2020-01-01\ncategories: B\ntags:\n- 性侵\n---\n\n"
-        "## 概述\n正文。\n\n"
+        "## 概述\n正文。<font color=\"blue\">2020年1月1日通报</font>\n\n"
         "## 信息来源\n2020.01.01，来源。*标题*。https://example.com/a\n",
         encoding="utf-8",
     )

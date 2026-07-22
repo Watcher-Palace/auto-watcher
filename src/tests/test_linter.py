@@ -10,7 +10,8 @@ def make_draft(body="", date_str="2026-06-01", categories="B", tags=("性侵",))
     tag_lines = "\n".join(f"- {t}" for t in tags)
     return (
         f"---\ntitle: 测试\ndate: {date_str}\ncategories: {categories}\n"
-        f"tags:\n{tag_lines}\n---\n\n## 概述\n正文。\n\n"
+        f"tags:\n{tag_lines}\n---\n\n"
+        f"## 概述\n正文。<font color=\"blue\">2026年6月1日通报</font>\n\n"
         f"## 信息来源\n2026.06.01，来源。*标题*。https://example.com/a\n" + body
     )
 
@@ -61,7 +62,9 @@ def test_future_date_flagged():
 
 
 def test_missing_required_section_flagged():
-    draft = make_draft().replace("## 概述\n正文。\n\n", "")
+    draft = make_draft().replace(
+        "## 概述\n正文。<font color=\"blue\">2026年6月1日通报</font>\n\n", ""
+    )
     v = lint_text(draft, REGISTRY, TODAY)
     assert any("概述" in x for x in v)
 
@@ -212,3 +215,45 @@ def test_published_post_asset_dir_resolved(tmp_path):
     (posts / "260716-5" / "260716-5-通报.jpg").write_bytes(b"x")
     violations, _ = lint_assets(p, p.read_text(encoding="utf-8"))
     assert violations == []
+
+
+# --- C3：填充语 / 蓝字进展 / 标题舆论反应词 / 标题与内部标签同（审计裁定 2026-07-22） ---
+
+from src.linter import lint_warnings, lint_slug_title
+
+
+def _doc(body, title="独立成文的标题", cats="B", tags="- 犯罪\n- 未立案"):
+    return f"---\ntitle: {title}\ndate: 2026-01-01\ncategories: {cats}\ntags:\n{tags}\n---\n{body}"
+
+
+BODY_OK = "## 概述\nx<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，来源。*题*。https://a/\n"
+
+
+def test_filler_phrases_fail():
+    vs = lint_text(_doc(BODY_OK.replace("x", "此事沉寂数月后，")), None, date(2099, 1, 1))
+    assert any("填充语" in v for v in vs)
+
+
+def test_blue_font_exactly_one():
+    no_blue = lint_text(_doc(BODY_OK.replace('<font color="blue">2026年1月1日判决</font>', "")), None, date(2099, 1, 1))
+    two_blue = lint_text(_doc(BODY_OK + '<font color="blue">又一进展</font>'), None, date(2099, 1, 1))
+    stale = lint_text(_doc(BODY_OK.replace("2026年1月1日判决", "截至目前暂无进展")), None, date(2099, 1, 1))
+    assert any("蓝" in v for v in no_blue) and any("蓝" in v for v in two_blue) and any("蓝" in v for v in stale)
+
+
+def test_title_opinion_words_warn():
+    ws = lint_warnings(_doc(BODY_OK, title="某案宣判引发关注"))
+    assert any("舆论反应词" in w for w in ws)
+
+
+def test_opinion_filler_warn_not_fail():
+    content = _doc(BODY_OK.replace("x", "该事件引发广泛关注。"))
+    assert not any("填充语" in v for v in lint_text(content, None, date(2099, 1, 1)))
+    assert any("舆论" in w for w in lint_warnings(content))
+
+
+def test_title_equals_slug_fails(tmp_path):
+    d = tmp_path / "draft"; d.mkdir()
+    p = d / "990101-1-内部标签-v1.md"
+    p.write_text(_doc(BODY_OK, title="内部标签"), encoding="utf-8")
+    assert any("内部索引标签" in v for v in lint_slug_title(p, "内部标签"))
