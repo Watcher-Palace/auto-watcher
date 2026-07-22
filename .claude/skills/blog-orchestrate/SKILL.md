@@ -77,7 +77,7 @@ Run once for all confirmed dates (the date arg is positional and accepts several
 cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python src/tracker.py YYMMDD [YYMMDD ...]
 ```
 
-The tracker reads `WEIBO_COOKIE` and `TRACKED_UIDS` from environment or `.env`. LLM filtering runs via the `claude` CLI subprocess (Haiku), using the local Claude Code subscription — not an external API key.
+The tracker reads `WEIBO_COOKIE` and `TRACKED_UIDS` from environment or `.env`（见 Environment 节）.
 
 If the user supplies public Weibo post URLs instead (e.g. while rate-limited), use the anonymous URL mode — no cookie involved:
 
@@ -158,15 +158,10 @@ Wait for the subagent to complete. If it reports fact-base gaps instead of writi
 Wait for the user to decide before proceeding.
 
 **Do NOT ask the user to annotate the draft here（用户裁定 2026-07-21）.** `[USER]`
-annotations belong in the **review file**, at gate 4b-ii — never in a draft. Two
-reasons, both structural:
-
-- publisher.py `publish()` 预检 refuses any draft containing `[USER]`, and only a revision
-  consumes them. A CLEAN review runs no revision, so a draft annotation made here
-  deadlocks publishing.
-- Draft-inline `[USER]` is deleted once applied（见 blog-writer《Revision Mode》）, which is
-  exactly the outcome blog-writer《不许删 review 文件里的 [USER] 注释》条 forbids for review files — the user's
-  reasoning disappears and the next review re-raises the same point.
+annotations belong in the **review file**, at gate 4b-ii — never in a draft：草稿内
+`[USER]` 会被 publisher `publish()` 预检拦下（CLEAN 评审不触发修订、无人消费它，发布死锁）；
+即便被修订消费，应用后也随之删除、裁定不留痕（见 blog-writer《Revision Mode》与
+《不许删 review 文件里的 [USER] 注释》条）。
 
 If the user wants a draft killed before spending a review pass, that is `abort`,
 not an annotation.

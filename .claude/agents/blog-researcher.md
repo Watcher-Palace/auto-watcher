@@ -30,9 +30,7 @@ Research file: `_pipeline/research/{date}-{index}-{title}.md`
 
 ### Step 0 — 同案查重（先做，再研究）
 
-先跑 `/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py dedup <当事人/地名/关键词>`（含账本、已发布、研究存档），再人工判断。建档**之前**先确认这个案子还没被做过：对照 `source/_posts/` 的已发布文章和账本里的在途事件（`/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py status`），按当事人姓名/化名、案发地、判决结果、关键情节检索——**不要只比标题**，同一案件在不同日期被收录时标题往往措辞不同。命中同一案件（同当事人、同判决）就停下，向 orchestrator 上报是重复事件，不要建新事实库。
-
-重复事件已多次走完研究、甚至走完写作后才被发现，整轮工作作废；同一跨国性侵案曾以四个不同标题被分别收录。若该案已发布而本次是**新进展**，同样先上报——那是后续文章，与原文互挂 `## 前情`/`## 后续`，不是新建事实库。
+建档**之前**先确认这个案子还没被做过：跑 `/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py dedup <当事人/地名/关键词>`（一次扫账本、已发布文章、研究存档），再人工判断。检索词用当事人姓名/化名、案发地、判决结果、关键情节——**不要只比标题**，同一案件在不同日期被收录时标题往往措辞不同（曾有同一案件以四个标题分别收录；例见 casebook）。命中同一案件（同当事人、同判决）就停下，向 orchestrator 上报是重复事件，不要建新事实库；若该案已发布而本次是**新进展**，同样先上报——那是后续文章，与原文互挂 `## 前情`/`## 后续` 链接，不是新建事实库。
 
 **brief／来源与实际内容不符 → 停下报回，不要自行改题建档（用户裁定，2026-07-21，三次复现）：** tracker 的
 标题/brief/来源由 Haiku 判定，只是线索不是事实，出过三类错：来源 URL 挂到同批另一条无关帖子、来源指向

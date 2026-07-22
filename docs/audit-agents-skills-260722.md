@@ -156,6 +156,7 @@
 writer 的重不在行数在密度：多条规则是"规则 + 两三个案例名 + 完整错误链条复述"。curate 对累积经验的要求是 "general principles only — never case names, dates"，而正文规则区恰恰堆满案例名与日期。反例有防合理化价值，不建议全删；建议每条规则保留一个最短反例，长链条复述砍半（与 B1、C 组联动：规则进 linter 后 prose 缩为一行）。
 
 - 处理：BC组完成后再看
+- 处理追记（2026-07-22，BC 完成后复查执行）：writer 压缩 5 条（标题自己写／舆论反应词正例／Sources 复发叙述句／半匿名代称双案链条／按性质判断双反例）；researcher Step 0 与 dedup 落地后的手工对照段合并；orchestrate 去重 2 处（1b 的 LLM 过滤说明并入 Environment 节、4a 的 [USER] 禁标理由压缩为指针式）；三条完整链条迁入 docs/casebook.md（内部标签当标题、二次化名、同案重复收录）。
 
 ---
 
