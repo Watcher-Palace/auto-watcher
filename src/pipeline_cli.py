@@ -4,6 +4,7 @@
   python src/pipeline_cli.py status
   python src/pipeline_cli.py select <收录日期> <N...>
   python src/pipeline_cli.py abort  <收录日期> <N...>
+  python src/pipeline_cli.py staged <收录日期> <N...>   # 终态：值得关注但暂无可靠来源/相关性未定；草稿移入 source/_drafts 存查
   python src/pipeline_cli.py add    <收录日期> <N> <标题>
   python src/pipeline_cli.py archive [<收录日期> [N]]
   python src/pipeline_cli.py harvest [done <收录日期> <N>]
@@ -14,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.utils import ledger
-from src.utils.archive import finalize_event, sweep
+from src.utils.archive import finalize_event, stage_event, sweep
 
 
 def research_age_suffix(date_str: str, n) -> str:
@@ -67,6 +68,16 @@ def main(argv: list[str]) -> int:
             print(f"{date_str}-{n}: abort（工件已归档）"
                   + ("；该日期已收尾" if done else ""))
         return 0
+    if cmd == "staged":
+        date_str, ns = args[0], args[1:]
+        for n in ns:
+            ledger.record_staged(date_str, int(n))
+            parked, done = stage_event(date_str, int(n))
+            note = (f"草稿已存查 source/_drafts/{parked.name}" if parked
+                    else "无草稿")
+            print(f"{date_str}-{n}: staged（{note}；其余工件已归档）"
+                  + ("；该日期已收尾" if done else ""))
+        return 0
     if cmd == "add":
         date_str, n, title = args[0], int(args[1]), args[2]
         added = ledger.add_event(date_str, n, title, state="selected")
@@ -78,7 +89,7 @@ def main(argv: list[str]) -> int:
             print(f"{args[0]}-{args[1]}: " + ("日期已收尾" if done else "已处理"))
         elif len(args) == 1:
             for n, st in ledger.event_statuses(args[0]).items():
-                if st in ("published", "abort"):
+                if st in ledger.EVENT_TERMINAL_STATES:
                     finalize_event(args[0], n)
             print(f"{args[0]}: 终态事件已归档")
         else:

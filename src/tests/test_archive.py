@@ -81,3 +81,38 @@ def test_assets_dir_archived_with_event(tmp_path, monkeypatch):
 
     assert not assets.exists()
     assert (archive_dir / "draft" / "260716-5-assets" / "260716-5-通报.jpg").exists()
+
+
+def test_stage_event_parks_latest_draft_and_archives_rest(tmp_path):
+    from src.utils.archive import stage_event
+    pipe, arch = tmp_path / "_pipeline", tmp_path / "_arch"
+    drafts = tmp_path / "source" / "_drafts"
+    for rel in ("draft", "research", "events"):
+        (pipe / rel).mkdir(parents=True)
+    (pipe / "draft" / "990101-1-题-v1.md").write_text("v1", encoding="utf-8")
+    (pipe / "draft" / "990101-1-题-v2.md").write_text("v2", encoding="utf-8")
+    (pipe / "draft" / "990101-1-assets").mkdir()
+    (pipe / "research" / "990101-1-题.md").write_text("r", encoding="utf-8")
+    (pipe / "events" / "990101.md").write_text("e", encoding="utf-8")
+    ledger.add_event("990101", 1, "题", pipeline_dir=pipe)
+    ledger.record_staged("990101", 1, pipeline_dir=pipe)
+    parked, date_done = stage_event("990101", 1, pipeline_dir=pipe,
+                                    archive_dir=arch, drafts_dir=drafts)
+    assert parked == drafts / "990101-1-题-v2.md"
+    assert parked.read_text(encoding="utf-8") == "v2"
+    assert (arch / "draft" / "990101-1-题-v1.md").exists()
+    assert (arch / "draft" / "990101-1-assets").exists()
+    assert (arch / "research" / "990101-1-题.md").exists()
+    assert date_done and (arch / "events" / "990101.md").exists()
+
+
+def test_stage_event_without_draft(tmp_path):
+    from src.utils.archive import stage_event
+    pipe = tmp_path / "_pipeline"
+    pipe.mkdir()
+    ledger.add_event("990101", 1, "题", pipeline_dir=pipe)
+    ledger.record_staged("990101", 1, pipeline_dir=pipe)
+    parked, date_done = stage_event("990101", 1, pipeline_dir=pipe,
+                                    archive_dir=tmp_path / "_arch",
+                                    drafts_dir=tmp_path / "drafts")
+    assert parked is None and date_done

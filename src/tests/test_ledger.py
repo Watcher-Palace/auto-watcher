@@ -204,3 +204,28 @@ def test_get_untracked_dates_uses_ledger_coverage(tmp_path):
     ledger.record_no_events(yesterday, pipeline_dir=tmp_path)
     assert yesterday not in ledger.get_untracked_dates(pipeline_dir=tmp_path)
     assert len(ledger.get_untracked_dates(days=3, pipeline_dir=tmp_path)) == 2
+
+
+def test_record_staged_semantics(tmp_path):
+    ledger.add_event("990101", 1, "一", pipeline_dir=tmp_path)
+    ledger.record_staged("990101", 1, pipeline_dir=tmp_path)
+    assert ledger.get_row("990101", 1, pipeline_dir=tmp_path)["状态"] == "staged"
+    ledger.record_staged("990101", 1, pipeline_dir=tmp_path)  # 幂等
+    assert ledger.is_date_terminal("990101", pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_selected("990101", 1, pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_published("990101", 1, pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_aborted("990101", 1, pipeline_dir=tmp_path)
+
+
+def test_record_staged_refuses_other_terminals(tmp_path):
+    ledger.add_event("990101", 1, "一", pipeline_dir=tmp_path)
+    ledger.add_event("990101", 2, "二", pipeline_dir=tmp_path)
+    ledger.record_published("990101", 1, pipeline_dir=tmp_path)
+    ledger.record_aborted("990101", 2, pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_staged("990101", 1, pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_staged("990101", 2, pipeline_dir=tmp_path)

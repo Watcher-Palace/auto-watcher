@@ -80,6 +80,24 @@ Routing when promoting: mechanically checkable → `src/linter.py` or
 `source/_drafts/template.md`; judgment rules → the agent's instruction
 sections.
 
+## 反例写法与去重（硬规则，2026-07-22；防规则/反例跨文件重复）
+
+- **一条规则至多一个反例，一行为限**：写进 agent 文件的反例只写"事件号 + 一句话"
+  （如 `（例：260716-7 "白女士"被二次化名为"林悦"）`）。完整错误链条（谁转引谁、
+  错误如何扩散、用户如何纠正）一律不进 agent 文件——移入 `docs/casebook.md` 按事件号
+  登记，agent 文件里的一行反例就是它的索引；原始留痕在 `_pipeline_archive/` 的
+  research/review 文件里，casebook 条目注明出处即可。
+- **反例只落一个文件**：同一条规则约束多个阶段时（如研究管入库、写手管入稿），每个
+  agent 各写一条自己视角的义务，反例只写在错误实际发生的那个 agent 文件里，另一侧
+  不带例子。
+- **落笔前先查重**：向任何 agent 文件新增或晋升规则前，先在其余 agent 文件与
+  `source/_drafts/template.md` 里检索同一规则；已存在时按上方 Routing 收敛到单一
+  归宿，不得出现第二份全文。**写手与评审都要用的规则不是例外，恰是收敛对象**：
+  二者共同必读 `source/_drafts/template.md`（写手照它写，评审照它开 `类型：格式`
+  问题），这类规则全文只进 template，两个 agent 文件里各留至多一行指针（如
+  "风格硬规则见 template"）。没有共同必读文件的组合（如研究↔写手）才按上一条
+  处理：各写一条自己视角的义务，原文与反例不复制。
+
 ## Conflict Resolution
 
 If an entry conflicts with the instruction sections:

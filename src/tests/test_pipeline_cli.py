@@ -55,3 +55,15 @@ def test_harvest_list_and_done(pipe, capsys):
     assert "990101-1" in capsys.readouterr().out
     assert main(["harvest", "done", "990101", "1"]) == 0
     assert ledger.pending_harvest(pipeline_dir=pipe) == []
+
+
+def test_staged_subcommand_parks_draft(pipe, tmp_path, monkeypatch):
+    monkeypatch.setattr("src.utils.pipeline.SOURCE_DRAFTS",
+                        tmp_path / "source" / "_drafts")
+    ledger.add_event("990101", 1, "一", pipeline_dir=pipe)
+    (pipe / "draft").mkdir()
+    (pipe / "draft" / "990101-1-一-v1.md").write_text("x", encoding="utf-8")
+    assert main(["staged", "990101", "1"]) == 0
+    assert ledger.get_row("990101", 1, pipeline_dir=pipe)["状态"] == "staged"
+    assert (tmp_path / "source" / "_drafts" / "990101-1-一-v1.md").exists()
+    assert not (pipe / "draft" / "990101-1-一-v1.md").exists()

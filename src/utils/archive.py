@@ -63,13 +63,33 @@ def finalize_event(date_str: str, n: int | str,
     """事件终态则归档其工件；整日期终态则收尾共享文件。返回整日期是否已收尾。"""
     pipeline_dir = pipeline_dir or pl.PIPELINE
     row = ledger.get_row(date_str, n, pipeline_dir)
-    if row is None or row["状态"] not in ("published", "abort"):
+    if row is None or row["状态"] not in ledger.EVENT_TERMINAL_STATES:
         return False
     archive_event(date_str, n, pipeline_dir, archive_dir)
     if ledger.is_date_terminal(date_str, pipeline_dir):
         archive_date(date_str, pipeline_dir, archive_dir)
         return True
     return False
+
+
+def stage_event(date_str: str, n: int | str,
+                pipeline_dir: Path | None = None,
+                archive_dir: Path | None = None,
+                drafts_dir: Path | None = None) -> tuple[Path | None, bool]:
+    """staged 收尾：最新草稿移入 source/_drafts 存查（永不渲染），其余工件照常归档。
+    返回（草稿存查路径或 None，整日期是否已收尾）。须在 record_staged 之后调用。"""
+    pipeline_dir = pipeline_dir or pl.PIPELINE
+    drafts_dir = drafts_dir or pl.SOURCE_DRAFTS
+    parked = None
+    d = pipeline_dir / "draft"
+    if d.exists():
+        versions = [p for p in d.glob(f"{date_str}-{n}-*-v*.md")
+                    if p.stem.rsplit("-v", 1)[-1].isdigit()]
+        if versions:
+            latest = max(versions, key=lambda p: int(p.stem.rsplit("-v", 1)[-1]))
+            parked = _move_into(latest, drafts_dir)
+    done = finalize_event(date_str, n, pipeline_dir, archive_dir)
+    return parked, done
 
 
 def sweep(pipeline_dir: Path | None = None,
@@ -82,7 +102,7 @@ def sweep(pipeline_dir: Path | None = None,
     for d in dates:
         for r in rows:
             if (r["收录日期"] == d and r["事件编号"]
-                    and r["状态"] in ("published", "abort")):
+                    and r["状态"] in ledger.EVENT_TERMINAL_STATES):
                 moved += archive_event(d, r["事件编号"], pipeline_dir, archive_dir)
         if ledger.is_date_terminal(d, pipeline_dir):
             moved += archive_date(d, pipeline_dir, archive_dir)

@@ -13,7 +13,9 @@ from src.utils import pipeline as pl
 COLUMNS = ["维护日期", "收录日期", "事件编号", "标题",
            "状态", "发布日期", "发布标题", "经验提取"]
 NO_EVENTS = "无事件"
-TERMINAL_STATES = {"published", "abort", NO_EVENTS}
+# staged＝暂无可靠来源/相关性未定但值得关注、等后续报道：不发布，草稿移入 source/_drafts 存查
+EVENT_TERMINAL_STATES = {"published", "abort", "staged"}
+TERMINAL_STATES = EVENT_TERMINAL_STATES | {NO_EVENTS}
 HARVEST_PENDING = "待提取"
 HARVEST_DONE = "已提取"
 
@@ -104,7 +106,7 @@ def record_selected(date_str: str, n: int, pipeline_dir: Path | None = None) -> 
     row = get_row(date_str, n, pipeline_dir)
     if row is None:
         raise KeyError(f"账本中无 {date_str}-{n} 行")
-    if row["状态"] in ("published", "abort"):
+    if row["状态"] in EVENT_TERMINAL_STATES:
         raise RuntimeError(f"{date_str}-{n} 已是终态 {row['状态']}，不能 select")
     if row["状态"] == "candidate":
         update_row(date_str, n, pipeline_dir, **{"状态": "selected"})
@@ -114,9 +116,23 @@ def record_aborted(date_str: str, n: int, pipeline_dir: Path | None = None) -> N
     row = get_row(date_str, n, pipeline_dir)
     if row is None:
         raise KeyError(f"账本中无 {date_str}-{n} 行")
-    if row["状态"] == "published":
-        raise RuntimeError(f"{date_str}-{n} 已 published，不能 abort；如确需请手改 CSV")
+    if row["状态"] in ("published", "staged"):
+        raise RuntimeError(
+            f"{date_str}-{n} 已是终态 {row['状态']}，不能 abort；如确需请手改 CSV")
     update_row(date_str, n, pipeline_dir, **{"状态": "abort"})
+
+
+def record_staged(date_str: str, n: int, pipeline_dir: Path | None = None) -> None:
+    """终态 staged：暂无可靠来源/相关性未定但值得关注，等后续报道。幂等。"""
+    row = get_row(date_str, n, pipeline_dir)
+    if row is None:
+        raise KeyError(f"账本中无 {date_str}-{n} 行")
+    if row["状态"] == "staged":
+        return
+    if row["状态"] in ("published", "abort"):
+        raise RuntimeError(
+            f"{date_str}-{n} 已是终态 {row['状态']}，不能 staged；如确需请手改 CSV")
+    update_row(date_str, n, pipeline_dir, **{"状态": "staged"})
 
 
 def record_published(date_str: str, n: int, pub_title: str = "",
@@ -127,8 +143,8 @@ def record_published(date_str: str, n: int, pub_title: str = "",
         raise KeyError(f"账本中无 {date_str}-{n} 行")
     if row["状态"] == "published":
         return
-    if row["状态"] == "abort":
-        raise RuntimeError(f"{date_str}-{n} 已 abort；如确需发布请手改 CSV")
+    if row["状态"] in ("abort", "staged"):
+        raise RuntimeError(f"{date_str}-{n} 已 {row['状态']}；如确需发布请手改 CSV")
     update_row(date_str, n, pipeline_dir, **{
         "状态": "published", "发布日期": pub_date or _today(),
         "发布标题": pub_title, "经验提取": HARVEST_PENDING})
