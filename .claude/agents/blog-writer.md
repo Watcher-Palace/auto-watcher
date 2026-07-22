@@ -142,7 +142,7 @@ Proposals are adjudicated by the user at the review gate; the publisher refuses 
 
 Status tags (always available)。二者不可互换，判据是**缺口在哪一边**（用户裁定，2026-07-21）：
 
-- `PING` — **事件**还没走完，插眼等后续进展。文章事实已站得住，只是结局未定（案件待判、程序在途、平台处置未出）。已发表文章带 `PING` 是常态。运维方式：`python src/pipeline_cli.py ping-due` 列出待巡检文章（挂 `PING` 且已满一个月），逐篇看有无后续；有后续就写新文章，与原文互挂 `## 前情`/`## 后续` 链接；后续出现且事件已完结时摘除 `PING`。
+- `PING` — **事件**还没走完，插眼等后续进展。文章事实已站得住，只是结局未定（案件待判、程序在途、平台处置未出）。已发表文章带 `PING` 是常态。运维方式：`/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py ping-due` 列出待巡检文章（挂 `PING` 且已满一个月），逐篇看有无后续；有后续就写新文章，与原文互挂 `## 前情`/`## 后续` 链接；后续出现且事件已完结时摘除 `PING`。
 - `TODO` — **本站调查**没做完：有内容尚未查证、来源存疑、说法互相冲突而未定论。这是"别发布"的信号，不是"事件未进展"。`publisher.py` 默认拒发带 `TODO` 的草稿（需 `--allow-todo` 显式放行）。查证完成或存疑内容删除后即摘除；若查证结论是"暂时无法证实"，正确做法是弱化该部分并写明待证实，改挂 `PING`，而不是留着 `TODO` 发布。
 
 ## 累积经验

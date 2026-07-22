@@ -198,7 +198,7 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
             vs.append(f"来源行与研究文件不一致（日期或标题）：{title} / {date_s}")
     names = set(NAME_RE.findall(body)) | set(ALIAS_RE.findall(body))
     for name in sorted(names):
-        if name not in research_text:
+        if name not in research_text and (len(name) < 2 or name[1:] not in research_text):
             ws.append(f"称呼未在研究文件出现：{name}（自取化名时确认必要性并全篇一致）")
     return vs, ws
 

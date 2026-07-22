@@ -288,6 +288,16 @@ def test_crosscheck_names_warn():
     assert not any("白女士" in w for w in ws)
 
 
+def test_crosscheck_names_no_false_positive_after_role_noun():
+    # research phrases 王某某 without a preceding "人" so the literal 4-char
+    # "人王某某" (NAME_RE's greedy capture including the role noun) is absent
+    # from research_text even though the real name 王某某 is present.
+    research = RESEARCH.replace("白女士报案。", "白女士报案。经查，嫌疑人系王某某。")
+    draft = _doc("## 概述\n加害人王某某被拘留。<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，澎湃新闻。*真标题*。https://a/b\n")
+    _, ws = crosscheck_research(draft, research)
+    assert not any("王某某" in w for w in ws)
+
+
 # --- C7：前情/后续须带站内参见链接（审计裁定 2026-07-22） ---
 
 
