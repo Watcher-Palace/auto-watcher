@@ -195,7 +195,7 @@ layout: page
 
 含义 column values (canonical, from the `blog-writer` agent, `.claude/agents/blog-writer.md`):
 S 政府/国家层面政策或法律 · A 刑事案件；影响极为恶劣的舆论事件 · B 民事案件；影响较大的舆论事件 ·
-C 非官方组织；影响较小的舆论事件 · D 个人行为 · M 正向进展（正向或在进程中的行动） · N 中立事件/等待后续
+C 非官方组织；影响较小的舆论事件 · D 个人行为 · M 正向进展（正向或在进程中的行动） · N 中立事件（存疑/已获公正解决/相关性不确定）/等待后续
 
 ### Zero-post month
 
