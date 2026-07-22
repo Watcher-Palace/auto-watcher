@@ -8,6 +8,7 @@
   python src/pipeline_cli.py add    <收录日期> <N> <标题>
   python src/pipeline_cli.py archive [<收录日期> [N]]
   python src/pipeline_cli.py harvest [done <收录日期> <N>]
+  python src/pipeline_cli.py ping-due
 """
 from __future__ import annotations
 import sys
@@ -103,6 +104,16 @@ def main(argv: list[str]) -> int:
         else:
             for d, n in ledger.pending_harvest():
                 print(f"{d}-{n}")
+        return 0
+    if cmd == "ping-due":
+        from datetime import date, timedelta
+        from src.publisher import read_frontmatter
+        from src.utils import pipeline as pl
+        cutoff = (date.today() - timedelta(days=30)).isoformat()
+        for p in sorted(pl.POSTS.glob("*.md")):
+            fm = read_frontmatter(p.read_text(encoding="utf-8"))
+            if "PING" in (fm.get("tags") or []) and str(fm.get("date"))[:10] <= cutoff:
+                print(f"{p.stem}  {str(fm.get('date'))[:10]}  {fm.get('title', '')}")
         return 0
     print(f"未知子命令: {cmd}\n{__doc__}")
     return 1

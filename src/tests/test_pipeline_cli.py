@@ -67,3 +67,15 @@ def test_staged_subcommand_parks_draft(pipe, tmp_path, monkeypatch):
     assert ledger.get_row("990101", 1, pipeline_dir=pipe)["状态"] == "staged"
     assert (tmp_path / "source" / "_drafts" / "990101-1-一-v1.md").exists()
     assert not (pipe / "draft" / "990101-1-一-v1.md").exists()
+
+
+def test_ping_due_lists_stale_ping_posts(pipe, tmp_path, monkeypatch, capsys):
+    posts = tmp_path / "posts"; posts.mkdir()
+    monkeypatch.setattr("src.utils.pipeline.POSTS", posts)
+    (posts / "250101.md").write_text(
+        "---\ntitle: 旧案\ndate: 2025-01-01\ntags:\n- PING\n---\n", encoding="utf-8")
+    (posts / "990101.md").write_text(
+        "---\ntitle: 新案\ndate: 2099-01-01\ntags:\n- PING\n---\n", encoding="utf-8")
+    assert main(["ping-due"]) == 0
+    out = capsys.readouterr().out
+    assert "旧案" in out and "新案" not in out

@@ -6,6 +6,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 PIPELINE = REPO_ROOT / "_pipeline"
 ARCHIVE = REPO_ROOT / "_pipeline_archive"
 SOURCE_DRAFTS = REPO_ROOT / "source" / "_drafts"   # staged 事件的草稿存查处（永不渲染）
+POSTS = REPO_ROOT / "source" / "_posts"
 
 
 def events_path(date_str: str) -> Path:

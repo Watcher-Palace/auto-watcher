@@ -45,7 +45,7 @@ _pipeline/
 **Pipeline check:** `python src/pipeline_cli.py status` — 对账后列出在途事件与待提取经验。
 不要裸读/裸改 events.csv（对账内建于 CLI 读路径）。其余子命令：`select <收录日期> <N...>`、
 `abort <收录日期> <N...>`、`staged <收录日期> <N...>`、`add <收录日期> <N> <标题>`、`archive [<收录日期> [N]]`、
-`harvest [done <收录日期> <N>]`（待提取经验队列，由 `blog-curate` 使用）。状态流：candidate → selected →
+`harvest [done <收录日期> <N>]`（待提取经验队列，由 `blog-curate` 使用）、`ping-due`（列出挂 `PING` 且已满一个月的已发布文章）。状态流：candidate → selected →
 research → draft-vN → review-vN → published/abort/staged（终态；`无事件` 行标记查过但无事件的日期）。
 `staged`＝暂无可靠来源/无法判断是否相关，但值得关注、等后续报道：不发布，最新草稿移入
 `source/_drafts/` 存查（`render_drafts: false`，永不渲染），其余工件照常归档；与 `PING` 的区别在于
