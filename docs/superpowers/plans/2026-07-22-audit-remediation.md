@@ -31,49 +31,49 @@
 
 **Files:** Modify: `.claude/agents/blog-writer.md`
 
-- [ ] **Step 1: 编辑** — 把 `blog-writer.md` 中唯一一处 `` `## 人类的裁定` `` 改为 `` `## 人类意见` ``（该串在"不许删 review 文件里的 `[USER]` 注释"条内）。
-- [ ] **Step 2: 验证**
+- [x] **Step 1: 编辑** — 把 `blog-writer.md` 中唯一一处 `` `## 人类的裁定` `` 改为 `` `## 人类意见` ``（该串在"不许删 review 文件里的 `[USER]` 注释"条内）。
+- [x] **Step 2: 验证**
 
 ```bash
 grep -rn "人类的裁定" .claude/ CLAUDE.md; echo "exit=$?"
 ```
 Expected: 无输出，exit=1。
 
-- [ ] **Step 3: Commit** `fix(agents): 评审人类节统一为 人类意见（审计 A1）`
+- [x] **Step 3: Commit** `fix(agents): 评审人类节统一为 人类意见（审计 A1）`
 
 ### Task 2: A2 summarize 陈旧模型说明删除
 
 **Files:** Modify: `.claude/skills/blog-summarize/SKILL.md`
 
-- [ ] **Step 1: 编辑** — 删除 `(matches the repo convention: research=Haiku, write/review=Sonnet)` 整个括号（含前导空格）。所在句保留为 "…Sonnet because the prose requires reading and grouping post bodies."
-- [ ] **Step 2: 验证** `grep -c "Haiku" .claude/skills/blog-summarize/SKILL.md` → 0。
-- [ ] **Step 3: Commit** `fix(skills): summarize 删除陈旧的 research=Haiku 说明（审计 A2）`
+- [x] **Step 1: 编辑** — 删除 `(matches the repo convention: research=Haiku, write/review=Sonnet)` 整个括号（含前导空格）。所在句保留为 "…Sonnet because the prose requires reading and grouping post bodies."
+- [x] **Step 2: 验证** `grep -c "Haiku" .claude/skills/blog-summarize/SKILL.md` → 0。
+- [x] **Step 3: Commit** `fix(skills): summarize 删除陈旧的 research=Haiku 说明（审计 A2）`
 
 ### Task 3: A3 orchestrate 行号锚点改节名锚点
 
 **Files:** Modify: `.claude/skills/blog-orchestrate/SKILL.md`
 
-- [ ] **Step 1: 编辑三处**
+- [x] **Step 1: 编辑三处**
   1. `` (`blog-writer.md:46`) `` → `（见 blog-writer《Revision Mode》）`
   2. 同段 `` `blog-writer.md:78` `` → `blog-writer《不许删 review 文件里的 [USER] 注释》条`
   3. 4b-ii 段 `` （`blog-writer.md:78`） `` → `（blog-writer《不许删 review 文件里的 [USER] 注释》条）`
   4. `` `publisher.py:116` `` → `` publisher.py `publish()` 预检 ``
-- [ ] **Step 2: 验证** `grep -n "blog-writer.md:[0-9]\|publisher.py:[0-9]" .claude/skills/blog-orchestrate/SKILL.md` → 无输出。
-- [ ] **Step 3: Commit** `fix(skills): orchestrate 行号锚点改节名锚点（审计 A3）`
+- [x] **Step 2: 验证** `grep -n "blog-writer.md:[0-9]\|publisher.py:[0-9]" .claude/skills/blog-orchestrate/SKILL.md` → 无输出。
+- [x] **Step 3: Commit** `fix(skills): orchestrate 行号锚点改节名锚点（审计 A3）`
 
 ### Task 4: 脚本命令解释器绝对路径
 
 **Files:** Modify: `.claude/agents/blog-researcher.md`, `.claude/agents/blog-writer.md`, `.claude/agents/blog-reviewer.md`
 
-- [ ] **Step 1: 全部替换** — 三个文件中每处命令的 `src/venv/bin/python` 前缀改为 `/home/jc/Projects/auto-watcher/src/venv/bin/python`（researcher：wbfetch 两处 + review_linter 闸口；writer：linter 闸口 + review_linter 闸口 + 资产节 wbfetch 提及；reviewer：review_linter 闸口）。
-- [ ] **Step 2: 验证**
+- [x] **Step 1: 全部替换** — 三个文件中每处命令的 `src/venv/bin/python` 前缀改为 `/home/jc/Projects/auto-watcher/src/venv/bin/python`（researcher：wbfetch 两处 + review_linter 闸口；writer：linter 闸口 + review_linter 闸口 + 资产节 wbfetch 提及；reviewer：review_linter 闸口）。
+- [x] **Step 2: 验证**
 
 ```bash
 grep -rn "^ *\`\?src/venv/bin/python\|[^/]src/venv/bin/python" .claude/agents/ | grep -v "/home/jc"
 ```
 Expected: 无输出。
 
-- [ ] **Step 3: Commit** `fix(agents): 闸口命令解释器改绝对路径（命令审计）`
+- [x] **Step 3: Commit** `fix(agents): 闸口命令解释器改绝对路径（命令审计）`
 
 ---
 
@@ -83,7 +83,7 @@ Expected: 无输出。
 
 **Files:** Modify: `.claude/agents/blog-writer.md`, `.claude/agents/blog-reviewer.md`, `.claude/agents/blog-researcher.md`（template 注释块本身已是全文，不动）
 
-- [ ] **Step 1: writer 压缩** — 替换"只收事件，不收评论"整条为：
+- [x] **Step 1: writer 压缩** — 替换"只收事件，不收评论"整条为：
 
 ```
 - **只收事件，不收评论（用户裁定，2026-07-21）：** 全文遵守 template 风格硬规则的评论禁令（含"言论本身即加害行为/被追责对象"这一唯一例外）。此禁令不限 `## 舆论` 节，`## 概述`/`#### 时间线`/`## 相关内容` 同样适用；研究文件收录了评论也不例外，写手自行剔除——"有来源支撑、能逐字引"只是必要条件，不构成可写理由。
@@ -91,21 +91,21 @@ Expected: 无输出。
 
 同时把 Style Rules 前两条（em dash、filler）保留原样（一行级，无重复负担），但在 Style Rules 节首加一句：`（风格硬规则全文见 template 末尾注释块；以下为写手侧义务与展开）`。
 
-- [ ] **Step 2: reviewer 压缩** — 步骤 6 中"评论禁令（用户裁定 2026-07-21：……）"整个括号内容替换为：`评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）`。
-- [ ] **Step 3: researcher 压缩** — 替换"不收评论"整条为：
+- [x] **Step 2: reviewer 压缩** — 步骤 6 中"评论禁令（用户裁定 2026-07-21：……）"整个括号内容替换为：`评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）`。
+- [x] **Step 3: researcher 压缩** — 替换"不收评论"整条为：
 
 ```
 - **不收评论（用户裁定，2026-07-21）：** 事实节不收任何人对事件的评论——匿名网民留言、评论区回复、转发评论、微博热评、境外媒体转录的网民言论，与具名专家评论同等对待。唯一例外见 template 风格硬规则：该言论本身就是事件的加害行为或被追责对象时，它是事件事实，照收并注明发布者与出处。舆论规模只收可核实的具体数字（阅读量/讨论量/转发量/评论量/投票结果），不做定性。
 ```
 
-- [ ] **Step 4: 验证** — `grep -c "加害行为或被追责对象" .claude/agents/*.md source/_drafts/template.md`：template 1 次、reviewer 0 次、researcher/writer 各 ≤1 次（指针句）。
-- [ ] **Step 5: Commit** `refactor(agents): 评论禁令收敛至 template canonical（审计 B2/B3）`
+- [x] **Step 4: 验证** — `grep -c "加害行为或被追责对象" .claude/agents/*.md source/_drafts/template.md`：template 1 次、reviewer 0 次、researcher/writer 各 ≤1 次（指针句）。
+- [x] **Step 5: Commit** `refactor(agents): 评论禁令收敛至 template canonical（审计 B2/B3）`
 
 ### Task 6: B1 四条规则压缩 + casebook 迁移
 
 **Files:** Modify: `.claude/agents/blog-researcher.md`, `.claude/agents/blog-writer.md`, `docs/casebook.md`
 
-- [ ] **Step 1: casebook 录入两条**（追加到 `docs/casebook.md`）：
+- [x] **Step 1: casebook 录入两条**（追加到 `docs/casebook.md`）：
 
 ```
 ## 260716-7 转引自媒体被"据报道"洗白
@@ -119,7 +119,7 @@ Expected: 无输出。
 - 出处：规则沉淀时未记事件号。
 ```
 
-- [ ] **Step 2: researcher 三条压缩**（"不收评论"已由 Task 5 处理）——分别替换为：
+- [x] **Step 2: researcher 三条压缩**（"不收评论"已由 Task 5 处理）——分别替换为：
 
 ```
 - **转发帖不作来源，要引就引原帖（用户裁定，2026-07-21）：** 转发帖不进事实基、不进 `## 信息来源`；例外：转发者本人是当事方（含家属）、媒体机构或官方机构（转发按语属该方表态，照收）。普通网民/自媒体的转发只当检索线索：定位原帖，以原帖作者、原帖日期、原帖 URL 入来源；原帖找不到或无法访问，该说法即不可用。原帖本身照收（按评论排除规则剔除评论成分）。（例见 casebook）
@@ -133,7 +133,7 @@ Expected: 无输出。
 - **记者行为必须带媒体归属（用户裁定，2026-07-20）：** 事实条目出现"记者致电/采访/暗访/检索文书"必须写明是哪家媒体的记者，转载页追到正文/文末署名的原始采写媒体；确实查不到署名的注明"（采写媒体未署名）"。本博客没有记者，无归属的"记者"会被读者误解为本站采写，写手只能按缺口退回。
 ```
 
-- [ ] **Step 3: writer 三条压缩**——分别替换为：
+- [x] **Step 3: writer 三条压缩**——分别替换为：
 
 ```
 - **记者必须写明是哪家媒体的记者（用户裁定，2026-07-20）：** 本博客没有记者。正文出现"记者致电""记者采访"必须写清所属媒体；研究文件未注明归属的按缺口上报，不得写无主语的"记者"。"报道发出时""截至发稿"只能指向能对应到的具体真实报道；指本文自身时点一律写"本文撰写时"。
@@ -147,14 +147,14 @@ Expected: 无输出。
 - **转引自媒体的说法＝没有来源，不许用"据报道"洗白（用户裁定，2026-07-21）：** 媒体报道里"据自媒体X报道""某公众号称""网传"的内容，出处仍是自媒体，不构成媒体自采、不构成独立信源——整句删除，不进草稿；尤其禁止写成含糊的"据报道""据媒体报道"。凡写不出具体归属的说法，就是不能写。（完整链条见 casebook：260716-7）
 ```
 
-- [ ] **Step 4: 验证** `grep -c "四海瞭望" .claude/agents/*.md` → 全 0；`grep -c "四海瞭望" docs/casebook.md` → 1。全文重读两 agent 文件确认无断句残留。
-- [ ] **Step 5: Commit** `refactor(agents): B1 四条规则压缩，完整反例迁入 casebook（审计 B1）`
+- [x] **Step 4: 验证** `grep -c "四海瞭望" .claude/agents/*.md` → 全 0；`grep -c "四海瞭望" docs/casebook.md` → 1。全文重读两 agent 文件确认无断句残留。
+- [x] **Step 5: Commit** `refactor(agents): B1 四条规则压缩，完整反例迁入 casebook（审计 B1）`
 
 ### Task 7: B4 researcher 内部去重
 
 **Files:** Modify: `.claude/agents/blog-researcher.md`, `docs/casebook.md`
 
-- [ ] **Step 1: casebook 录入**：
+- [x] **Step 1: casebook 录入**：
 
 ```
 ## 260707-2 / 260704-1 / 260703-2 tracker 来源归属三类错
@@ -163,30 +163,30 @@ Expected: 无输出。
 - 出处：2026-07-21 用户裁定，三次复现。
 ```
 
-- [ ] **Step 2: Your Inputs 压缩** — `sources` 字段整条替换为：
+- [x] **Step 2: Your Inputs 压缩** — `sources` 字段整条替换为：
 
 ```
 - `sources`: initial Weibo source URLs, if any (initial mode) — **可能挂错，按 Step 0 的核对规则先验证再用**（tracker 归属由 Haiku 判定，出过错；事件文件 `**Sources**` 行带"来源存疑"字样同样处理）
 ```
 
-- [ ] **Step 3: Step 0 压缩案例** — "brief／来源与实际内容不符"段中三类错的具体案例描述改为 `出过三类错：来源 URL 挂到同批另一条无关帖子、来源指向转发链末端要回溯原帖、两件不相关的事被缝进同一句 brief（链条见 casebook：260707-2/260704-1/260703-2）`，其余（停下报回、由人裁决）保留。
-- [ ] **Step 4: 验证** `grep -c "龙卷风" .claude/agents/blog-researcher.md` → 0。
-- [ ] **Step 5: Commit** `refactor(agents): researcher 内部重复收敛（审计 B4）`
+- [x] **Step 3: Step 0 压缩案例** — "brief／来源与实际内容不符"段中三类错的具体案例描述改为 `出过三类错：来源 URL 挂到同批另一条无关帖子、来源指向转发链末端要回溯原帖、两件不相关的事被缝进同一句 brief（链条见 casebook：260707-2/260704-1/260703-2）`，其余（停下报回、由人裁决）保留。
+- [x] **Step 4: 验证** `grep -c "龙卷风" .claude/agents/blog-researcher.md` → 0。
+- [x] **Step 5: Commit** `refactor(agents): researcher 内部重复收敛（审计 B4）`
 
 ### Task 8: B5 批量规则收敛到 Notes
 
 **Files:** Modify: `.claude/skills/blog-orchestrate/SKILL.md`
 
-- [ ] **Step 1: 编辑** — Stage 2 的 `When processing multiple events, dispatch in **batches of up to 3** — wait for the batch to finish before dispatching the next (user directive 2026-07-20).` 改为 `多事件时按批派发（批量规则见 Notes）。`；Stage 3 的 `Dispatch in **batches of up to 3** (user directive 2026-07-20).` 同样改为 `（批量规则见 Notes）`。Notes 节保留全文。
-- [ ] **Step 2: 验证** `grep -c "up to 3" .claude/skills/blog-orchestrate/SKILL.md` → 1。
-- [ ] **Step 3: Commit** `refactor(skills): 批量派发规则收敛到 Notes（审计 B5）`
+- [x] **Step 1: 编辑** — Stage 2 的 `When processing multiple events, dispatch in **batches of up to 3** — wait for the batch to finish before dispatching the next (user directive 2026-07-20).` 改为 `多事件时按批派发（批量规则见 Notes）。`；Stage 3 的 `Dispatch in **batches of up to 3** (user directive 2026-07-20).` 同样改为 `（批量规则见 Notes）`。Notes 节保留全文。
+- [x] **Step 2: 验证** `grep -c "up to 3" .claude/skills/blog-orchestrate/SKILL.md` → 1。
+- [x] **Step 3: Commit** `refactor(skills): 批量派发规则收敛到 Notes（审计 B5）`
 
 ### Task 9: B6 summarize N 速记 + C7 template 时间线放宽
 
 **Files:** Modify: `.claude/skills/blog-summarize/SKILL.md`, `source/_drafts/template.md`
 
-- [ ] **Step 1: summarize** — `N 中立事件/等待后续` 改为 `N 中立事件（存疑/已获公正解决/相关性不确定）/等待后续`。
-- [ ] **Step 2: template** — 替换整段：
+- [x] **Step 1: summarize** — `N 中立事件/等待后续` 改为 `N 中立事件（存疑/已获公正解决/相关性不确定）/等待后续`。
+- [x] **Step 2: template** — 替换整段：
 
 ```
 **时间线内子节不过度拆分（2026-07-22 放宽，取代 2026-07-21"不切子节"）：**
@@ -194,8 +194,8 @@ Expected: 无输出。
 同一天的多条并进同一个日期条目。
 ```
 
-- [ ] **Step 3: 验证** `grep -c "不再切自定义子节" source/_drafts/template.md` → 0。
-- [ ] **Step 4: Commit** `fix(docs): summarize N 速记对齐、时间线子节放宽（审计 B6/C7 裁定）`
+- [x] **Step 3: 验证** `grep -c "不再切自定义子节" source/_drafts/template.md` → 0。
+- [x] **Step 4: Commit** `fix(docs): summarize N 速记对齐、时间线子节放宽（审计 B6/C7 裁定）`
 
 ---
 
@@ -207,7 +207,7 @@ Expected: 无输出。
 
 **Interfaces:** Produces: `lint_text` 新增 FAIL 项（填充语、蓝字）；`lint_warnings(content)` 返回舆论词 WARN；`lint_file_title_vs_slug(path, fm_title) -> str | None` 并入 `main` 流程（草稿文件名形如 `YYMMDD-N-标签-vN.md` 时才检查）。
 
-- [ ] **Step 1: 写失败测试**（追加到 `src/tests/test_linter.py`，沿用该文件现有 fixture 风格；若无现成构造函数则直接调 `lint_text(content, None, date(2099,1,1))`）：
+- [x] **Step 1: 写失败测试**（追加到 `src/tests/test_linter.py`，沿用该文件现有 fixture 风格；若无现成构造函数则直接调 `lint_text(content, None, date(2099,1,1))`）：
 
 ```python
 def _doc(body, title="独立成文的标题", cats="B", tags="- 犯罪\n- 未立案"):
@@ -241,8 +241,8 @@ def test_title_equals_slug_fails(tmp_path):
     assert any("内部索引标签" in v for v in lint_slug_title(p, "内部标签"))
 ```
 
-- [ ] **Step 2: 跑红** `python -m pytest src/tests/test_linter.py -q -k "filler or blue or opinion or slug"` → FAIL。
-- [ ] **Step 3: 实现**（`src/linter.py`）：
+- [x] **Step 2: 跑红** `python -m pytest src/tests/test_linter.py -q -k "filler or blue or opinion or slug"` → FAIL。
+- [x] **Step 3: 实现**（`src/linter.py`）：
 
 ```python
 FILLER_FAIL_RE = re.compile(r"此事沉寂数月后|网友纷纷表示")
@@ -282,9 +282,9 @@ def lint_slug_title(path: Path, fm_title: str) -> list[str]:
         vs += lint_slug_title(path, str((read_frontmatter(content) or {}).get("title") or ""))
 ```
 
-- [ ] **Step 4: 跑绿 + 全量** `python -m pytest src/tests/ -q` → 全过。
-- [ ] **Step 5: writer prose 缩行** — blog-writer.md"标题不追加舆论反应"与"标题自己写"两条末尾各加一句 `（linter 会拦/警告）`；填充语条同理。不删规则本体（判断例外仍需 prose）。
-- [ ] **Step 6: Commit** `feat(linter): 标题/填充语/蓝字四条检查（审计 C3，按裁定分级）`
+- [x] **Step 4: 跑绿 + 全量** `python -m pytest src/tests/ -q` → 全过。
+- [x] **Step 5: writer prose 缩行** — blog-writer.md"标题不追加舆论反应"与"标题自己写"两条末尾各加一句 `（linter 会拦/警告）`；填充语条同理。不删规则本体（判断例外仍需 prose）。
+- [x] **Step 6: Commit** `feat(linter): 标题/填充语/蓝字四条检查（审计 C3，按裁定分级）`
 
 ### Task 11: C1 草稿 ↔ 研究文件交叉对账
 
@@ -292,7 +292,7 @@ def lint_slug_title(path: Path, fm_title: str) -> list[str]:
 
 **Interfaces:** Produces: `crosscheck_research(draft_text, research_text) -> tuple[list[str], list[str]]`（violations, warnings）；CLI `python src/linter.py <draft> --research <research.md>`。
 
-- [ ] **Step 1: 写失败测试**：
+- [x] **Step 1: 写失败测试**：
 
 ```python
 RESEARCH = ("## 事实\n白女士报案。\n## 信息来源\n"
@@ -315,8 +315,8 @@ def test_crosscheck_names_warn():
     assert not any("白女士" in w for w in ws)
 ```
 
-- [ ] **Step 2: 跑红**。
-- [ ] **Step 3: 实现**：
+- [x] **Step 2: 跑红**。
+- [x] **Step 3: 实现**：
 
 ```python
 DRAFT_SRC_RE = re.compile(r"^(?:- )?(\d{4}\.\d{1,2}\.\d{1,2})，(.+?)。\*(.+?)\*。(\S+)", re.M)
@@ -344,15 +344,15 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
 # main()：解析 --research <path>；命中时 vs/ws 各自并入。
 ```
 
-- [ ] **Step 4: 跑绿 + 全量**。
-- [ ] **Step 5: 文档对接** — blog-writer.md Lint gate 命令改为 `…/src/linter.py <draft-path> --research <research-path>`；Sources 条与"人物称呼自查"条末尾加 `（linter --research 会拦/警告）`；orchestrate 无需改（写手自跑）。
-- [ ] **Step 6: Commit** `feat(linter): --research 交叉对账，来源 FAIL/称呼 WARN（审计 C1）`
+- [x] **Step 4: 跑绿 + 全量**。
+- [x] **Step 5: 文档对接** — blog-writer.md Lint gate 命令改为 `…/src/linter.py <draft-path> --research <research-path>`；Sources 条与"人物称呼自查"条末尾加 `（linter --research 会拦/警告）`；orchestrate 无需改（写手自跑）。
+- [x] **Step 6: Commit** `feat(linter): --research 交叉对账，来源 FAIL/称呼 WARN（审计 C1）`
 
 ### Task 12: C7 前情/后续链接检查
 
 **Files:** Modify: `src/linter.py`; Test: `src/tests/test_linter.py`
 
-- [ ] **Step 1: 写失败测试**：
+- [x] **Step 1: 写失败测试**：
 
 ```python
 def test_prequel_section_requires_site_link():
@@ -366,8 +366,8 @@ def test_prequel_with_link_ok():
     assert not any("前情" in v for v in vs)
 ```
 
-- [ ] **Step 2: 跑红**。
-- [ ] **Step 3: 实现**（`lint_text` 内）：
+- [x] **Step 2: 跑红**。
+- [x] **Step 3: 实现**（`lint_text` 内）：
 
 ```python
     for sec in ("前情", "后续"):
@@ -377,7 +377,7 @@ def test_prequel_with_link_ok():
                 violations.append(f"## {sec} 缺站内 参见 链接——该节仅用于链接本站已发布文章")
 ```
 
-- [ ] **Step 4: 跑绿 + 全量**；**Step 5: Commit** `feat(linter): 前情/后续须带站内参见链接（审计 C7）`
+- [x] **Step 4: 跑绿 + 全量**；**Step 5: Commit** `feat(linter): 前情/后续须带站内参见链接（审计 C7）`
 
 ### Task 13: C2 research_linter.py 研究文件闸口
 
@@ -385,7 +385,7 @@ def test_prequel_with_link_ok():
 
 **Interfaces:** Produces: `lint_research(path: Path) -> list[str]`；CLI `python src/research_linter.py <research.md>...`，退出码 0/1。资产目录由路径推导：`path.parent.parent / "draft" / f"{date}-{n}-assets"`。
 
-- [ ] **Step 1: 写失败测试**（`src/tests/test_research_linter.py`）：
+- [x] **Step 1: 写失败测试**（`src/tests/test_research_linter.py`）：
 
 ```python
 import pytest
@@ -435,8 +435,8 @@ def test_assets_bidirectional(tmp_path):
     assert any("未登记" in v for v in vs2)
 ```
 
-- [ ] **Step 2: 跑红**（import 失败即红）。
-- [ ] **Step 3: 实现** `src/research_linter.py`：
+- [x] **Step 2: 跑红**（import 失败即红）。
+- [x] **Step 3: 实现** `src/research_linter.py`：
 
 ```python
 """研究文件机械闸口 —— initial 研究完成前必须通过（blog-researcher 的 lint gate）。"""
@@ -509,15 +509,15 @@ if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
 ```
 
-- [ ] **Step 4: 跑绿 + 全量**。
-- [ ] **Step 5: 文档对接** — blog-researcher.md 在 Output 节后加 **Lint gate (mandatory)**：`/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/research_linter.py <research-file>`，修完所有违规才许报完成；同时来源行格式条、蓝字条、资产登记条末尾各加 `（research_linter 会拦）`。
-- [ ] **Step 6: Commit** `feat: research_linter 研究文件闸口（审计 C2）`
+- [x] **Step 4: 跑绿 + 全量**。
+- [x] **Step 5: 文档对接** — blog-researcher.md 在 Output 节后加 **Lint gate (mandatory)**：`/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/research_linter.py <research-file>`，修完所有违规才许报完成；同时来源行格式条、蓝字条、资产登记条末尾各加 `（research_linter 会拦）`。
+- [x] **Step 6: Commit** `feat: research_linter 研究文件闸口（审计 C2）`
 
 ### Task 14: C6 review_linter 标签提案转录检查
 
 **Files:** Modify: `src/review_linter.py`; Test: `src/tests/test_review_linter.py`
 
-- [ ] **Step 1: 写失败测试**（沿用该文件现有 draft/review 目录构造方式；若为直接函数调用风格则如下）：
+- [x] **Step 1: 写失败测试**（沿用该文件现有 draft/review 目录构造方式；若为直接函数调用风格则如下）：
 
 ```python
 def test_tag_proposals_must_transcribe():
@@ -529,7 +529,7 @@ def test_tag_proposals_must_transcribe():
     assert check_tag_proposals(review_ok, draft) == []
 ```
 
-- [ ] **Step 2: 跑红**；**Step 3: 实现**：
+- [x] **Step 2: 跑红**；**Step 3: 实现**：
 
 ```python
 TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
@@ -545,13 +545,13 @@ def check_tag_proposals(review_text: str, draft_text: str) -> list[str]:
 
 `main()` 默认模式在 `validate_anchors` 之后追加 `violations += check_tag_proposals(text, draft_text)`。
 
-- [ ] **Step 4: 跑绿 + 全量**；**Step 5: Commit** `feat(review_linter): 标签提案转录检查（审计 C6）`
+- [x] **Step 4: 跑绿 + 全量**；**Step 5: Commit** `feat(review_linter): 标签提案转录检查（审计 C6）`
 
 ### Task 15: C4 pipeline_cli ping-due
 
 **Files:** Modify: `src/utils/pipeline.py`（加 `POSTS = REPO_ROOT / "source" / "_posts"`）, `src/pipeline_cli.py`; Test: `src/tests/test_pipeline_cli.py`
 
-- [ ] **Step 1: 写失败测试**：
+- [x] **Step 1: 写失败测试**：
 
 ```python
 def test_ping_due_lists_stale_ping_posts(pipe, tmp_path, monkeypatch, capsys):
@@ -566,7 +566,7 @@ def test_ping_due_lists_stale_ping_posts(pipe, tmp_path, monkeypatch, capsys):
     assert "旧案" in out and "新案" not in out
 ```
 
-- [ ] **Step 2: 跑红**；**Step 3: 实现**（`pipeline_cli.py` 新分支 + docstring 加用法行）：
+- [x] **Step 2: 跑红**；**Step 3: 实现**（`pipeline_cli.py` 新分支 + docstring 加用法行）：
 
 ```python
     if cmd == "ping-due":
@@ -581,13 +581,13 @@ def test_ping_due_lists_stale_ping_posts(pipe, tmp_path, monkeypatch, capsys):
         return 0
 ```
 
-- [ ] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-writer.md PING 条运维句改为 `运维方式：python src/pipeline_cli.py ping-due 列出待巡检文章…`；CLAUDE.md 子命令列表加 `ping-due`。**Step 6: Commit** `feat(cli): ping-due 巡检队列（审计 C4）`
+- [x] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-writer.md PING 条运维句改为 `运维方式：python src/pipeline_cli.py ping-due 列出待巡检文章…`；CLAUDE.md 子命令列表加 `ping-due`。**Step 6: Commit** `feat(cli): ping-due 巡检队列（审计 C4）`
 
 ### Task 16: C9 pipeline_cli dedup
 
 **Files:** Modify: `src/pipeline_cli.py`; Test: `src/tests/test_pipeline_cli.py`
 
-- [ ] **Step 1: 写失败测试**：
+- [x] **Step 1: 写失败测试**：
 
 ```python
 def test_dedup_scans_ledger_posts_research(pipe, tmp_path, monkeypatch, capsys):
@@ -602,7 +602,7 @@ def test_dedup_scans_ledger_posts_research(pipe, tmp_path, monkeypatch, capsys):
     assert "250101" in out and "990101-1" in out and "李某" not in out
 ```
 
-- [ ] **Step 2: 跑红**；**Step 3: 实现**（新分支 + docstring 行；`pl.ARCHIVE / "research"` 一并扫）：
+- [x] **Step 2: 跑红**；**Step 3: 实现**（新分支 + docstring 行；`pl.ARCHIVE / "research"` 一并扫）：
 
 ```python
     if cmd == "dedup":
@@ -624,13 +624,13 @@ def test_dedup_scans_ledger_posts_research(pipe, tmp_path, monkeypatch, capsys):
         return 0
 ```
 
-- [ ] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-researcher.md Step 0 首句加 `先跑 python src/pipeline_cli.py dedup <当事人/地名/关键词>（含账本、已发布、研究存档），再人工判断`；CLAUDE.md 子命令列表加 `dedup`。**Step 6: Commit** `feat(cli): dedup 同案查重扫描（审计 C9）`
+- [x] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-researcher.md Step 0 首句加 `先跑 python src/pipeline_cli.py dedup <当事人/地名/关键词>（含账本、已发布、研究存档），再人工判断`；CLAUDE.md 子命令列表加 `dedup`。**Step 6: Commit** `feat(cli): dedup 同案查重扫描（审计 C9）`
 
 ### Task 17: C5 publish_summary.py
 
 **Files:** Create: `src/publish_summary.py`; Test: `src/tests/test_publish_summary.py`; Modify: `.claude/skills/blog-summarize/SKILL.md`
 
-- [ ] **Step 1: 写失败测试**：
+- [x] **Step 1: 写失败测试**：
 
 ```python
 import pytest
@@ -654,7 +654,7 @@ def test_publish_summary_rejects_wrong_month(tmp_path, monkeypatch):
         publish_summary("2605", deploy=False)
 ```
 
-- [ ] **Step 2: 跑红**；**Step 3: 实现**：
+- [x] **Step 2: 跑红**；**Step 3: 实现**：
 
 ```python
 """月度总结发布：cp → pnpm build → pnpm run deploy（对齐 publisher 的链式顺序）。"""
@@ -688,13 +688,13 @@ if __name__ == "__main__":
 
 （注意 `src/utils/pipeline.py` 里若 `REPO_ROOT` 只是局部常量，本任务顺带确认它是模块级可 monkeypatch 的——现状即是。）
 
-- [ ] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-summarize SKILL Stage B 的 cp/pnpm 代码块替换为 `python src/publish_summary.py {YYMM}`（前缀 cd+activate），语义说明保留。CLAUDE.md Monthly Summary 节 Stage B 同步。**Step 6: Commit** `feat: publish_summary 固化总结发布链（审计 C5）`
+- [x] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-summarize SKILL Stage B 的 cp/pnpm 代码块替换为 `python src/publish_summary.py {YYMM}`（前缀 cd+activate），语义说明保留。CLAUDE.md Monthly Summary 节 Stage B 同步。**Step 6: Commit** `feat: publish_summary 固化总结发布链（审计 C5）`
 
 ### Task 18: C8 imgfetch.py
 
 **Files:** Create: `src/imgfetch.py`; Test: `src/tests/test_imgfetch.py`; Modify: `.claude/agents/blog-researcher.md`
 
-- [ ] **Step 1: 写失败测试**：
+- [x] **Step 1: 写失败测试**：
 
 ```python
 import pytest
@@ -712,7 +712,7 @@ def test_classify_rejects_placeholder_and_html():
         classify(b"<html><body>login</body></html>" + b"x" * 5000)
 ```
 
-- [ ] **Step 2: 跑红**；**Step 3: 实现**：
+- [x] **Step 2: 跑红**；**Step 3: 实现**：
 
 ```python
 """证据图/文书下载器：带 Referer 抓取并校验类型与大小，防占位图。"""
@@ -760,13 +760,13 @@ if __name__ == "__main__":
         raise SystemExit(f"FAIL {argv[0]}: {e}")
 ```
 
-- [ ] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-researcher.md 资产抓取"怎么抓"条替换为：普通网页图用 `/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/imgfetch.py <图片URL> <目标路径> --referer <页面URL>`（自动校验类型与大小，FAIL 即换源或如实记失败）；微博图仍先 wbfetch 取 `image_urls` 再逐个 imgfetch。**Step 6: Commit** `feat: imgfetch 证据图下载器（审计 C8）`
+- [x] **Step 4: 跑绿 + 全量**；**Step 5: 文档** — blog-researcher.md 资产抓取"怎么抓"条替换为：普通网页图用 `/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/imgfetch.py <图片URL> <目标路径> --referer <页面URL>`（自动校验类型与大小，FAIL 即换源或如实记失败）；微博图仍先 wbfetch 取 `image_urls` 再逐个 imgfetch。**Step 6: Commit** `feat: imgfetch 证据图下载器（审计 C8）`
 
 ### Task 19: C10 docs 一致性测试
 
 **Files:** Create: `src/tests/test_docs_consistency.py`
 
-- [ ] **Step 1: 写测试**（此任务测试即产品，直接绿即可）：
+- [x] **Step 1: 写测试**（此任务测试即产品，直接绿即可）：
 
 ```python
 """文档一致性：把 2026-07-22 审计的 prose 不变量固化进 CI（无模型断言，用户裁定）。"""
@@ -799,8 +799,8 @@ def test_experience_sections_within_entry_cap():
         assert len(entries) <= 15, f"{p.name} 累积经验 {len(entries)} 条 > 15"
 ```
 
-- [ ] **Step 2: 跑绿 + 全量** `python -m pytest src/tests/test_docs_consistency.py -q` → 3 passed。
-- [ ] **Step 3: Commit** `test: docs 一致性护栏（审计 C10，无模型断言）`
+- [x] **Step 2: 跑绿 + 全量** `python -m pytest src/tests/test_docs_consistency.py -q` → 3 passed。
+- [x] **Step 3: Commit** `test: docs 一致性护栏（审计 C10，无模型断言）`
 
 ---
 
@@ -810,7 +810,7 @@ def test_experience_sections_within_entry_cap():
 
 **Files:** Delete: `memory/project_tracker_workaround.md`, `memory/project_ledger_followups.md`, repo `HANDOFF.md`; Modify: `memory/MEMORY.md`, `_pipeline/events.csv`（经代码路径）
 
-- [ ] **Step 1: 260525-1 改 abort**（终态间转换走 update_row，代码路径非裸改）：
+- [x] **Step 1: 260525-1 改 abort**（终态间转换走 update_row，代码路径非裸改）：
 
 ```bash
 cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python -c "
@@ -820,29 +820,29 @@ print(ledger.get_row('260525', 1))"
 ```
 Expected: 输出行状态为 abort。
 
-- [ ] **Step 2: 删除 HANDOFF** `git rm HANDOFF.md`。
-- [ ] **Step 3: 删除两个 memory 文件**，并从 `MEMORY.md` 移除对应两行索引。
-- [ ] **Step 4: Commit（repo 部分）** `chore: 260525-1 弃置为 abort；删除过期 HANDOFF.md（审计 E2）`
+- [x] **Step 2: 删除 HANDOFF** `git rm HANDOFF.md`。
+- [x] **Step 3: 删除两个 memory 文件**，并从 `MEMORY.md` 移除对应两行索引。
+- [x] **Step 4: Commit（repo 部分）** `chore: 260525-1 弃置为 abort；删除过期 HANDOFF.md（审计 E2）`
 
 ### Task 21: E3 人类闸口兜底上移 CLAUDE.md
 
 **Files:** Modify: `CLAUDE.md`; Delete: `memory/feedback_pipeline_human_gates.md`; Modify: `memory/MEMORY.md`, `memory/project_haiku_chinese_corruption.md`
 
-- [ ] **Step 1: CLAUDE.md** — Pipeline Overview 节末尾（`Published posts go to …` 段之前）加：
+- [x] **Step 1: CLAUDE.md** — Pipeline Overview 节末尾（`Published posts go to …` 段之前）加：
 
 ```
 **人类闸口兜底（orchestrator 之外同样生效）**：任何流水线阶段（research/draft/review/revision）
 完成后一律停下等用户明示，才可触发下一阶段——即使是在 orchestrator skill 之外临时跑的单个阶段。
 ```
 
-- [ ] **Step 2: 删除** `feedback_pipeline_human_gates.md`；`MEMORY.md` 移除其索引行；`project_haiku_chinese_corruption.md` 末尾的 `Related: [[feedback-pipeline-human-gates]]` 删除（目标已不存在）。
-- [ ] **Step 3: Commit（repo 部分）** `docs: 人类闸口兜底句上移 CLAUDE.md（审计 E3）`
+- [x] **Step 2: 删除** `feedback_pipeline_human_gates.md`；`MEMORY.md` 移除其索引行；`project_haiku_chinese_corruption.md` 末尾的 `Related: [[feedback-pipeline-human-gates]]` 删除（目标已不存在）。
+- [x] **Step 3: Commit（repo 部分）** `docs: 人类闸口兜底句上移 CLAUDE.md（审计 E3）`
 
 ### Task 22: E4+E5+E6 memory 合并与索引重写
 
 **Files:** Modify: `memory/feedback_commit_to_main.md`, `memory/MEMORY.md`, `memory/project_haiku_chinese_corruption.md`; Delete: `memory/feedback_usage_limit_breakpoints.md`
 
-- [ ] **Step 1: 合并** — `feedback_commit_to_main.md` 的 "How to apply" 后追加一段：
+- [x] **Step 1: 合并** — `feedback_commit_to_main.md` 的 "How to apply" 后追加一段：
 
 ```
 **长时自主运行的检查点节奏（并入自 usage-limit-breakpoints，2026-07-22）：**
@@ -851,8 +851,8 @@ Expected: 输出行状态为 abort。
 其余场景仍按上文等待明示 go-ahead。
 ```
 
-- [ ] **Step 2: 命名卫生（E6）** — `feedback_commit_to_main.md` frontmatter `name` 确认为 kebab（`feedback-commit-to-main`）；文内 `[[feedback_env_files]]` 链接对齐该 memory 的实际 `name`（`feedback_env_files`，保持原样即可——链接以 name 为准）；`project_haiku_chinese_corruption.md` frontmatter name 已是 kebab，无改。
-- [ ] **Step 3: 删除** `feedback_usage_limit_breakpoints.md`；重写 `MEMORY.md` 为最终态：
+- [x] **Step 2: 命名卫生（E6）** — `feedback_commit_to_main.md` frontmatter `name` 确认为 kebab（`feedback-commit-to-main`）；文内 `[[feedback_env_files]]` 链接对齐该 memory 的实际 `name`（`feedback_env_files`，保持原样即可——链接以 name 为准）；`project_haiku_chinese_corruption.md` frontmatter name 已是 kebab，无改。
+- [x] **Step 3: 删除** `feedback_usage_limit_breakpoints.md`；重写 `MEMORY.md` 为最终态：
 
 ```
 # Memory Index
@@ -865,7 +865,7 @@ Expected: 输出行状态为 abort。
 - [feedback_commit_to_main.md](feedback_commit_to_main.md) — Solo repo: commit/push directly to main; 授权的长时自主运行按检查点节奏小步提交
 ```
 
-- [ ] **Step 4: 验证** `ls memory/*.md | wc -l` → 4（MEMORY.md + 3 条）。memory 不在 git，无 commit；在对话汇报中说明。
+- [x] **Step 4: 验证** `ls memory/*.md | wc -l` → 4（MEMORY.md + 3 条）。memory 不在 git，无 commit；在对话汇报中说明。
 
 ---
 
