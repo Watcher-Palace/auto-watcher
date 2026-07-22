@@ -79,3 +79,15 @@ def test_ping_due_lists_stale_ping_posts(pipe, tmp_path, monkeypatch, capsys):
     assert main(["ping-due"]) == 0
     out = capsys.readouterr().out
     assert "旧案" in out and "新案" not in out
+
+
+def test_dedup_scans_ledger_posts_research(pipe, tmp_path, monkeypatch, capsys):
+    posts = tmp_path / "posts"; posts.mkdir()
+    monkeypatch.setattr("src.utils.pipeline.POSTS", posts)
+    (posts / "250101.md").write_text("---\ntitle: 张某案宣判\n---\n正文", encoding="utf-8")
+    (pipe / "research").mkdir()
+    (pipe / "research" / "990101-1-张某案.md").write_text("张某", encoding="utf-8")
+    ledger.add_event("990102", 1, "李某案", pipeline_dir=pipe)
+    assert main(["dedup", "张某"]) == 0
+    out = capsys.readouterr().out
+    assert "250101" in out and "990101-1" in out and "李某" not in out

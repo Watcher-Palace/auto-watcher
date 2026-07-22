@@ -9,6 +9,7 @@
   python src/pipeline_cli.py archive [<收录日期> [N]]
   python src/pipeline_cli.py harvest [done <收录日期> <N>]
   python src/pipeline_cli.py ping-due
+  python src/pipeline_cli.py dedup <关键词...>
 """
 from __future__ import annotations
 import sys
@@ -114,6 +115,23 @@ def main(argv: list[str]) -> int:
             fm = read_frontmatter(p.read_text(encoding="utf-8"))
             if "PING" in (fm.get("tags") or []) and str(fm.get("date"))[:10] <= cutoff:
                 print(f"{p.stem}  {str(fm.get('date'))[:10]}  {fm.get('title', '')}")
+        return 0
+    if cmd == "dedup":
+        from src.utils import pipeline as pl
+        kws = args
+        if not kws:
+            print("usage: dedup <关键词>...")
+            return 1
+        for r in ledger.read_rows():
+            if r["标题"] and any(k in r["标题"] for k in kws):
+                print(f"账本 {r['收录日期']}-{r['事件编号']} [{r['状态']}] {r['标题']}")
+        for base in (pl.POSTS, pl.PIPELINE / "research", pl.ARCHIVE / "research"):
+            if not base.exists():
+                continue
+            for p in sorted(base.glob("*.md")):
+                text = p.read_text(encoding="utf-8")
+                if any(k in p.name or k in text for k in kws):
+                    print(f"{base.parent.name}/{base.name}/{p.name}")
         return 0
     print(f"未知子命令: {cmd}\n{__doc__}")
     return 1
