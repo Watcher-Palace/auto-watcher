@@ -49,9 +49,11 @@ def test_unknown_tag_flagged():
 
 
 def test_standalone_qianqing_is_legal():
-    # user decision 2026-07-19: standalone 前情/后续 are legal per template — no warning
+    # user decision 2026-07-19: standalone 前情/后续 are legal per template — no warning.
+    # 2026-07-22 (C7): the section must carry a 站内参见 link per template format —
+    # updated fixture accordingly, intent (standalone section, clean lint) unchanged.
     from src.linter import lint_warnings
-    draft = make_draft(body="\n## 前情\n旧事。\n")
+    draft = make_draft(body="\n## 前情\n2026年5月1日：旧事。参见：[标题](/2026/260501/)\n")
     assert lint_text(draft, REGISTRY, TODAY) == []
     assert lint_warnings(draft) == []
 
@@ -284,3 +286,18 @@ def test_crosscheck_names_warn():
     _, ws = crosscheck_research(draft, RESEARCH)
     assert any("林悦" in w for w in ws) and any("高某某" in w for w in ws)
     assert not any("白女士" in w for w in ws)
+
+
+# --- C7：前情/后续须带站内参见链接（审计裁定 2026-07-22） ---
+
+
+def test_prequel_section_requires_site_link():
+    body = "## 前情\n1月1日：无链接描述。\n" + BODY_OK
+    vs = lint_text(_doc(body), None, date(2099, 1, 1))
+    assert any("前情" in v and "参见" in v for v in vs)
+
+
+def test_prequel_with_link_ok():
+    body = "## 前情\n1月1日：简述。参见：[题](/2026/260101/)\n" + BODY_OK
+    vs = lint_text(_doc(body), None, date(2099, 1, 1))
+    assert not any("前情" in v for v in vs)

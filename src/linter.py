@@ -66,6 +66,12 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
                 "## 舆论 无具体数据（阅读量/讨论量/转发量/评论量）——无数据时整节删除"
             )
 
+    for sec in ("前情", "后续"):
+        if sec in secs:
+            lines = [l for l in secs[sec].splitlines() if l.strip() and not l.strip().startswith("<!--")]
+            if lines and not any(re.search(r"参见：\[.+?\]\(/\d{4}/", l) for l in lines):
+                violations.append(f"## {sec} 缺站内 参见 链接——该节仅用于链接本站已发布文章")
+
     if "信息来源" in secs:
         for ln in secs["信息来源"].splitlines():
             ln = ln.strip()
