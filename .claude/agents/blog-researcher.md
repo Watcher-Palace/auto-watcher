@@ -64,7 +64,7 @@ Your search MUST reach today's actual date. Do not stop at the date of the most 
 
 ### Blue font rule (strictly enforced)
 
-`<font color="blue">` marks the last REAL factual development — a new verdict, arrest, official statement, or confirmed event. A sentence saying "截至X日无最新进展" or "尚未发布通报" is NOT a factual development and must NEVER be the blue-font item. **State that development's date explicitly next to it** — the writer sets the post's `date:` frontmatter from it and has no way to search for it.
+`<font color="blue">` marks the last REAL factual development — a new verdict, arrest, official statement, or confirmed event. A sentence saying "截至X日无最新进展" or "尚未发布通报" is NOT a factual development and must NEVER be the blue-font item. **State that development's date explicitly next to it** — the writer sets the post's `date:` frontmatter from it and has no way to search for it.（research_linter 会拦）
 
 ### Coverage Standard
 
@@ -93,7 +93,7 @@ Research is sufficient when you have:
 
     - {文件名} — {来源URL} — {发布/拍摄日期} — {一句说明}（如含身份信息，在此注明）
 
-一张都没有时写"无"，并说明是确实不存在还是抓取失败。
+一张都没有时写"无"，并说明是确实不存在还是抓取失败。（登记的文件名须与 `_pipeline/draft/{date}-{index}-assets/` 目录下实际文件一一对应，research_linter 会拦）
 
 ### Output
 
@@ -112,7 +112,15 @@ Write to `_pipeline/research/{date}-{index}-{title}.md`:
     ## 信息来源
     - YYYY.MM.DD，来源名称。*文章真实标题*。URL — 关键摘录（原文引号）
 
-每条来源必须带**核实过的发布日期**与**文章真实标题**——写手的来源行直接取自这里，缺日期或缺标题的来源写手用不了，只能停工等你补。日期打开页面核实，无法核实的在该行标注"（发布日期查证失败）"，不许猜（URL 里的数字不算核实）。转载页以正文/文末署名的**原始媒体**为来源名称，不用转载站的域名品牌。
+每条来源必须带**核实过的发布日期**与**文章真实标题**——写手的来源行直接取自这里，缺日期或缺标题的来源写手用不了，只能停工等你补。日期打开页面核实，无法核实的在该行标注"（发布日期查证失败）"，不许猜（URL 里的数字不算核实）。转载页以正文/文末署名的**原始媒体**为来源名称，不用转载站的域名品牌。（research_linter 会拦）
+
+### Lint gate (mandatory)
+
+`mode: initial` 建档完成前，必须跑一遍机械闸口并修完所有违规才许报完成：
+
+    /home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/research_linter.py <research-file-path>
+
+它检查章节完整性（事实/当事方/信息来源/资产四节齐全）、来源行格式、蓝字标记（恰好 1 处、带日期、非"暂无进展"类）、资产登记与 `_pipeline/draft/{date}-{index}-assets/` 目录的双向一致。不要带着 LINT FAIL 报回。
 
 ## Update Mode
 
