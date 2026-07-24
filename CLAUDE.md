@@ -17,6 +17,8 @@ paths throughout. Never rely on the cwd a previous call left.
 Same reason `python` alone fails: the venv is not on PATH and shell state does not
 persist. Full form: `cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python …`
 
+**流水线 lint 闸口照抄"单命令"跑（研究/写作/评审 agent 同此）**：各 agent 文件给出的 lint 命令是一条**绝对路径单命令**（`/…/src/venv/bin/python /…/src/<linter>.py <args>`）——照抄原样跑，**别**在前面加 `source …&&` 激活、**别**在末尾接 `; echo "EXIT: $?"` 之类尾巴。绝对路径的 venv python 无需激活；命令里出现 `&&`/`;`/`$?` 会让权限匹配失败、弹出人类闸口。退出码不必另读：linter 把完整结论打到 stdout（`LINT OK`/`LINT FAIL` + 逐条违规；`review_linter --check-dispositions` 的 exit 2 直接打成 `OK（含 未解决 项）`）。
+
 ## Blog Commands
 
 ```bash
@@ -79,11 +81,11 @@ not duplicate the spec here or it will drift.
 The monthly calendar on the homepage (`/index.html`) is generated at **build time** by the Hexo generator `scripts/calendar.js` from post frontmatter — there is no `source/index.md` and the publisher does not touch the calendar. Publishing a post is enough; the calendar regenerates on the next `pnpm build`/`deploy`.
 
 How cells render (see `scripts/calendar.js`):
-- Only categories S/A/B/C appear (D/M/N are excluded). Color: S = darkred bold, A = red, B = orange, C = yellow.
-  `M`（正向进展）**暂时**不上日历，呈现方式待用户裁定（2026-07-21）——它既不参与 `挑战失败` 那句，
-  也不打断绿色 `Day N` 计数（计数的语义是"距上一次挑战失败多少天"，一条进展不是失败）。
-- An event day shows the phrase `挑战失败` split across that day's events — one `<a>` link per event, each colored by its category. Segments are joined by a neutral grey `_` so multiple same-category events on one day stay distinguishable.
-- A day with no event since the last A–C event shows a green `Day N` counter.
+- Categories **S/A/B/C/D** show `挑战失败`; **N** shows a grey `……`（省略号）; **M** is excluded. Colors: S = darkred bold, A = red, B = orange, C = yellow, **D = grey `#777`**, **N = grey `#777`**。
+  S/A/B/C/D 与 N **都打断绿色 `Day N` 计数**（计数语义＝"距上一次上日历事件多少天"）。用户裁定 2026-07-23：N 恢复为灰色省略号（沿早期手写日历"白色省略号"先例，见已发布 260113）；D 走完整"挑战失败"、但用灰色标示其为严重度阶梯（S/A/B/C/D）最低档。
+  `M`（正向进展）**暂时**仍不上日历，呈现方式待用户裁定（2026-07-21）——既不参与 `挑战失败`/省略号，也不打断绿色 `Day N` 计数（一条进展不是失败）。
+- An event day shows `挑战失败` split across that day's **失败事件（S/A/B/C/D）** — one clickable trigger per event, each colored by its category（D 为灰）；同日的 **N** 事件各显示一个灰色 `……`。Segments are joined by a neutral grey `_` so multiple events on one day stay distinguishable.
+- A day with no S/A/B/C/D/N event since the last such event shows a green `Day N` counter.
 
 To change calendar appearance or color mapping, edit `scripts/calendar.js`.
 

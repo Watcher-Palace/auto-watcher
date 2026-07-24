@@ -3,9 +3,11 @@
 hexo.extend.generator.register('calendar-index', function (locals) {
   const moment = require('moment');
 
-  const CAT_COLOR = { S: 'darkred', A: 'red', B: 'orange', C: 'yellow' };
+  const CAT_COLOR = { S: 'darkred', A: 'red', B: 'orange', C: 'yellow', D: '#777', N: '#777' };
   const CAT_BOLD = new Set(['S']);
-  const AC_CATS = new Set(['S', 'A', 'B', 'C']);
+  const FAIL_CATS = new Set(['S', 'A', 'B', 'C', 'D']);        // 显示"挑战失败"
+  const ELLIPSIS_CATS = new Set(['N']);                        // 显示"……"
+  const RENDER_CATS = new Set(['S', 'A', 'B', 'C', 'D', 'N']); // 上日历（M 不上）；均重置绿色计数
   const CAT_PRIORITY = { S: 0, A: 1, B: 2, C: 3, D: 4, N: 5 };
   const root = hexo.config.root || '/';
 
@@ -13,7 +15,7 @@ hexo.extend.generator.register('calendar-index', function (locals) {
   const dateMap = {};
   locals.posts.each(post => {
     const cat = (post.categories.first() || { name: 'N' }).name;
-    if (!AC_CATS.has(cat)) return;
+    if (!RENDER_CATS.has(cat)) return;
     const key = post.date.format('YYMMDD');
     const urlPath = root + post.path.replace(/\/index\.html$/, '/');
     if (!dateMap[key]) dateMap[key] = [];
@@ -54,14 +56,14 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     return parts;
   }
 
-  // Sorted list of A-C event dates (moment objects)
-  const acDates = Object.keys(dateMap)
+  // Sorted list of boundary event dates (S/A/B/C/D/N) — each resets the green counter
+  const boundaryDates = Object.keys(dateMap)
     .map(k => moment('20' + k, 'YYYYMMDD'))
     .sort((a, b) => a.valueOf() - b.valueOf());
 
-  function lastACBefore(m) {
+  function lastBoundaryBefore(m) {
     let last = null;
-    for (const d of acDates) {
+    for (const d of boundaryDates) {
       if (d.isSameOrBefore(m, 'day')) last = d;
       else break;
     }
@@ -77,16 +79,20 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     const posts = dateMap[key];
 
     if (posts) {
-      const labels = splitLabel(posts.length);
-      const links = posts.slice(0, 4).map((post, i) => {
+      const failPosts = posts.filter(p => FAIL_CATS.has(p.cat));
+      const nPosts = posts.filter(p => ELLIPSIS_CATS.has(p.cat));
+      const labels = splitLabel(failPosts.length);
+      const trigger = (post, text) => {
         const color = CAT_COLOR[post.cat];
         const bold = CAT_BOLD.has(post.cat) ? 'font-weight:bold;' : '';
         const safeTitle = escapeAttr(post.title);
         const safeUrl = escapeAttr(post.urlPath);
-        return `<span class="cal-trigger" role="button" tabindex="0" data-title="${safeTitle}" data-url="${safeUrl}" style="color:${color};${bold}">${labels[i]}</span>`;
-      });
+        return `<span class="cal-trigger" role="button" tabindex="0" data-title="${safeTitle}" data-url="${safeUrl}" style="color:${color};${bold}">${text}</span>`;
+      };
+      const segs = failPosts.slice(0, 4).map((post, i) => trigger(post, labels[i]));
+      nPosts.forEach(post => segs.push(trigger(post, '……')));
       const sep = '<span style="color:#999;">_</span>';
-      return `${day}<br>${links.join(sep)}`;
+      return `${day}<br>${segs.join(sep)}`;
     }
 
     // Untracked gap: leave blank
@@ -94,9 +100,9 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     const gapEnd = moment('2026-03-20');
     if (date.isBetween(gapStart, gapEnd, 'day', '[]')) return String(day);
 
-    const lastAC = lastACBefore(date);
-    if (lastAC) {
-      const dayN = date.diff(lastAC, 'days');
+    const lastBoundary = lastBoundaryBefore(date);
+    if (lastBoundary) {
+      const dayN = date.diff(lastBoundary, 'days');
       return `${day}<br><span style="color:green;">Day ${dayN}</span>`;
     }
 

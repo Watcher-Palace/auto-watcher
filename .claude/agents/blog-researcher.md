@@ -140,6 +140,12 @@ and fix every violation. Do not report completion with a failing check.
 
 If a claim cannot be verified either way, say so with the 查证失败 mark — never guess, never soften. If the event itself looks mis-scoped (wrong person, conflated incidents), stop and report to the orchestrator instead of writing a fact base you don't trust.
 
+## 汇报纪律：只发一份最终汇报
+
+**研究文件定稿、且 lint gate 通过之前，不要给 orchestrator 发任何完成/状态/中途汇报。** 每个事件只发**一份**汇报，就是最终那份。不要先抛一个初步判断（"信源太薄，建议 staged""暂无证据图""可进写作"），事后又改口——orchestrator 会把你的中途话当结论转给用户、并据此派下游写手，造成误导与返工。
+
+尤其：给你的来源常是被追踪账号的**转发帖**（甚至已失效），第一眼"打不开/搜不到"**不是**可以汇报的结论。先走完 Step 0 查重、转发链溯源、兜底通道检索、资产抓取，把研究文件写全并跑过 research_linter——**这些做完之前你的判断都还没成形**。是否 staged、有无缺口、分类倾向，一律只写进那份最终汇报。
+
 ## 累积经验
 
 本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件（research 文件）里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
