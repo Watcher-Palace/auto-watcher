@@ -333,8 +333,9 @@ def filter_feminist_events(posts: list[dict]) -> list[dict]:
     for attempt in range(3):
         try:
             result = subprocess.run(
-                ["claude", "-p", prompt, "--model", "claude-haiku-4-5-20251001", "--output-format", "text"],
-                capture_output=True, text=True, timeout=120,
+                # prompt 走 stdin，不进 argv：高帖量日整包帖文超 ARG_MAX 会 E2BIG 崩溃
+                ["claude", "-p", "--model", "claude-haiku-4-5-20251001", "--output-format", "text"],
+                input=prompt, capture_output=True, text=True, timeout=120,
             )
             if result.returncode != 0:
                 raise RuntimeError(result.stderr.strip())

@@ -601,6 +601,21 @@ def test_filter_raises_on_malformed_reply():
         filter_feminist_events([{"url": "u", "text": "t", "retweet_text": ""}])
 
 
+def test_filter_passes_prompt_via_stdin_not_argv():
+    # prompt 含全部帖子正文，高帖量日走 argv 会超 ARG_MAX（E2BIG）崩溃；
+    # 必须从 stdin 喂给 claude，argv 里不得夹带 prompt。
+    from src.tracker import filter_feminist_events
+    reply = json.dumps([{"title": "t", "brief": "b", "source_indices": [2]}],
+                       ensure_ascii=False)
+    fake = MagicMock(returncode=0, stdout=reply, stderr="")
+    with patch("subprocess.run", return_value=fake) as run:
+        filter_feminist_events(_POSTS)
+    args, kwargs = run.call_args
+    argv = args[0] if args else kwargs.get("args")
+    assert "帖子列表" in (kwargs.get("input") or "")       # prompt 走 stdin
+    assert not any("帖子列表" in str(a) for a in argv)      # argv 不夹带 prompt
+
+
 # ---- 跨运行去重（write/append 前按来源 URL 对照已有记录） ----
 
 def _dedup_env(tmp_path, monkeypatch):

@@ -1,5 +1,6 @@
 """按事件/按日期归档。状态判断一律来自 ledger（读路径内建对账）。"""
 from __future__ import annotations
+import re
 import shutil
 from pathlib import Path
 
@@ -7,6 +8,8 @@ from src.utils import pipeline as pl
 from src.utils import ledger
 
 _EVENT_STAGES = ("research", "draft", "review")
+
+_SECTION_RE = re.compile(r"(?m)^## (\d+)\.")
 
 
 def _move_into(entry: Path, dst_dir: Path) -> Path | None:
@@ -16,6 +19,36 @@ def _move_into(entry: Path, dst_dir: Path) -> Path | None:
         return None  # 已归档——不覆盖
     shutil.move(str(entry), str(dst))
     return dst
+
+
+def _split_events_md(text: str) -> tuple[str, list[tuple[int, str]]]:
+    """拆 events md 为 (前言, [(事件号, 段文本), ...])；段文本含 ## 头到下一段前。"""
+    matches = list(_SECTION_RE.finditer(text))
+    if not matches:
+        return text, []
+    preamble = text[:matches[0].start()]
+    secs: list[tuple[int, str]] = []
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        secs.append((int(m.group(1)), text[m.start():end]))
+    return preamble, secs
+
+
+def _merge_events_md(live: Path, archived: Path) -> Path | None:
+    """把 live 里归档 md 尚无的 ## N 段并入归档 md、按事件号排序，再删 live。
+    仅用于 events md 的同名碰撞（补录新事件到已归档日期）。返回归档路径。"""
+    pre, arch_secs = _split_events_md(archived.read_text(encoding="utf-8"))
+    _, live_secs = _split_events_md(live.read_text(encoding="utf-8"))
+    arch_by_n = {n: s for n, s in arch_secs}
+    # 冲突：live 有与归档同号但正文不同的段 → 整体不动，留 live 给人工裁定
+    for n, s in live_secs:
+        if n in arch_by_n and s.strip() != arch_by_n[n].strip():
+            return None
+    new_secs = [(n, s) for n, s in live_secs if n not in arch_by_n]
+    merged = sorted(arch_secs + new_secs, key=lambda t: t[0])
+    archived.write_text(pre + "".join(s for _, s in merged), encoding="utf-8")
+    live.unlink()
+    return archived
 
 
 def archive_event(date_str: str, n: int | str,
@@ -50,10 +83,18 @@ def archive_date(date_str: str,
             continue
         for entry in sorted(src_dir.iterdir()):
             name = entry.name
-            if name == f"{date_str}.md" or name.startswith(f"{date_str}-"):
-                dst = _move_into(entry, archive_dir / stage)
-                if dst:
-                    moved.append(dst)
+            if not (name == f"{date_str}.md" or name.startswith(f"{date_str}-")):
+                continue
+            target = archive_dir / stage / name
+            if stage == "events" and name == f"{date_str}.md" and target.exists():
+                # 补录到已归档日期：合并新 ## N 段而非跳过留孤儿
+                merged = _merge_events_md(entry, target)
+                if merged:
+                    moved.append(merged)
+                continue
+            dst = _move_into(entry, archive_dir / stage)
+            if dst:
+                moved.append(dst)
     return moved
 
 

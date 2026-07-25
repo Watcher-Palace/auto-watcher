@@ -106,6 +106,65 @@ def test_stage_event_parks_latest_draft_and_archives_rest(tmp_path):
     assert date_done and (arch / "events" / "990101.md").exists()
 
 
+def test_archive_date_merges_new_event_into_existing_archived_md(tmp_path):
+    """给已归档日期补录新事件后再终态：新 ## N 段并入归档 md，live 删除（不再跳过留孤儿）。"""
+    pipe = tmp_path / "_pipeline"
+    arch = tmp_path / "_pipeline_archive"
+    (pipe / "events").mkdir(parents=True)
+    (arch / "events").mkdir(parents=True)
+    # 归档里已有该日期的 events md（旧事件 1、2，日期先前已全终态收尾）
+    (arch / "events" / "990101.md").write_text(
+        "# Events — 9901-01\n\n## 1. 甲\n**Brief**: 甲内容\n\n"
+        "## 2. 乙\n**Brief**: 乙内容\n", encoding="utf-8")
+    # live 是事后补录的新事件 3
+    (pipe / "events" / "990101.md").write_text(
+        "# Events — 9901-01\n\n## 3. 丙\n**Brief**: 丙内容\n", encoding="utf-8")
+
+    moved = archive_date("990101", pipeline_dir=pipe, archive_dir=arch)
+
+    merged = (arch / "events" / "990101.md").read_text(encoding="utf-8")
+    assert "## 1. 甲" in merged
+    assert "## 2. 乙" in merged
+    assert "## 3. 丙" in merged
+    assert merged.index("## 1.") < merged.index("## 3.")     # 按事件号排序
+    assert not (pipe / "events" / "990101.md").exists()       # live 不再是孤儿
+    assert (arch / "events" / "990101.md") in moved
+
+
+def test_archive_date_leaves_live_when_event_number_conflicts(tmp_path):
+    """撞同号但正文不同＝冲突：不合并、不删 live（留人工），归档 md 不被污染。"""
+    pipe = tmp_path / "_pipeline"
+    arch = tmp_path / "_pipeline_archive"
+    (pipe / "events").mkdir(parents=True)
+    (arch / "events").mkdir(parents=True)
+    (arch / "events" / "990101.md").write_text(
+        "# Events — 9901-01\n\n## 1. 甲\n**Brief**: 原始甲\n", encoding="utf-8")
+    (pipe / "events" / "990101.md").write_text(
+        "# Events — 9901-01\n\n## 1. 甲改\n**Brief**: 冲突甲\n", encoding="utf-8")
+
+    archive_date("990101", pipeline_dir=pipe, archive_dir=arch)
+
+    assert (pipe / "events" / "990101.md").exists()           # live 保留给人工
+    arch_txt = (arch / "events" / "990101.md").read_text(encoding="utf-8")
+    assert "冲突甲" not in arch_txt and "原始甲" in arch_txt   # 归档未被污染
+
+
+def test_archive_date_removes_redundant_identical_live(tmp_path):
+    """live 段与归档完全一致＝冗余：删 live，归档内容不变。"""
+    pipe = tmp_path / "_pipeline"
+    arch = tmp_path / "_pipeline_archive"
+    (pipe / "events").mkdir(parents=True)
+    (arch / "events").mkdir(parents=True)
+    section = "# Events — 9901-01\n\n## 1. 甲\n**Brief**: 甲内容\n"
+    (arch / "events" / "990101.md").write_text(section, encoding="utf-8")
+    (pipe / "events" / "990101.md").write_text(section, encoding="utf-8")
+
+    archive_date("990101", pipeline_dir=pipe, archive_dir=arch)
+
+    assert not (pipe / "events" / "990101.md").exists()       # 冗余 live 删除
+    assert (arch / "events" / "990101.md").read_text(encoding="utf-8") == section
+
+
 def test_stage_event_without_draft(tmp_path):
     from src.utils.archive import stage_event
     pipe = tmp_path / "_pipeline"
