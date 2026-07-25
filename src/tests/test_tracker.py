@@ -616,6 +616,41 @@ def test_filter_passes_prompt_via_stdin_not_argv():
     assert not any("帖子列表" in str(a) for a in argv)      # argv 不夹带 prompt
 
 
+def test_filter_error_message_is_informative_not_empty():
+    # 底线：claude 非零退出但 stderr 为空时，错误信息必须含 returncode + stdout 线索，
+    # 不能吞成空 RuntimeError（那就是"崩了不知道原因"的静默失败）。
+    from src.tracker import filter_feminist_events
+    fake = MagicMock(returncode=1, stdout="Credit balance too low", stderr="")
+    with patch("subprocess.run", return_value=fake), patch("time.sleep"), \
+         pytest.raises(Exception) as ei:
+        filter_feminist_events([{"url": "u", "text": "t", "retweet_text": ""}])
+    msg = str(ei.value)
+    assert msg.strip()                          # 非空——绝不静默
+    assert "1" in msg                           # 含 returncode
+    assert "Credit balance too low" in msg      # 含 stdout 线索
+
+
+def test_by_day_fetch_dedupes_overlapping_pages():
+    # searchProfile 跨页返回重叠条目时，按 post id 去重，不把重复帖算进来
+    # （180/540 虚高数字的根：by-day 抓取原先无 seen_ids 去重）。
+    from datetime import date
+    from src.tracker import fetch_weibo_posts_by_day
+
+    def _page(ids):
+        return {"ok": 1, "data": {"list": [
+            {"idstr": i, "mblogid": f"m{i}", "text_raw": f"t{i}"} for i in ids]}}
+
+    web = MagicMock()
+    web.fetch_json.side_effect = [
+        _page(["A", "B", "C"]),
+        _page(["C", "D", "E"]),                 # C 与上一页重叠
+        {"ok": 1, "data": {"list": []}},
+    ]
+    with patch("time.sleep"):
+        posts = fetch_weibo_posts_by_day(web, "999", date(2026, 6, 7))
+    assert [p["id"] for p in posts] == ["A", "B", "C", "D", "E"]   # 去重后 5，非 6
+
+
 # ---- 跨运行去重（write/append 前按来源 URL 对照已有记录） ----
 
 def _dedup_env(tmp_path, monkeypatch):

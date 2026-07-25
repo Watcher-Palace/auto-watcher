@@ -129,6 +129,7 @@ def fetch_weibo_posts_by_day(
         "Accept": "application/json, text/plain, */*",
     }
     posts: list[dict] = []
+    seen_ids: set[str] = set()   # searchProfile 跨页会重叠：按 id 去重，防虚高计数
     for page in range(1, max_pages + 1):
         url = (f"{SEARCHPROFILE_API}?uid={uid}&page={page}"
                f"&starttime={t0}&endtime={t0 + 86400 - 1}")
@@ -141,7 +142,12 @@ def fetch_weibo_posts_by_day(
         lst = (data.get("data") or {}).get("list") or []
         if not lst:
             break
-        posts.extend(parse_searchprofile_items(lst, uid))
+        new = [p for p in parse_searchprofile_items(lst, uid)
+               if p["id"] and p["id"] not in seen_ids]
+        if not new:
+            break   # 整页都是已见 id：分页重叠到头，停
+        seen_ids.update(p["id"] for p in new)
+        posts.extend(new)
         time.sleep(random.uniform(PAGINATION_DELAY_SEC, PAGINATION_DELAY_SEC * 3))
     return posts
 
@@ -338,7 +344,13 @@ def filter_feminist_events(posts: list[dict]) -> list[dict]:
                 input=prompt, capture_output=True, text=True, timeout=120,
             )
             if result.returncode != 0:
-                raise RuntimeError(result.stderr.strip())
+                # 永不抛空：returncode + stderr + stdout 片段一起带出，
+                # 否则 stderr 为空时崩成光秃秃的 RuntimeError，不知道原因。
+                raise RuntimeError(
+                    f"claude exited {result.returncode}; "
+                    f"stderr={result.stderr.strip()[:500]!r}; "
+                    f"stdout={result.stdout.strip()[:500]!r}"
+                )
             content = result.stdout.strip()
             events = _extract_events_json(content)
             if events is None:
