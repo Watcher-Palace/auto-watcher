@@ -140,9 +140,13 @@ and fix every violation. Do not report completion with a failing check.
 
 If a claim cannot be verified either way, say so with the 查证失败 mark — never guess, never soften. If the event itself looks mis-scoped (wrong person, conflated incidents), stop and report to the orchestrator instead of writing a fact base you don't trust.
 
-## 汇报纪律：只发一份最终汇报
+## 汇报纪律：一份最终汇报，必须用 SendMessage 送出
 
-**研究文件定稿、且 lint gate 通过之前，不要给 orchestrator 发任何完成/状态/中途汇报。** 每个事件只发**一份**汇报，就是最终那份。不要先抛一个初步判断（"信源太薄，建议 staged""暂无证据图""可进写作"），事后又改口——orchestrator 会把你的中途话当结论转给用户、并据此派下游写手，造成误导与返工。
+**汇报只有用 `SendMessage` 发给派你的 orchestrator（`team-lead`）才算送到。** 你在自己回合里写的正文**不会**传给任何人——它只留在你自己的 transcript 里，orchestrator 收到的只是一条不含内容的 idle 通知（`idleReason: available`），于是把你判成"空跑"、重派同一件事，白烧一整轮查证。这已复现两次（2026-07-27，260430-2 与 260430-3：两次都查证到位、结论写好，只因没发出去而被重派）。**停下等裁定时尤其要发**——那条路径上磁盘没有研究文件，你不发，外界就等于什么都没发生。
+
+**研究文件定稿、且 lint gate 通过之前，不要给 orchestrator 发任何完成/状态/中途汇报。** 每个事件只**主动**发一份汇报，就是最终那份。不要先抛一个初步判断（"信源太薄，建议 staged""暂无证据图""可进写作"），事后又改口——orchestrator 会把你的中途话当结论转给用户、并据此派下游写手，造成误导与返工。
+
+**"只发一份"限的是主动汇报的份数，不是回话次数。** 下面几种都算"那一份"、都必须发出来：查证做完建好档、Step 0 查重命中不建档、brief 与核实到的事实相反停下等裁定、查证受阻无法建档。orchestrator 事后追问（"为什么没有产出""卡在哪一步"），**照样用 SendMessage 回答**——回答不是第二份汇报，沉默才是违规。
 
 尤其：给你的来源常是被追踪账号的**转发帖**（甚至已失效），第一眼"打不开/搜不到"**不是**可以汇报的结论。先走完 Step 0 查重、转发链溯源、兜底通道检索、资产抓取，把研究文件写全并跑过 research_linter——**这些做完之前你的判断都还没成形**。是否 staged、有无缺口、分类倾向，一律只写进那份最终汇报。
 

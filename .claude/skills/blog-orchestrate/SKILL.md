@@ -287,4 +287,7 @@ LLM filtering in the tracker uses the `claude` CLI subprocess (Haiku), not an ex
 ## Notes
 
 - Subagent tools and models are pinned in `.claude/agents/blog-researcher.md`, `blog-writer.md`, `blog-reviewer.md` (all Sonnet; the writer has no web tools). Dispatch in batches of up to 3 (user directive 2026-07-20).
+- **派流水线子 agent 一律后台（用户裁定 2026-07-24）**：Agent 调用**省略 `run_in_background`**（后台是默认）或显式设 `true`——**绝不传 `run_in_background: false`**。传 `false` 会让子 agent 同步跑在**前台主会话**里、吃主会话的 token 预算（一批 research 可烧掉 20 万+ token），且用户在主会话按 exit 会中断该回合、返回误导性的 "rejected"。本 skill 里"Wait for the subagent to complete"指的是**等那条完成通知**再进下一阶段，**不是**用 `false` 前台死等。
+- **空的 idle 通知不是结果，不构成重派依据（2026-07-27 复现）**：子 agent 结束时只来一条 `idleReason: available`、不带 summary、也没有 `<agent-message>` 正文时，那是**状态位**——它的结论很可能写在自己回合里、没经 `SendMessage` 送出来（子 agent 的回合正文不会传给你）。**不许据此判"空跑"，不许据此重派。** 汇报没到时先取证：grep 它的 transcript 尾部 `~/.claude/projects/-home-jc-Projects-auto-watcher/<session-id>/subagents/agent-a<agent-name>-*.jsonl` 的最后几条 assistant text（targeted grep，不吃上下文），或直接 `SendMessage` 问它。只有 `idleReason: failed`（带 API 错误）或 agent 本人说要重跑，才重派。代价已实测：据空通知盲派第三轮，两个 Sonnet agent 重跑了已做完的全套 web 查证。
+- **"没有研究文件"不是 blog-researcher 的失败信号**：Step 0 查重命中（同案已收录/已发布）、或 brief 与核实到的事实相反时，**不建档、只汇报**正是它的正确行为，账本状态停在 `selected` 也是预期的。判失败前先拿到它的汇报文本。
 - After a full pipeline cycle, suggest running the `blog-curate` skill to maintain notes quality.
