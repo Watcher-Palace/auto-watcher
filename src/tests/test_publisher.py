@@ -30,6 +30,26 @@ def test_move_assets_noop_if_missing(tmp_path):
     move_assets(tmp_path / "nonexistent", tmp_path / "dst")
 
 
+def test_move_assets_merges_into_existing_dir(tmp_path):
+    # 目标资产目录已存在（手工放进去的文书附件、或重跑发布）时，资产必须**并入**
+    # 该目录、与既有文件平铺同级，而不是把整个 -assets 目录套一层塞进去：
+    # Hexo 的 asset_path 只在文章资产目录根下找同名文件，套一层就解析成空 src。
+    # 复现：260108-2 发布时 source/_posts/260108/ 已有一份判决书 PDF。
+    assets_src = tmp_path / "src-assets"
+    assets_src.mkdir()
+    (assets_src / "img.jpg").write_bytes(b"data")
+    assets_dst = tmp_path / "dst"
+    assets_dst.mkdir()
+    (assets_dst / "judgment.pdf").write_bytes(b"pdf")
+
+    move_assets(assets_src, assets_dst)
+
+    assert (assets_dst / "img.jpg").exists(), "资产应平铺在目标目录根下"
+    assert not (assets_dst / "src-assets").exists(), "不得把整个 -assets 目录套一层"
+    assert (assets_dst / "judgment.pdf").exists(), "既有文件不得被覆盖或丢失"
+    assert not assets_src.exists()
+
+
 def test_read_frontmatter_extracts_fields():
     content = "---\ntitle: 测试\ncategories: A\n---\n## 内容"
     fm = read_frontmatter(content)

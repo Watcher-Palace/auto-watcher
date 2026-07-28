@@ -75,10 +75,19 @@ def copy_draft(src: Path, dst: Path) -> None:
 
 
 def move_assets(src: Path, dst: Path) -> None:
+    """把 src 目录里的资产**并入** dst，与 dst 既有文件平铺同级。
+
+    不能直接 `shutil.move(src, dst)`：dst 已存在为目录时那是"移进去"，会得到
+    `dst/<src 目录名>/图.jpg` 套一层的结构，而 Hexo 的 `asset_path` 只在文章资产
+    目录根下找同名文件，套一层就渲染成空 `src`。dst 已存在是常规情形——手工放进去的
+    文书附件，或对同一事件重跑发布。
+    """
     if not src.exists():
         return
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(src), str(dst))
+    dst.mkdir(parents=True, exist_ok=True)
+    for item in src.iterdir():
+        shutil.move(str(item), str(dst / item.name))
+    src.rmdir()
 
 
 def check_todo_tag(tags, allow_todo: bool) -> None:
