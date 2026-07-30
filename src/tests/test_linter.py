@@ -228,7 +228,7 @@ def _doc(body, title="独立成文的标题", cats="B", tags="- 犯罪\n- 未立
     return f"---\ntitle: {title}\ndate: 2026-01-01\ncategories: {cats}\ntags:\n{tags}\n---\n{body}"
 
 
-BODY_OK = "## 概述\nx<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，来源。*题*。https://a/\n"
+BODY_OK = "## 概述\nx<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.01.01，来源。*题*。https://a/\n"
 
 
 def test_filler_phrases_fail():
@@ -266,7 +266,7 @@ def test_title_equals_slug_fails(tmp_path):
 from src.linter import crosscheck_research
 
 RESEARCH = ("## 事实\n白女士报案。\n## 信息来源\n"
-            "- 2026.1.1，澎湃新闻。*真标题*。https://a/b — 摘录\n")
+            "- 2026.01.01，澎湃新闻。*真标题*。https://a/b — 摘录\n")
 
 
 def test_crosscheck_source_url_missing():
@@ -276,13 +276,13 @@ def test_crosscheck_source_url_missing():
 
 
 def test_crosscheck_source_title_date_mismatch():
-    draft = _doc("## 概述\nx<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，澎湃新闻。*错标题*。https://a/b\n")
+    draft = _doc("## 概述\nx<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.01.01，澎湃新闻。*错标题*。https://a/b\n")
     vs, _ = crosscheck_research(draft, RESEARCH)
     assert any("标题" in v or "日期" in v for v in vs)
 
 
 def test_crosscheck_names_warn():
-    draft = _doc("## 概述\n林悦（化名）与高某某。<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，澎湃新闻。*真标题*。https://a/b\n")
+    draft = _doc("## 概述\n林悦（化名）与高某某。<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.01.01，澎湃新闻。*真标题*。https://a/b\n")
     _, ws = crosscheck_research(draft, RESEARCH)
     assert any("林悦" in w for w in ws) and any("高某某" in w for w in ws)
     assert not any("白女士" in w for w in ws)
@@ -293,7 +293,7 @@ def test_crosscheck_names_no_false_positive_after_role_noun():
     # "人王某某" (NAME_RE's greedy capture including the role noun) is absent
     # from research_text even though the real name 王某某 is present.
     research = RESEARCH.replace("白女士报案。", "白女士报案。经查，嫌疑人系王某某。")
-    draft = _doc("## 概述\n加害人王某某被拘留。<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.1.1，澎湃新闻。*真标题*。https://a/b\n")
+    draft = _doc("## 概述\n加害人王某某被拘留。<font color=\"blue\">2026年1月1日判决</font>\n## 信息来源\n2026.01.01，澎湃新闻。*真标题*。https://a/b\n")
     _, ws = crosscheck_research(draft, research)
     assert not any("王某某" in w for w in ws)
 

@@ -5,7 +5,10 @@ import sys
 from pathlib import Path
 
 REQUIRED = ("事实", "当事方", "信息来源", "资产")
-SRC_RE = re.compile(r"^- \d{4}\.\d{1,2}\.\d{1,2}，.+?。\*.+?\*。\S+")
+# 日期必须补零（2026.01.01）。此处若放行 \d{1,2}，研究阶段随手选的格式会经
+# linter.py --research 的逐字比对变成对写手的硬约束：写手照 template 的补零
+# 惯例写反而 LINT FAIL，只能倒回去迁就研究文件，格式污染随之进入已发布文章。
+SRC_RE = re.compile(r"^- \d{4}\.\d{2}\.\d{2}，.+?。\*.+?\*。\S+")
 UNVERIFIED = "发布日期查证失败"
 BLUE_RE = re.compile(r'<font color="blue">(.*?)</font>', re.S)
 DATE_IN_RE = re.compile(r"\d{4}年|\d{1,2}月\d{1,2}日")

@@ -21,7 +21,9 @@ METRIC_RE = re.compile(
     r"(阅读量|讨论量|转发量|评论量|访问量|播放量|观看量|点赞量|投票|票数"
     r"|[\d.]+\s*[万亿]?\s*(?:条)?\s*(?:转发|评论|点赞|观看|播放|次浏览))"
 )
-SOURCE_LINE_RE = re.compile(r"^(- )?\d{4}\.\d{1,2}\.\d{1,2}，.+?。\*.+?\*。\S+")
+# 与 DRAFT_SRC_RE 必须同样严（都要求补零）：若此处放行不补零而 DRAFT_SRC_RE 不认，
+# 该行会格式检查通过、却对 crosscheck_research 隐形，等于绕过"来源须能在研究文件核对到"。
+SOURCE_LINE_RE = re.compile(r"^(- )?\d{4}\.\d{2}\.\d{2}，.+?。\*.+?\*。\S+")
 TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
 ASSET_REF_RE = re.compile(r"\{%\s*asset_path\s+(.+?)\s*%\}")
 # C3（审计裁定，2026-07-22）：填充语/蓝字进展标记为 FAIL；舆论反应措辞为 WARN
@@ -31,7 +33,7 @@ TITLE_OPINION_RE = re.compile(r"引争议|引发争议|引质疑|引发质疑|�
 BLUE_RE = re.compile(r'<font color="blue">(.*?)</font>', re.S)
 NO_PROGRESS_RE = re.compile(r"暂无|尚未|无最新进展|未发布通报")
 # C1（审计裁定，2026-07-22）：草稿信息来源行必须能在研究文件里核对到；人物称呼只警告
-DRAFT_SRC_RE = re.compile(r"^(?:- )?(\d{4}\.\d{1,2}\.\d{1,2})，(.+?)。\*(.+?)\*。(\S+)", re.M)
+DRAFT_SRC_RE = re.compile(r"^(?:- )?(\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。(\S+)", re.M)
 NAME_RE = re.compile(r"[一-龥]{1,2}(?:某某|某|女士|先生)|小[一-龥]")
 ALIAS_RE = re.compile(r"([一-龥]{2,3})（(?:报道使用)?化名）")
 

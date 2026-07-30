@@ -4,7 +4,7 @@ from src.research_linter import lint_research
 
 GOOD = ("# Research: 题 (990101, #1)\n\n## 事实\n"
         "<font color=\"blue\">2026年1月1日宣判</font>\n\n## 当事方\n某人\n\n"
-        "## 信息来源\n- 2026.1.1，澎湃新闻。*真标题*。https://a/b — 摘录\n\n## 资产\n无\n")
+        "## 信息来源\n- 2026.01.01，澎湃新闻。*真标题*。https://a/b — 摘录\n\n## 资产\n无\n")
 
 def _mk(tmp_path, text, assets: list[str] | None = None):
     (tmp_path / "research").mkdir(parents=True, exist_ok=True)
@@ -22,14 +22,24 @@ def test_good_file_passes(tmp_path):
 
 def test_missing_section_and_bad_source_line(tmp_path):
     text = GOOD.replace("## 当事方\n某人\n\n", "").replace(
-        "- 2026.1.1，澎湃新闻。*真标题*。https://a/b — 摘录", "- 澎湃新闻报道了")
+        "- 2026.01.01，澎湃新闻。*真标题*。https://a/b — 摘录", "- 澎湃新闻报道了")
     vs = lint_research(_mk(tmp_path, text))
     assert any("当事方" in v for v in vs) and any("来源行" in v for v in vs)
 
 def test_source_line_allows_unverified_date_marker(tmp_path):
-    text = GOOD.replace("- 2026.1.1，澎湃新闻。*真标题*。https://a/b — 摘录",
+    text = GOOD.replace("- 2026.01.01，澎湃新闻。*真标题*。https://a/b — 摘录",
                         "- 澎湃新闻。*真标题*。https://a/b — 摘录（发布日期查证失败）")
     assert lint_research(_mk(tmp_path, text)) == []
+
+def test_source_date_must_be_zero_padded(tmp_path):
+    # 来源行日期必须补零（2026.01.01），不接受 2026.1.1：
+    # 两种写法此前都放行，研究阶段随手选一种，再经 linter.py --research 的
+    # 逐字比对变成对写手的硬约束——写手照 template 的补零惯例写反而 LINT FAIL，
+    # 只能倒回去迁就研究文件，格式污染就此进入草稿并发布上线。
+    for bad in ("2026.1.1", "2026.1.01", "2026.01.1"):
+        text = GOOD.replace("2026.01.01，澎湃新闻", f"{bad}，澎湃新闻")
+        vs = lint_research(_mk(tmp_path, text))
+        assert any("来源行" in v for v in vs), f"{bad} 应被拦下，实际放行"
 
 def test_blue_mark_rules(tmp_path):
     no_date = GOOD.replace("2026年1月1日宣判", "已经宣判")
