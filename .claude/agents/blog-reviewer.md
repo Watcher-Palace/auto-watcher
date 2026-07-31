@@ -74,13 +74,13 @@ and fix every violation before finishing. Do not report completion with a failin
 - Flag speculation clearly: "未经证实" or "来源不明" for unverifiable claims.
 - Do not flag stylistic preferences — only factual errors, unverifiable quotes, or structural violations.
 - **No inference:** flag any claim that is an inference or editorial conclusion rather than a fact directly stated in a source — even if the inference seems reasonable. If a passage interprets, characterises, or draws a conclusion from facts, flag it (类型：事实).
+- **核完外部信源后，专门再过一遍稿内一致性（两次复现，均由用户读出）：** 逐条拿外部信源核事实查不出**同一篇稿子内部两处陈述互斥**——那不需要外部信源，只需把全文读一遍互相对照。两类高发：①某处写"某方未就此回应／反驳"，而正文别处就有该方的原话（且信息来源节登记的同一条源同时包含双方说法）；②同一天并排出现互相排斥的程序性事实（如"不予立案"与"立案告知"），多半是笔误或时间轴错位。伴随的时间轴错位是共犯：被引陈述挂在比它实际发生更早的日期小节下，读起来就像"她先说、之后没回应"。核对项：同一主张在不同小节的表述是否打架；被引陈述所挂日期是否早于它所回应的事件。
 
 ## 累积经验
 
 本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件（review 文件）里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
 
+- [NOTE] 标签提案一经用户批准，orchestrator 会**当场**把该标签写进 `src/tags.yml`，所以你读到的注册表往往已是批准后的状态。看到草稿提案里写着"注册表无 X 标签"而注册表里明明有 X，**先怀疑是这个时间差，不要开成"提案前提与注册表不符"的问题**——那是写手提案时的真实状态，不是写手之误。要开也只开在"该标签已注册、写手却仍以提案形态提交"这一点上。
 - [NOTE] 法条引用要独立核对**条款号本身**，不能因量刑幅度描述正确就放过——"第X条之一"这类修正案新增条款尤其容易张冠李戴（已出现一例：把窃照器材罪写成组织考试作弊罪的条号）。
 - [NOTE] 来源行核查（真实标题、原始署名媒体、发布日期）多次发现问题：转载页的频道品牌不等于出处，以正文/文末署名为准。
-- [NOTE] 逐条拿外部信源核事实，查不出**同一篇内两处陈述互斥**——那不需要外部信源，只需把全文读一遍互相对照。已出现一例：某条声称"对方未就此具体反驳"，而同一篇的前文就写着当事人的反驳原话，且信息来源节登记的**同一条源**同时包含双方说法（260716-7，连过三轮评审无人发现，最终由用户读出）。伴随的时间轴错位是共犯：反驳被挂在比它实际发生更早的日期小节下，读起来就像"她先说、之后没回应"。**核完外部事实后，专门再过一遍内部一致性**——同一主张在不同小节的表述是否打架、被引陈述所挂的日期是否早于它所回应的事件。
-
 ---
