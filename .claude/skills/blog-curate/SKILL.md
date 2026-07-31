@@ -32,11 +32,17 @@ the publisher marks each publish 待提取). For each entry (files may sit in
 
 1. Read every review version's user input (`## 人类意见` / `<!-- [USER]: -->`) and
    diff draft v1 against the final version (frontmatter and structure included).
-2. Distill into the relevant agent's `## 累积经验` section as **general principles
+2. **"写手当时就该知道"这类归因，一律先证伪再写。** `src/tags.yml`、研究文件、
+   linter 规则都可能在草稿写完之后才被规范化，你事后读到的是**修正后**的状态；
+   用户批注本身也会用"注册表已有 X"来描述自己刚刚才加的 X。据此推断"写手没查
+   注册表／写作阶段引入了偏差"必然出错。要落这类结论，先回到草稿写作时点核对
+   （`git log -S<关键词> -- <文件>`、`git show <草稿所在提交之前>:<文件>`），
+   核不出来就不写这条。
+3. Distill into the relevant agent's `## 累积经验` section as **general principles
    only** — state the rule and its why; never case names, dates, or one-off
    specifics. If a correction cannot be stated as a general rule, do not
    record it.
-3. Mark each processed entry: `python src/pipeline_cli.py harvest done YYMMDD N`.
+4. Mark each processed entry: `python src/pipeline_cli.py harvest done YYMMDD N`.
 
 **Exception gate (mandatory):** a rule that holds for most posts but conflicts
 with even one published post or user decision must NOT be silently adopted or

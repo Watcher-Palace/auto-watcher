@@ -221,7 +221,7 @@ def test_published_post_asset_dir_resolved(tmp_path):
 
 # --- C3：填充语 / 蓝字进展 / 标题舆论反应词 / 标题与内部标签同（审计裁定 2026-07-22） ---
 
-from src.linter import lint_warnings, lint_slug_title
+from src.linter import lint_warnings, lint_slug_title, TITLE_MAX_LEN
 
 
 def _doc(body, title="独立成文的标题", cats="B", tags="- 犯罪\n- 未立案"):
@@ -252,6 +252,20 @@ def test_opinion_filler_warn_not_fail():
     content = _doc(BODY_OK.replace("x", "该事件引发广泛关注。"))
     assert not any("填充语" in v for v in lint_text(content, None, date(2099, 1, 1)))
     assert any("舆论" in w for w in lint_warnings(content))
+
+
+def test_title_over_length_warns_but_does_not_fail():
+    """用户裁定 2026-07-31：标题上限 40 字（含标点），超出只 WARN，不阻断发布。"""
+    over = "男" * (TITLE_MAX_LEN + 1)
+    ws = lint_warnings(_doc(BODY_OK, title=over))
+    assert any(f"超过 {TITLE_MAX_LEN} 字" in w for w in ws)
+    # 超长绝不能是 FAIL——publisher 靠 lint_text 的返回值拒发
+    assert not any("字" in v and "标题" in v for v in lint_text(_doc(BODY_OK, title=over), None, date(2099, 1, 1)))
+
+
+def test_title_at_limit_is_silent():
+    at_limit = "男" * TITLE_MAX_LEN
+    assert not any("超过" in w for w in lint_warnings(_doc(BODY_OK, title=at_limit)))
 
 
 def test_title_equals_slug_fails(tmp_path):

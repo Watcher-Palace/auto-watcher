@@ -29,6 +29,9 @@ ASSET_REF_RE = re.compile(r"\{%\s*asset_path\s+(.+?)\s*%\}")
 # C3（审计裁定，2026-07-22）：填充语/蓝字进展标记为 FAIL；舆论反应措辞为 WARN
 FILLER_FAIL_RE = re.compile(r"此事沉寂数月后|网友纷纷表示")
 OPINION_WARN_RE = re.compile(r"引发广泛关注|引起广泛关注|引发关注|引发热议")
+
+# 标题字数上限（含标点）。用户裁定 2026-07-31：由 35 放宽为 40，超出只报 WARN
+TITLE_MAX_LEN = 40
 TITLE_OPINION_RE = re.compile(r"引争议|引发争议|引质疑|引发质疑|引发关注|引发热议|惹众怒")
 BLUE_RE = re.compile(r'<font color="blue">(.*?)</font>', re.S)
 NO_PROGRESS_RE = re.compile(r"暂无|尚未|无最新进展|未发布通报")
@@ -146,6 +149,12 @@ def lint_warnings(content: str) -> list[str]:
     m = TITLE_OPINION_RE.search(title)
     if m:
         warnings.append(f"标题含舆论反应词（{m.group()}）——除非争议即事件主体，删掉")
+    # 用户裁定 2026-07-31：标题上限 40 字（含标点），超出报 WARN 不阻断
+    if len(title) > TITLE_MAX_LEN:
+        warnings.append(
+            f"标题 {len(title)} 字，超过 {TITLE_MAX_LEN} 字上限——精简说清事实，"
+            "把法院说理、认定依据、过程修饰留给正文"
+        )
     if OPINION_WARN_RE.search(prose):
         warnings.append("正文含舆论反应措辞（引发关注类）——舆论事件难免时可保留，否则删")
     return warnings
