@@ -110,6 +110,8 @@ Write to `_pipeline/research/{date}-{index}-{title}.md`:
     ## 信息来源
     - YYYY.MM.DD，来源名称。*文章真实标题*。URL — 关键摘录（原文引号）
 
+**官方原话在 `## 信息来源` 里逐字，叙述节的转写必须一眼可辨（用户裁定，2026-07-31）：** 写手的灰色逐字引用**只以 `## 信息来源` 节的引文摘录为基准**，所以那里引号内的字必须与原文一字不差（含虚词、语序、标点）。`## 事实`／`## 当事方` 复述同一段话时，要么同样逐字并加引号，要么写成明显的转述，**不得以"近乎逐字、又改了几个词"的形态混进叙述**——那等于同一句官方认定在你的文件里有了两个版本，写手照转写版回查照样"对得上"，偏差却一路进正文。（例：260605-3 `## 当事方` 把"目前已受到屏蔽处置"转写成"对该条博文予以屏蔽处置"，草稿的偏离与之字面吻合；链条见 casebook）
+
 每条来源必须带**核实过的发布日期**与**文章真实标题**——写手的来源行直接取自这里，缺日期或缺标题的来源写手用不了，只能停工等你补。日期打开页面核实，无法核实的在该行标注"（发布日期查证失败）"，不许猜（URL 里的数字不算核实）。转载页以正文/文末署名的**原始媒体**为来源名称，不用转载站的域名品牌。（research_linter 会拦）
 
 ### Lint gate (mandatory)
@@ -130,6 +132,8 @@ Read the review file at `review_path`. For each numbered `## 问题 K` with `类
 
 Every 事实 item gets exactly one mark. If the latest real development changes, move the `<font color="blue">` mark and update its stated date. Add any new sources to 信息来源.
 
+**评审指认引用不逐字时，比对基准是信源原文／`## 信息来源`，不是本文件的叙述节（用户裁定，2026-07-31）：** 拿 `## 事实`／`## 当事方` 当基准，就是拿自己的转写去核对自己的转写，必然得出"研究文件无误、偏差在写作阶段"这个结论，把根因原样放回文件里等下一轮再犯。核对前先重取原文（`src/wbfetch.py`／WebFetch），逐字比对后连带修掉叙述节里那份转写。
+
 **Completeness gate (mandatory):** before finishing, run
 
     /home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/review_linter.py <review_path> --check-marks <research-file-path>
@@ -139,6 +143,8 @@ and fix every violation. Do not report completion with a failing check.
 ## Report, never fabricate
 
 If a claim cannot be verified either way, say so with the 查证失败 mark — never guess, never soften. If the event itself looks mis-scoped (wrong person, conflated incidents), stop and report to the orchestrator instead of writing a fact base you don't trust.
+
+**下"查不到"之前，先把已经到手的材料读完（用户裁定，2026-07-31，五次复现）：** 凡要写"未见报道""查证失败""仅自媒体转述、未获证实""无最新进展"，先穷尽**手上已有**的东西，穷尽不了就不许下这个结论——五次复现无一例外，评审都是从研究文件**自己已经引用**的材料里把该事实翻出来的：**已引用信源读到文末**（`## 信息来源` 里一条来源同时支撑多个事实是常态，不要只摘检索命中的那一段，也包括蓝字进展常被埋在已引文章末尾）、**你自己抓下来的资产**（文件名与画面本身就是事实，不要在资产说明里写"未见随附文字报道内容"就放过）、**原文页打不开时的转载页**（定位不到原发链接不等于内容拿不到，未穷尽转载路径不算"未能定位"）。把某条说法判给"自媒体渲染"之前同样先回查：它是否也出现在你已列为已核实的正规媒体正文里。（例：260604-3 把"淤青"判为自媒体传闻，该句就在已核实的大濮网正文里；链条见 casebook）
 
 ## 汇报纪律：一份最终汇报，必须用 SendMessage 送出
 
@@ -154,6 +160,6 @@ If a claim cannot be verified either way, say so with the 查证失败 mark — 
 
 本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件（research 文件）里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
 
-- [NOTE] 蓝字进展多次被评审推翻为"当时已存在的更晚进展"，其中一次该进展就写在研究文件已引用来源的正文末尾。"查到今天"包括：把已引用文章读到文末；用"判决/通报/服刑/最新进展"等变体词再查一轮。
+- [NOTE] 蓝字进展多次被评审推翻为"当时已存在的更晚进展"。除上方"下'查不到'之前先把已到手材料读完"外，还有一条独立动作：用"判决/通报/服刑/最新进展"等变体词再查一轮。
 
 ---
