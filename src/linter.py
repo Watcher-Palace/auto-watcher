@@ -5,6 +5,7 @@ concrete metrics, source-line format, unregistered tags, invalid categories,
 future dates, missing required sections.
 """
 from __future__ import annotations
+import os
 import re
 import sys
 from datetime import date, datetime
@@ -39,6 +40,9 @@ NO_PROGRESS_RE = re.compile(r"暂无|尚未|无最新进展|未发布通报")
 DRAFT_SRC_RE = re.compile(r"^(?:- )?(\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。(\S+)", re.M)
 NAME_RE = re.compile(r"[一-龥]{1,2}(?:某某|某|女士|先生)|小[一-龥]")
 ALIAS_RE = re.compile(r"([一-龥]{2,3})（(?:报道使用)?化名）")
+# 来源行标题里的受害人真名按全角星号打码（用户裁定，2026-08-04）。半角 * 是 DRAFT_SRC_RE 的
+# 斜体定界符，写进标题会把标题截断，故只认全角 ＊。研究文件保留真名，比对时打码位走通配。
+MASK_RE = re.compile(r"＊+")
 
 
 def _sections(body: str) -> dict[str, str]:
@@ -48,6 +52,25 @@ def _sections(body: str) -> dict[str, str]:
     for i in range(1, len(parts) - 1, 2):
         out[parts[i].strip()] = parts[i + 1]
     return out
+
+
+def tracked_uids() -> set[str]:
+    """本站追踪账号的 UID（`src/.env` 的 TRACKED_UIDS）。
+
+    来源行里出现这些 uid 的微博 URL＝把本站的事件发现源公开挂在文章里（用户裁定
+    2026-08-04）。写手无 .env 访问权、也无网络，判不了这件事，所以拦在机械闸口。
+    .env 缺失时返回空集合（CI 无 .env，此项检查静默跳过，不误伤）。
+    """
+    raw = os.environ.get("TRACKED_UIDS")
+    if raw is None:
+        env = Path(__file__).parent / ".env"
+        if not env.is_file():
+            return set()
+        for ln in env.read_text(encoding="utf-8").splitlines():
+            if ln.startswith("TRACKED_UIDS="):
+                raw = ln.split("=", 1)[1]
+                break
+    return {u.strip() for u in (raw or "").split(",") if u.strip()}
 
 
 def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]:
@@ -128,6 +151,14 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
     if isinstance(d, date) and d > today:
         violations.append(f"date 在未来：{d.isoformat()}")
 
+    for uid in sorted(tracked_uids()):
+        if re.search(rf"weibo\.com/{re.escape(uid)}/", body):
+            violations.append(
+                f"来源 URL 指向本站追踪账号 uid {uid}（用户裁定 2026-08-04：安全事项）"
+                "——发布即公开本站的事件发现源。改用原帖/该媒体自己的原始出处；"
+                "取不到就不收该来源，不许借追踪账号的 URL 充数"
+            )
+
     if FILLER_FAIL_RE.search(prose):
         violations.append("填充语出现（此事沉寂数月后/网友纷纷表示 类）——直接陈述事实")
     blues = BLUE_RE.findall(prose)
@@ -205,7 +236,13 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
         if not lines:
             vs.append(f"来源 URL 不在研究文件 信息来源：{url}")
             continue
-        if not any(date_s in l and title in l for l in lines):
+        if MASK_RE.search(title):
+            # 标题里的受害人真名已按化名规则打码；研究文件保留真名，故打码位按通配比对。
+            pat = re.compile(".{1,6}".join(re.escape(s) for s in MASK_RE.split(title)))
+            hit = any(date_s in l and pat.search(l) for l in lines)
+        else:
+            hit = any(date_s in l and title in l for l in lines)
+        if not hit:
             vs.append(f"来源行与研究文件不一致（日期或标题）：{title} / {date_s}")
     names = set(NAME_RE.findall(body)) | set(ALIAS_RE.findall(body))
     for name in sorted(names):

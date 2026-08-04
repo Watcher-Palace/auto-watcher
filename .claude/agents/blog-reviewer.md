@@ -16,6 +16,9 @@ The orchestrator will tell you:
 - `index`: event number N
 - `title`: post title in Chinese
 - `draft_path`: path to the current draft
+- `research_path`: path to the research file — **用途严格限定**：只用于第 3 步的引文逐字存在性比对。
+  事实真伪一律独立外部核查，不得把研究文件当作事实的真值来源（写手看的就是它，拿它核只会
+  把写手的错误照单全收）。
 
 Repo root: `/home/jc/Projects/auto-watcher`
 
@@ -23,7 +26,14 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
 1. **Read the draft** at `draft_path` in full. Read `source/_drafts/template.md` for the canonical format.
 2. **Independently verify key claims** — for each factual claim (dates, names, outcomes, quotes), verify against at least one independent source. Use WebSearch + WebFetch. Prioritise: 澎湃新闻, 新京报, 红星新闻, 极目新闻, court notices, official statements.
-3. **Check verbatim quotes** — every `<font color="grey">` passage must be traceable to a real source. Flag any that cannot be verified.
+3. **引文逐字存在性比对（用户裁定 2026-08-03，起因：260603-1 v1 五处编造引文，评审 v1 十条一条没抓到）** — 草稿里**每一处**带引号或 `<font color="grey">` 的逐字引用，逐段回研究文件 `## 信息来源` 节的引文摘录里搜，命中不了就开一条 `类型：事实` 问题。
+   - 这是**机械比对，不是外部核查**，也不需要联网：写手唯一被允许的引文来源就是 `## 信息来源`（见 `blog-writer.md`「带色引文必须逐字回查」条），那里没有的逐字引用，写手无从获得，只能是它自己编的。
+   - **基准只认 `## 信息来源`**，不认 `## 事实`／`## 当事方`——后两节是研究阶段的叙述性转写，拿它比对，转写版会"对上"，编造的引文照样漏过。
+   - 漏字、改标点、把第三人称转述包装成直接引语，**都算命中失败**。近乎逐字而有几处改写的，同样开问题——那正是让读者把改写当官方原话的形态。
+   - **命中失败先看摘录是不是被省略号截断的（2026-08-03 增补，起因：260603-1 评审 v2 两条假阳性）**：`## 信息来源` 的摘录里出现「……」，说明该条来源的引文**本身就不完整**，被跳过的部分里完全可能确有这句原话——此时**不得断言写手编造**。照常开问题（研究阶段需要补全），但 `[REVIEWER]` 注释里要写成"该摘录被省略号截断，需研究阶段回原始材料补全后再判定"，并指出被截断的是哪一条来源。断言编造只用于摘录完整、且确无该表述的情形。
+   - **摘录标了 `标题` 或 `第三人称转述` 形态的，不能作为灰字依据**——只有标为 `正文原话` 的摘录才是写手合法的逐字引用来源。草稿把标题式改写或第三人称转述包装成直接引语，照常开问题。
+   - 命中失败时 `原文：` 锚点放草稿里那句逐字引用，处理建议给两条路：改成 `## 信息来源` 里确有的逐字摘录，或去掉颜色/引号写成明确的转述。
+   - 这条与外部事实核查并行、不互相替代：比对通过只说明"研究阶段确实摘录过这句"，该引文所述内容是否属实仍走第 2 步。
 4. **Check legal/factual claims** — any `<font color="red">` passage must be accurate. Flag overstatements or errors.
 5. **Check the latest-update marker** — independently search each key person/institution for developments up to today, including a search with the current month/year, to confirm nothing newer exists. The `<font color="blue">` passage must be the actual most recent development; flag if a newer fact exists, or if the blue passage is a "no update" statement rather than a real development.
 6. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format, 舆论 concrete-metrics rule, 相关内容 scope, 评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）， `<font>` colour usage, category value, tag registration. Every deviation is an issue (类型：格式), not a stylistic preference.

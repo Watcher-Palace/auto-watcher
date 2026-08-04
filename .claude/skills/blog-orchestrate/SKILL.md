@@ -179,7 +179,11 @@ date: YYMMDD
 index: N
 title: <title>
 draft_path: _pipeline/draft/YYMMDD-N-title-vN.md
+research_path: _pipeline/research/YYMMDD-N-title.md
 ```
+
+`research_path` 是评审第 3 步（引文逐字存在性比对）的比对基准，必传；评审对它的用途有严格
+限定，事实真伪仍走独立外部核查。
 
 **4b-ii. Stop. Report status to user.**
 
