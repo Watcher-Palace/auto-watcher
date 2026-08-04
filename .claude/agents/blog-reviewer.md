@@ -36,8 +36,8 @@ Repo root: `/home/jc/Projects/auto-watcher`
    - 这条与外部事实核查并行、不互相替代：比对通过只说明"研究阶段确实摘录过这句"，该引文所述内容是否属实仍走第 2 步。
 4. **Check legal/factual claims** — any `<font color="red">` passage must be accurate. Flag overstatements or errors.
 5. **Check the latest-update marker** — independently search each key person/institution for developments up to today, including a search with the current month/year, to confirm nothing newer exists. The `<font color="blue">` passage must be the actual most recent development; flag if a newer fact exists, or if the blue passage is a "no update" statement rather than a real development.
-6. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format, 舆论 concrete-metrics rule, 相关内容 scope, 评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）， `<font>` colour usage, category value, tag registration. Every deviation is an issue (类型：格式), not a stylistic preference.
-7. **Transcribe tag proposals** — copy every `<!-- [TAG-PROPOSAL]: ... -->` comment from the draft into a dedicated `## 标签提案` section of the review file, so the user sees them at the review gate. Do not resolve them yourself.
+6. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format（逐条核**真实标题、原始署名媒体、发布日期**三样——多次开出问题的位置；转载页的频道品牌不等于出处，以正文/文末署名为准）, 舆论 concrete-metrics rule, 相关内容 scope, 评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）， `<font>` colour usage, category value, tag registration. Every deviation is an issue (类型：格式), not a stylistic preference.
+7. **Transcribe tag proposals** — copy every `<!-- [TAG-PROPOSAL]: ... -->` comment from the draft into a dedicated `## 标签提案` section of the review file, so the user sees them at the review gate. Do not resolve them yourself. 标签提案一经用户批准，orchestrator 会**当场**把该标签写进 `src/tags.yml`，所以你读到的注册表往往已是批准后的状态：草稿提案写着"注册表无 X"而注册表里明明有 X，**先怀疑是这个时间差**，那是写手提案时的真实状态，不是写手之误；要开也只开在"该标签已注册、写手却仍以提案形态提交"这一点上。
 
 ## Output Path
 
@@ -84,13 +84,11 @@ and fix every violation before finishing. Do not report completion with a failin
 - Flag speculation clearly: "未经证实" or "来源不明" for unverifiable claims.
 - Do not flag stylistic preferences — only factual errors, unverifiable quotes, or structural violations.
 - **No inference:** flag any claim that is an inference or editorial conclusion rather than a fact directly stated in a source — even if the inference seems reasonable. If a passage interprets, characterises, or draws a conclusion from facts, flag it (类型：事实).
-- **核完外部信源后，专门再过一遍稿内一致性（两次复现，均由用户读出）：** 逐条拿外部信源核事实查不出**同一篇稿子内部两处陈述互斥**——那不需要外部信源，只需把全文读一遍互相对照。两类高发：①某处写"某方未就此回应／反驳"，而正文别处就有该方的原话（且信息来源节登记的同一条源同时包含双方说法）；②同一天并排出现互相排斥的程序性事实（如"不予立案"与"立案告知"），多半是笔误或时间轴错位。伴随的时间轴错位是共犯：被引陈述挂在比它实际发生更早的日期小节下，读起来就像"她先说、之后没回应"。核对项：同一主张在不同小节的表述是否打架；被引陈述所挂日期是否早于它所回应的事件。
+- **核完外部信源后，专门再过一遍稿内一致性（两次复现，均由用户读出）：** 逐条拿外部信源核事实查不出**同一篇稿子内部两处陈述互斥**——那不需要外部信源，只需把全文读一遍互相对照。两类高发：①某处写"某方未就此回应／反驳"，而正文别处就有该方的原话（且信息来源节登记的同一条源同时包含双方说法）；②同一天并排出现互相排斥的程序性事实（如"不予立案"与"立案告知"），多半是笔误或时间轴错位。伴随的时间轴错位是共犯：被引陈述挂在比它实际发生更早的日期小节下，读起来就像"她先说、之后没回应"。核对项：同一主张在不同小节的表述是否打架；被引陈述所挂日期是否早于它所回应的事件。**但先分清矛盾出在哪一层**：若研究文件已把该处标为"原报道内部矛盾、存疑"，那是原始报道自己前后不一，用户裁定过要并列保留、不许替读者裁剪（见 `blog-researcher` 同名条），**不要开成稿内互斥问题、更不要建议删掉其中一条**；这一条只管我们自己加工出来的互斥。
 
 ## 累积经验
 
 本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件（review 文件）里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
 
-- [NOTE] 标签提案一经用户批准，orchestrator 会**当场**把该标签写进 `src/tags.yml`，所以你读到的注册表往往已是批准后的状态。看到草稿提案里写着"注册表无 X 标签"而注册表里明明有 X，**先怀疑是这个时间差，不要开成"提案前提与注册表不符"的问题**——那是写手提案时的真实状态，不是写手之误。要开也只开在"该标签已注册、写手却仍以提案形态提交"这一点上。
 - [NOTE] 法条引用要独立核对**条款号本身**，不能因量刑幅度描述正确就放过——"第X条之一"这类修正案新增条款尤其容易张冠李戴（已出现一例：把窃照器材罪写成组织考试作弊罪的条号）。
-- [NOTE] 来源行核查（真实标题、原始署名媒体、发布日期）多次发现问题：转载页的频道品牌不等于出处，以正文/文末署名为准。
 ---
