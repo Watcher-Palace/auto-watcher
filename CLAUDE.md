@@ -84,7 +84,7 @@ How cells render (see `scripts/calendar.js`):
 - Categories **S/A/B/C/D** show `挑战失败`; **N** shows a grey `……`（省略号）; **M** is excluded. Colors: S = darkred bold, A = red, B = orange, C = yellow, **D = grey `#777`**, **N = grey `#777`**。
   S/A/B/C/D 与 N **都打断绿色 `Day N` 计数**（计数语义＝"距上一次上日历事件多少天"）。用户裁定 2026-07-23：N 恢复为灰色省略号（沿早期手写日历"白色省略号"先例，见已发布 260113）；D 走完整"挑战失败"、但用灰色标示其为严重度阶梯（S/A/B/C/D）最低档。
   `M`（正向进展）**暂时**仍不上日历，呈现方式待用户裁定（2026-07-21）——既不参与 `挑战失败`/省略号，也不打断绿色 `Day N` 计数（一条进展不是失败）。
-- An event day shows `挑战失败` split across that day's **失败事件（S/A/B/C/D）** — one clickable trigger per event, each colored by its category（D 为灰）；同日的 **N** 事件各显示一个灰色 `……`。Segments are joined by a neutral grey `_` so multiple events on one day stay distinguishable.
+- An event day shows `挑战失败` split across that day's **失败事件（S/A/B/C/D）** — one clickable trigger per event, each colored by its category（D 为灰）；同日的 **N** 事件各显示一个灰色 `……`。Segments are joined by a neutral grey `-` so multiple events on one day stay distinguishable.
 - A day with no S/A/B/C/D/N event since the last such event shows a green `Day N` counter.
 
 To change calendar appearance or color mapping, edit `scripts/calendar.js`.

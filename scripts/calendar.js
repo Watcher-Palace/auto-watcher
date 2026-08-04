@@ -91,7 +91,7 @@ hexo.extend.generator.register('calendar-index', function (locals) {
       };
       const segs = failPosts.slice(0, 4).map((post, i) => trigger(post, labels[i]));
       nPosts.forEach(post => segs.push(trigger(post, '……')));
-      const sep = '<span style="color:#999;">_</span>';
+      const sep = '<span style="color:#999;">-</span>';
       return `${day}<br>${segs.join(sep)}`;
     }
 
