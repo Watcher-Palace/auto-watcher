@@ -21,14 +21,20 @@ hexo.extend.generator.register('calendar-index', function (locals) {
   const retroMap = {};
   const progressMap = {};
 
-  // ↺ 落在「原事件的月日 ＋ 本文自身年份」那一格。日历只从 2026-01 起渲染（见下方 start），
-  // 直接拿 retrospect 的年份当 key 会落进不存在的月历里；原事件与本文同年时，这条规则就
-  // 等同于字面的原事件日。2-29 撞上非闰年时收到当月最后一天。
+  // ↺ 落在「原事件的月日 ＋ 本站收录年份」那一格。年份取源文件名（`YYMMDD[-N].md` 即收录
+  // 日期）而不是 `date`：`date` 是最新事实进展发生日，回填旧案时它可能落在 2023 这种日历
+  // 根本不渲染的年份（日历只从 2026-01 起，见下方 start），↺ 就会落进不存在的月历里。收录
+  // 年份＝本站在哪一年做的这次回顾，正是 ↺ 该出现的年份。2-29 撞非闰年时收到当月最后一天。
+  function retroYear(post) {
+    const m = /^(\d{2})\d{4}(?:-\d+)?$/.exec(post.slug || '');
+    return m ? 2000 + Number(m[1]) : post.date.year();
+  }
+
   function retroKey(post) {
     let retro = moment(String(post.retrospect), 'YYYY-MM-DD', true);
     if (!retro.isValid()) retro = moment(post.retrospect);      // YAML 已解析成 Date 的情形
     if (!retro.isValid()) return post.date.format('YYMMDD');
-    const base = moment({ year: post.date.year(), month: retro.month(), day: 1 });
+    const base = moment({ year: retroYear(post), month: retro.month(), day: 1 });
     return base.date(Math.min(retro.date(), base.daysInMonth())).format('YYMMDD');
   }
 
