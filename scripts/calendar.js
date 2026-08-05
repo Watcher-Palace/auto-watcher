@@ -7,25 +7,46 @@ hexo.extend.generator.register('calendar-index', function (locals) {
   const CAT_BOLD = new Set(['S']);
   const FAIL_CATS = new Set(['S', 'A', 'B', 'C', 'D']);        // 显示"挑战失败"
   const ELLIPSIS_CATS = new Set(['N']);                        // 显示"……"
-  const RENDER_CATS = new Set(['S', 'A', 'B', 'C', 'D', 'N']); // 上日历（M 不上）；均重置绿色计数
+  const RENDER_CATS = new Set(['S', 'A', 'B', 'C', 'D', 'N']); // 走"挑战失败"/省略号通道；均重置绿色计数
   const CAT_PRIORITY = { S: 0, A: 1, B: 2, C: 3, D: 4, N: 5 };
-  const RETRO_COLOR = '#6b5b95';                               // 那年今日回顾：紫色 ↺
+  const RETRO_COLOR = '#6b5b95';                               // 那年今日回顾：↺ 按档位取色，无档位时回退这个紫
+  const PROGRESS_COLOR = '#6b5b95';                            // 正向进展（M）：紫色加粗 M
   const root = hexo.config.root || '/';
 
   // Build date map: 'YYMMDD' -> [{ cat, urlPath, title }, ...] sorted by priority
-  // 那年今日回顾（frontmatter `retrospect`）走 retroMap，不进 dateMap：它重访的是往年
-  // 的失败，不是当天新发生的失败，所以既不显示"挑战失败"、也不重置绿色 Day N 计数。
+  // 那年今日回顾（frontmatter `retrospect`）走 retroMap、正向进展（categories: M）走
+  // progressMap，两者都不进 dateMap：前者重访的是往年的失败、后者根本不是失败，所以都
+  // 不显示"挑战失败"、也不重置绿色 Day N 计数，只在日期号旁挂一个可点的标记。
   const dateMap = {};
   const retroMap = {};
+  const progressMap = {};
+
+  // ↺ 落在「原事件的月日 ＋ 本文自身年份」那一格。日历只从 2026-01 起渲染（见下方 start），
+  // 直接拿 retrospect 的年份当 key 会落进不存在的月历里；原事件与本文同年时，这条规则就
+  // 等同于字面的原事件日。2-29 撞上非闰年时收到当月最后一天。
+  function retroKey(post) {
+    let retro = moment(String(post.retrospect), 'YYYY-MM-DD', true);
+    if (!retro.isValid()) retro = moment(post.retrospect);      // YAML 已解析成 Date 的情形
+    if (!retro.isValid()) return post.date.format('YYMMDD');
+    const base = moment({ year: post.date.year(), month: retro.month(), day: 1 });
+    return base.date(Math.min(retro.date(), base.daysInMonth())).format('YYMMDD');
+  }
+
   locals.posts.each(post => {
     const key = post.date.format('YYMMDD');
     const urlPath = root + post.path.replace(/\/index\.html$/, '/');
     if (post.retrospect) {
-      if (!retroMap[key]) retroMap[key] = [];
-      retroMap[key].push({ urlPath, title: post.title });
+      const rkey = retroKey(post);
+      if (!retroMap[rkey]) retroMap[rkey] = [];
+      retroMap[rkey].push({ urlPath, title: post.title, cat: (post.categories.first() || {}).name });
       return;
     }
     const cat = (post.categories.first() || { name: 'N' }).name;
+    if (cat === 'M') {
+      if (!progressMap[key]) progressMap[key] = [];
+      progressMap[key].push({ urlPath, title: post.title });
+      return;
+    }
     if (!RENDER_CATS.has(cat)) return;
     if (!dateMap[key]) dateMap[key] = [];
     dateMap[key].push({ cat, urlPath, title: post.title });
@@ -72,13 +93,14 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     return `<span class="cal-trigger" role="button" tabindex="0" data-title="${safeTitle}" data-url="${safeUrl}" style="color:${color};${bold || ''}">${text}</span>`;
   }
 
-  // Day number, followed by a ↺ per 那年今日回顾 post — same line as the number so a
-  // real event on that day still gets the second line to itself.
+  // Day number, followed by a ↺ per 那年今日回顾 post and a bold M per 正向进展 post —
+  // same line as the number so a real event on that day still gets the second line to itself.
   function dayHead(day, key) {
-    const retros = retroMap[key];
-    if (!retros) return String(day);
-    const marks = retros.map(p => trigger(p, '↺', RETRO_COLOR)).join('');
-    return `${day} ${marks}`;
+    const marks = (retroMap[key] || [])
+      .map(p => trigger(p, '↺', CAT_COLOR[p.cat] || RETRO_COLOR, CAT_BOLD.has(p.cat) ? 'font-weight:bold;' : ''))
+      .concat((progressMap[key] || []).map(p => trigger(p, 'M', PROGRESS_COLOR, 'font-weight:bold;')));
+    if (marks.length === 0) return String(day);
+    return `${day} ${marks.join(' ')}`;
   }
 
   // Sorted list of boundary event dates (S/A/B/C/D/N) — each resets the green counter

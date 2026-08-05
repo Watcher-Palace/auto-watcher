@@ -81,10 +81,10 @@ not duplicate the spec here or it will drift.
 The monthly calendar on the homepage (`/index.html`) is generated at **build time** by the Hexo generator `scripts/calendar.js` from post frontmatter — there is no `source/index.md` and the publisher does not touch the calendar. Publishing a post is enough; the calendar regenerates on the next `pnpm build`/`deploy`.
 
 How cells render (see `scripts/calendar.js`):
-- Categories **S/A/B/C/D** show `挑战失败`; **N** shows a grey `……`（省略号）; **M** is excluded. Colors: S = darkred bold, A = red, B = orange, C = yellow, **D = grey `#777`**, **N = grey `#777`**。
+- Categories **S/A/B/C/D** show `挑战失败`; **N** shows a grey `……`（省略号）; **M** 走日期号旁的紫色标记（见下）. Colors: S = darkred bold, A = red, B = orange, C = yellow, **D = grey `#777`**, **N = grey `#777`**。
   S/A/B/C/D 与 N **都打断绿色 `Day N` 计数**（计数语义＝"距上一次上日历事件多少天"）。用户裁定 2026-07-23：N 恢复为灰色省略号（沿早期手写日历"白色省略号"先例，见已发布 260113）；D 走完整"挑战失败"、但用灰色标示其为严重度阶梯（S/A/B/C/D）最低档。
-  `M`（正向进展）**暂时**仍不上日历，呈现方式待用户裁定（2026-07-21）——既不参与 `挑战失败`/省略号，也不打断绿色 `Day N` 计数（一条进展不是失败）。
-- **那年今日回顾**：frontmatter 带 `retrospect: "YYYY-MM-DD"`（原事件日）的文章走单独通道，与 categories 无关（分类照常按严重度标）。日历在**日期号同一行**显示紫色 `↺`（`#6b5b95`，点开弹出标题、链到文章），第二行整行留给当天真实发生的事件，同日有别的事件时互不打架。该日**不显示**「挑战失败」/省略号，**不打断**绿色 `Day N` 计数——它重访的是往年的失败，不是当天新发生的失败。用户裁定 2026-08-04。
+  `M`（正向进展）在**文章 `date` 那格的日期号同一行**显示紫色加粗 `M`（`#6b5b95`，点开弹出标题、链到文章），既不参与 `挑战失败`/省略号，也不打断绿色 `Day N` 计数（一条进展不是失败）。用户裁定 2026-08-05。
+- **那年今日回顾**：frontmatter 带 `retrospect: "YYYY-MM-DD"`（原事件日）的文章走单独通道，与 categories 无关（分类照常按严重度标）。日历在**日期号同一行**显示 `↺`（点开弹出标题、链到文章），**颜色按该文自身档位取**（S 深红加粗 / A 红 / B 橙 / C 黄 / D、N 灰；无档位时回退 `#6b5b95`）——用户裁定 2026-08-05，第二行整行留给当天真实发生的事件，同日有别的事件时互不打架。↺ 落在**原事件的月日 ＋ 本文 `date` 的年份**那一格（日历只从 2026-01 起渲染，直接用 `retrospect` 的年份会落进不存在的月历；原事件与本文同年时即字面的原事件日；2-29 撞非闰年收到当月最后一天）。该日**不显示**「挑战失败」/省略号，**不打断**绿色 `Day N` 计数——它重访的是往年的失败，不是当天新发生的失败。用户裁定 2026-08-04。
 - An event day shows `挑战失败` split across that day's **失败事件（S/A/B/C/D）** — one clickable trigger per event, each colored by its category（D 为灰）；同日的 **N** 事件各显示一个灰色 `……`。Segments are joined by a neutral grey `-` so multiple events on one day stay distinguishable.
 - A day with no S/A/B/C/D/N event since the last such event shows a green `Day N` counter.
 
@@ -185,6 +185,8 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
 - **存量文章全量清洗（2026-07-21 记，未排期）**：把 `source/_posts/` 已发布文章过一遍——
   事实核查、格式规范、补图/附件。附件断档从 260503 之后开始（当时流水线没有抓图职责，
   见上方"附件的责任分工"）。清洗时按事件回到原始来源重新抓证据图，不要从正文倒推。
+  清洗时一并纠 `## 前情`/`## 后续` 的用法漂移：template 规定这两节**只放站内已发布前后篇
+  的链接**，但 260121、260123、260330、260326-10 把它们当外部来源行或散文节在用（2026-08-05 记）。
 
 ## Keeping Docs Accurate (anti-drift)
 
