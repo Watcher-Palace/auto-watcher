@@ -35,6 +35,12 @@ OPINION_WARN_RE = re.compile(r"引发广泛关注|引起广泛关注|引发关�
 TITLE_MAX_LEN = 40
 TITLE_OPINION_RE = re.compile(r"引争议|引发争议|引质疑|引发质疑|引发关注|引发热议|惹众怒")
 BLUE_RE = re.compile(r'<font color="blue">(.*?)</font>', re.S)
+# 破折号是文风规则，管的是写手自己造的句子，不管别人文书的真实名称（用户裁定 2026-08-04）。
+# 豁免两处逐字引用：灰字引用 <font color="grey">…</font>，以及来源行的 *标题*——官方公报与
+# 判决书标题大量含「——」（如"第七次全国人口普查公报（第四号）——人口性别构成情况"），
+# 此前只能删副标题才能过闸口，等于逼写手改写文书真名。
+GREY_QUOTE_RE = re.compile(r'<font color="grey">.*?</font>', re.S)
+SRC_TITLE_RE = re.compile(r"^((?:- )?\d{4}\.\d{2}\.\d{2}，.+?。)\*.+?\*", re.M)
 NO_PROGRESS_RE = re.compile(r"暂无|尚未|无最新进展|未发布通报")
 # C1（审计裁定，2026-07-22）：草稿信息来源行必须能在研究文件里核对到；人物称呼只警告
 DRAFT_SRC_RE = re.compile(r"^(?:- )?(\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。(\S+)", re.M)
@@ -43,6 +49,21 @@ ALIAS_RE = re.compile(r"([一-龥]{2,3})（(?:报道使用)?化名）")
 # 来源行标题里的受害人真名按全角星号打码（用户裁定，2026-08-04）。半角 * 是 DRAFT_SRC_RE 的
 # 斜体定界符，写进标题会把标题截断，故只认全角 ＊。研究文件保留真名，比对时打码位走通配。
 MASK_RE = re.compile(r"＊+")
+# 标题被动句启发（2026-07-31 裁定的机械面）：典型受害人称谓开头 + 遭/被 → WARN。
+# 只认受害人称谓起头，避免误报"男子杀害女儿被判死刑"这类加害人主语+被判的正确形态。
+TITLE_PASSIVE_RE = re.compile(
+    r"^(?:女子|女生|女童|女孩|女性|少女|女大学生|女乘客|女顾客|女员工|女教师|母亲|妻子)"
+    r"[^，。]{0,8}?(?:遭|被)"
+)
+GREY_SPAN_RE = re.compile(r'<font color="grey">(.*?)</font>', re.S)
+CN_DATE_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
+
+
+def _dash_scan_text(content: str) -> str:
+    """破折号检查的扫描面：剥掉 HTML 注释与逐字引用（见 GREY_QUOTE_RE 注释）。"""
+    text = re.sub(r"<!--.*?-->", "", content, flags=re.S)
+    text = GREY_QUOTE_RE.sub("", text)
+    return SRC_TITLE_RE.sub(lambda m: m.group(1), text)
 
 
 def _sections(body: str) -> dict[str, str]:
@@ -79,7 +100,7 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
     body = content.split("---", 2)[-1] if content.startswith("---") else content
 
     prose = re.sub(r"<!--.*?-->", "", content, flags=re.S)
-    if "—" in prose:
+    if "—" in _dash_scan_text(content):
         violations.append("破折号 — 出现（风格规则：重组句子，不用破折号）")
 
     secs = _sections(body)
@@ -188,6 +209,25 @@ def lint_warnings(content: str) -> list[str]:
         )
     if OPINION_WARN_RE.search(prose):
         warnings.append("正文含舆论反应措辞（引发关注类）——舆论事件难免时可保留，否则删")
+    if TITLE_PASSIVE_RE.match(title):
+        warnings.append("标题疑似受害人被动句——改以加害人为主语（加害人未知/无法特指时保留施动主体即可）")
+    # frontmatter date 必须是蓝字进展的发生日（template 规定；曾有偏一天靠用户读出）
+    d = fm.get("date")
+    fm_date = None
+    if hasattr(d, "year"):
+        fm_date = (d.year, d.month, d.day)
+    elif isinstance(d, str) and (md := re.match(r"(\d{4})-(\d{2})-(\d{2})", d)):
+        fm_date = tuple(int(x) for x in md.groups())
+    blue_m = BLUE_RE.search(content)
+    if fm_date and blue_m:
+        line_start = content.rfind("\n", 0, blue_m.start()) + 1
+        candidate = content[line_start:blue_m.end()]
+        dates = {tuple(int(x) for x in g) for g in CN_DATE_RE.findall(candidate)}
+        if dates and fm_date not in dates:
+            warnings.append(
+                "frontmatter date 未出现在蓝字进展所在行——date 必须是蓝字进展的发生日"
+                "（不是报道日/撰写日；排期预告不算发生日）"
+            )
     return warnings
 
 
@@ -248,7 +288,26 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
     for name in sorted(names):
         if name not in research_text and (len(name) < 2 or name[1:] not in research_text):
             ws.append(f"称呼未在研究文件出现：{name}（自取化名时确认必要性并全篇一致）")
+    # 灰字引文须逐字命中研究文件 信息来源 节（blog-writer《带色引文必须逐字回查》的
+    # 机械面）。化名替换与外文译文合法地对不上原文，故只 WARN 不拦——WARN 的意义是
+    # 逼一次显式核对，不是判定编造。
+    base = _norm_quote(_sections(research_text).get("信息来源", "") or "")
+    for span in GREY_SPAN_RE.findall(body):
+        norm = _norm_quote(span)
+        if len(norm) < 6:
+            continue
+        if norm not in base:
+            ws.append(
+                f"灰字引文未在研究文件 信息来源 节逐字命中：{span.strip()[:24]}…"
+                "（化名替换/外文译文属预期；否则改用确有的摘录，或按缺口上报）"
+            )
     return vs, ws
+
+
+def _norm_quote(s: str) -> str:
+    """引文比对前的归一化：剥标签、空白与引号壳，保留其余标点（逐字含标点）。"""
+    s = re.sub(r"<[^>]+>", "", s)
+    return re.sub(r"[\s「」『』“”]", "", s)
 
 
 def lint_file(path: Path) -> list[str]:

@@ -144,6 +144,38 @@ def test_em_dash_only_in_html_comment_not_flagged():
     assert not any("破折号" in x for x in v)
 
 
+def test_em_dash_in_grey_verbatim_quote_not_flagged():
+    # 用户裁定 2026-08-04：破折号是文风规则，不管别人文书的原话。
+    content = BASE.format(
+        TAGS="\n- 性侵",
+        BODY='<font color="grey">"本院认为——被告人罪行严重。"</font>\n\n')
+    v = lint_text(content, {"犯罪", "性侵"}, _date(2020, 1, 2))
+    assert not any("破折号" in x for x in v)
+
+
+def test_em_dash_in_source_line_title_not_flagged():
+    # 官方公报标题含「——」，删副标题才能过闸口是本末倒置。
+    content = (
+        "---\ntitle: t\ndate: 2020-01-01\ncategories: B\ntags:\n- 性侵\n---\n\n"
+        "## 概述\n正文。\n\n"
+        "## 信息来源\n2020.01.01，国家统计局。"
+        "*第七次全国人口普查公报（第四号）——人口性别构成情况*。https://example.com/a\n"
+    )
+    v = lint_text(content, {"犯罪", "性侵"}, _date(2020, 1, 2))
+    assert not any("破折号" in x for x in v)
+
+
+def test_em_dash_in_source_line_outside_title_still_flagged():
+    # 豁免只覆盖 *标题* 本身，来源名等写手可控部分照旧禁用。
+    content = (
+        "---\ntitle: t\ndate: 2020-01-01\ncategories: B\ntags:\n- 性侵\n---\n\n"
+        "## 概述\n正文。\n\n"
+        "## 信息来源\n2020.01.01，某台——某频道。*标题*。https://example.com/a\n"
+    )
+    v = lint_text(content, {"犯罪", "性侵"}, _date(2020, 1, 2))
+    assert any("破折号" in x for x in v)
+
+
 def test_em_dash_in_prose_outside_comment_still_flagged():
     content = BASE.format(TAGS="\n- 性侵", BODY="他说——这样。\n\n")
     v = lint_text(content, {"犯罪", "性侵"}, _date(2020, 1, 2))
@@ -325,3 +357,37 @@ def test_prequel_with_link_ok():
     body = "## 前情\n1月1日：简述。参见：[题](/2026/260101/)\n" + BODY_OK
     vs = lint_text(_doc(body), None, date(2099, 1, 1))
     assert not any("前情" in v for v in vs)
+
+
+# --- 注意力型规则的机械面（2026-08-05）：被动句标题、date≠蓝字日、灰字逐字命中 ---
+
+
+def test_title_passive_subject_warns():
+    from src.linter import lint_warnings
+    draft = make_draft().replace("title: 测试", "title: 女子遭男同事跟踪骚扰")
+    assert any("被动句" in w for w in lint_warnings(draft))
+
+
+def test_title_perpetrator_bei_verdict_no_warn():
+    from src.linter import lint_warnings
+    draft = make_draft().replace("title: 测试", "title: 男子杀害女儿被判死刑")
+    assert not any("被动句" in w for w in lint_warnings(draft))
+
+
+def test_frontmatter_date_mismatch_blue_line_warns():
+    from src.linter import lint_warnings
+    draft = make_draft(date_str="2026-06-02")   # 蓝字行日期为 2026年6月1日
+    assert any("蓝字进展所在行" in w for w in lint_warnings(draft))
+    assert not any("蓝字进展所在行" in w for w in lint_warnings(make_draft()))
+
+
+def test_grey_quote_must_hit_research_sources():
+    from src.linter import crosscheck_research
+    research = ("## 信息来源\n"
+                "- 2026.06.01，来源。*标题*。https://example.com/a — 「官方原话内容」（正文原话）\n")
+    hit = make_draft(body="\n<font color=\"grey\">「官方原话内容」</font>\n")
+    _, ws = crosscheck_research(hit, research)
+    assert not any("灰字引文" in w for w in ws)
+    miss = make_draft(body="\n<font color=\"grey\">「编造的另一句话」</font>\n")
+    _, ws2 = crosscheck_research(miss, research)
+    assert any("灰字引文" in w for w in ws2)

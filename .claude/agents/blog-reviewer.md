@@ -36,7 +36,7 @@ Repo root: `/home/jc/Projects/auto-watcher`
    - 这条与外部事实核查并行、不互相替代：比对通过只说明"研究阶段确实摘录过这句"，该引文所述内容是否属实仍走第 2 步。
 4. **Check legal/factual claims** — any `<font color="red">` passage must be accurate. Flag overstatements or errors.
 5. **Check the latest-update marker** — independently search each key person/institution for developments up to today, including a search with the current month/year, to confirm nothing newer exists. The `<font color="blue">` passage must be the actual most recent development; flag if a newer fact exists, or if the blue passage is a "no update" statement rather than a real development.
-6. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format（逐条核**真实标题、原始署名媒体、发布日期**三样——多次开出问题的位置；转载页的频道品牌不等于出处，以正文/文末署名为准）, 舆论 concrete-metrics rule, 相关内容 scope, 评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）， `<font>` colour usage, category value, tag registration. Every deviation is an issue (类型：格式), not a stylistic preference.
+6. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format（逐条核**真实标题、原始署名媒体、发布日期**三样——多次开出问题的位置；转载页的频道品牌不等于出处，以正文/文末署名为准。**这三样核错的开 `类型：事实`，不是 格式**：修复点在研究文件的 `## 信息来源`，写手无权改研究文件，定成 格式 会绕过补研究闸口——`review_fact_items()` 只认 事实；review_linter 对"来源行锚点＋格式"组合会 WARN。同批曾两种定性并存，事实型走通、格式型卡死）, 舆论 concrete-metrics rule, 相关内容 scope, 评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）， `<font>` colour usage, category value, tag registration. Every deviation is an issue, not a stylistic preference — typed 格式 unless its fix requires the fact base to change.
 7. **Transcribe tag proposals** — copy every `<!-- [TAG-PROPOSAL]: ... -->` comment from the draft into a dedicated `## 标签提案` section of the review file, so the user sees them at the review gate. Do not resolve them yourself. 标签提案一经用户批准，orchestrator 会**当场**把该标签写进 `src/tags.yml`，所以你读到的注册表往往已是批准后的状态：草稿提案写着"注册表无 X"而注册表里明明有 X，**先怀疑是这个时间差**，那是写手提案时的真实状态，不是写手之误；要开也只开在"该标签已注册、写手却仍以提案形态提交"这一点上。
 
 ## Output Path
@@ -67,7 +67,7 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
 - **First line must be exactly `STATUS: CLEAN` or `STATUS: ISSUES`** — the orchestrator reads it. A CLEAN review contains no 问题 items.
 - Number items `## 问题 1`, `## 问题 2`, … consecutively.
-- `类型：事实` = wrong, unverifiable, stale, or missing facts — anything requiring the fact base to change. `类型：格式` = template, structure, style, wording, or colour-convention violations.
+- `类型：事实` = wrong, unverifiable, stale, or missing facts — **anything requiring the fact base to change**, including 来源行的署名/标题/日期错误 (see step 6). `类型：格式` = template, structure, style, wording, or colour-convention violations the writer can fix alone.
 - `原文：` must quote the draft **verbatim** (copy-paste; the validator rejects paraphrases).
 - Leave every `处理：` line empty — the writer fills it during revision.
 - `## 标签提案` and `## 人类意见` sections may follow the items.
@@ -88,7 +88,7 @@ and fix every violation before finishing. Do not report completion with a failin
 
 ## 累积经验
 
-本节由 blog-curate 技能维护，存放的是给你的既往经验——阅读并应用即可，不要自行编辑本文件。**也不要在你的输出文件（review 文件）里创建"累积经验"节**；发现值得沉淀的模式，写进给 orchestrator 的完成汇报即可。条目上限 ~15。新条目标注 [NOTE]（观察，未确认）或 [CANDIDATE]（复现模式，可晋升进上方正文）。
+本节由 blog-curate 技能维护——阅读并应用即可，不要自行编辑本文件，**也不要在你的输出文件（review 文件）里创建"累积经验"节**；值得沉淀的模式写进给 orchestrator 的完成汇报。条目上限 ~15，[NOTE]＝观察未确认，[CANDIDATE]＝复现模式可晋升。
 
 - [NOTE] 法条引用要独立核对**条款号本身**，不能因量刑幅度描述正确就放过——"第X条之一"这类修正案新增条款尤其容易张冠李戴（已出现一例：把窃照器材罪写成组织考试作弊罪的条号）。
 ---

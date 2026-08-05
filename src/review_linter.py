@@ -18,6 +18,10 @@ QUOTE_RE = re.compile(r"^原文：`(.+?)`\s*$", re.MULTILINE | re.DOTALL)
 DISP_RE = re.compile(r"^处理：(.*?)\s*$", re.MULTILINE)
 VALID_TYPES = {"事实", "格式"}
 TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
+# 锚点是来源行的问题应定 事实：署名/标题/日期错误的修复点在研究文件 ## 信息来源，
+# 写手无权改研究文件，定成 格式 会绕过补研究闸口（review_fact_items 只认 事实）。
+# 少数纯格式形状问题（如斜体缺失）确属 格式，故只 WARN 不拦。
+SRC_ANCHOR_RE = re.compile(r"(?:- )?\d{4}\.\d{2}\.\d{2}，.+?。\*")
 
 
 @dataclass
@@ -77,6 +81,11 @@ def validate_format(text: str) -> list[str]:
             v.append(f"问题 {it.num}: 缺少 原文：`...` 行")
         if it.disposition is None:
             v.append(f"问题 {it.num}: 缺少 处理： 行")
+        if it.type == "格式" and it.quote and SRC_ANCHOR_RE.match(it.quote.strip()):
+            v.append(
+                f"WARN：问题 {it.num}: 原文锚点是来源行、类型却是 格式——署名/标题/日期"
+                "错误应定 事实（修复点在研究文件；格式型会绕过补研究闸口）"
+            )
     return v
 
 
@@ -141,7 +150,7 @@ def main(argv: list[str]) -> int:
     if "--check-dispositions" in argv:
         dv, unresolved = check_dispositions(text)
         violations += dv
-        if not violations and unresolved:
+        if not [x for x in violations if not x.startswith("WARN：")] and unresolved:
             exit_code = 2
     elif "--check-marks" in argv:
         research = Path(argv[argv.index("--check-marks") + 1])
@@ -161,7 +170,7 @@ def main(argv: list[str]) -> int:
                 violations.append(f"找不到同版本草稿：{draft}")
     for x in violations:
         print(f"  - {x}")
-    if violations:
+    if [x for x in violations if not x.startswith("WARN：")]:
         return 1
     print(f"OK{'（含 未解决 项）' if exit_code == 2 else ''}")
     return exit_code

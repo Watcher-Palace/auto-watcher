@@ -84,6 +84,7 @@ How cells render (see `scripts/calendar.js`):
 - Categories **S/A/B/C/D** show `挑战失败`; **N** shows a grey `……`（省略号）; **M** is excluded. Colors: S = darkred bold, A = red, B = orange, C = yellow, **D = grey `#777`**, **N = grey `#777`**。
   S/A/B/C/D 与 N **都打断绿色 `Day N` 计数**（计数语义＝"距上一次上日历事件多少天"）。用户裁定 2026-07-23：N 恢复为灰色省略号（沿早期手写日历"白色省略号"先例，见已发布 260113）；D 走完整"挑战失败"、但用灰色标示其为严重度阶梯（S/A/B/C/D）最低档。
   `M`（正向进展）**暂时**仍不上日历，呈现方式待用户裁定（2026-07-21）——既不参与 `挑战失败`/省略号，也不打断绿色 `Day N` 计数（一条进展不是失败）。
+- **那年今日回顾**：frontmatter 带 `retrospect: "YYYY-MM-DD"`（原事件日）的文章走单独通道，与 categories 无关（分类照常按严重度标）。日历在**日期号同一行**显示紫色 `↺`（`#6b5b95`，点开弹出标题、链到文章），第二行整行留给当天真实发生的事件，同日有别的事件时互不打架。该日**不显示**「挑战失败」/省略号，**不打断**绿色 `Day N` 计数——它重访的是往年的失败，不是当天新发生的失败。用户裁定 2026-08-04。
 - An event day shows `挑战失败` split across that day's **失败事件（S/A/B/C/D）** — one clickable trigger per event, each colored by its category（D 为灰）；同日的 **N** 事件各显示一个灰色 `……`。Segments are joined by a neutral grey `-` so multiple events on one day stay distinguishable.
 - A day with no S/A/B/C/D/N event since the last such event shows a green `Day N` counter.
 
@@ -188,3 +189,12 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
 ## Keeping Docs Accurate (anti-drift)
 
 When a learned correction contradicts this file, a `SKILL.md`, or an agent file (`.claude/agents/*.md`), fix that file directly — do not park the correction in a memory file as a permanent shadow copy. Auto-memory is for facts *not yet* in the canonical docs; once a fact lands here, in a skill, or in an agent file, the memory should be deleted. This is the rule that keeps CLAUDE.md, the skills, and the agents from drifting out of sync with reality (e.g. venv path, tracker LLM backend, script flags).
+
+**规则增长预算（2026-08-05）**：上面的"直接改"仅限**纠错**——假陈述、spec 漏洞、
+过时事实——且净增字节 ≈ 0（删错句、写对句，不借机扩写）。**新经验**不得在会话内
+写成 agent 文件指令区的段落：有已发布事件的走 harvest 队列；没有的在该 agent
+`## 累积经验` 落**一行** `[NOTE]`（完整案情进 `docs/casebook.md`；[NOTE] 落行
+不受体积预算冻结，欠账由下轮 blog-curate 结算回线内）。段落化晋升只能
+由 `blog-curate` 在体积预算内完成——各 agent 文件的字节预算线与冻结/压缩算法定义
+在 `blog-curate` skill（单一归宿，此处不复制数字）。背景：07-22 密度压缩后两周内
+researcher 文件字节近翻倍，增长主渠道正是会话内以 fix(agents) 名义的直接追加。

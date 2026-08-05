@@ -78,13 +78,37 @@ checkable, implement it as a `src/linter.py` check (with a test) and keep at
 most one line about it in the agent file. Prose rules depend on subagent
 attention and dilute each other as the file grows; lint rules are enforced
 for free. When promoting into the agent file, also merge any overlapping
-existing rules — net growth of the file should be near zero. If an agent
-file exceeds ~180 lines, flag it to the user for a compaction pass instead
-of appending more.
+existing rules — net growth of the file should be near zero.
 Routing when promoting: mechanically checkable → `src/linter.py` or
 `src/review_linter.py` (with a test); format/structure rules →
 `source/_drafts/template.md`; judgment rules → the agent's instruction
 sections.
+
+## 体积预算（硬闸口，2026-08-05）
+
+起因：07-22 密度压缩后仅两周，researcher 文件 13.9KB→25.7KB 近翻倍，而旧的
+"~180 行"阈值全程没触发——只 +27 行，字节 +85%，规则是**横着长的**（越写越像
+段落）。因此：
+
+- **量字节，不量行数**。每轮 curate 开始与结束都跑
+  `wc -c .claude/agents/blog-*.md`，两组数字写进报告。
+- **预算线（UTF-8 字节）**：`blog-researcher.md` ≤ 19000、`blog-writer.md` ≤ 24000、
+  `blog-reviewer.md` ≤ 12000（≈ 07-22 压缩后基线 +30%；researcher 上调 1000 系
+  2026-08-05 首轮执行实测——基线不含其后新增的 汇报纪律/自媒体分层/安全闸口/形态标注
+  四个规则域，压到一行反例、短 why 后诚实的底在 ~19000）。
+- **超线 = 冻结 prose 新增**：先压缩回线内（反例迁 casebook、合并重叠规则、
+  段落收紧成条目），才许晋升/新增任何 prose 规则。改造成 linter/机械闸口后的
+  一行指针不受冻结——那正是出路。贴线运行是设计意图不是故障：晋升新段落就该在
+  存量里找等量空间，新规则与最弱的旧规则竞争；压缩红利耗尽后，出路只有机械化
+  与合并，没有"再涨一点"。
+- **[NOTE] 进栏不受冻结，欠账由 curate 结算**：一行 `[NOTE]` 落进 `## 累积经验`
+  即使在超线状态也允许——进栏通道另有 ~15 条上限与"一行为限"兜着，堵死它只会
+  让经验丢失或流落错误位置。代价收在结算点：**每轮 curate 结束时文件必须回到
+  线内**；预算约束的是 curate 交付时点，不是逐笔记录时点。
+- **同一规则违反复发时，禁止"加强版重写"**：规则已存在还被违反，说明 prose 的
+  边际收益已尽，只有两个出口——(a) 改造成机械自证/linter 检查；(b) 原句收紧且
+  字数不增。不得追加第二段更详细的重述（反面型：08-04"信息来源摘录规则三项
+  收紧"一笔 +3.2KB，重述的正是已存在却被违反 5 次的规则）。
 
 ## 反例写法与去重（硬规则，2026-07-22；防规则/反例跨文件重复）
 

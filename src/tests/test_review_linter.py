@@ -190,3 +190,19 @@ def test_cli_default_mode_absolute_review_path_still_passes(tmp_path):
     ok = subprocess.run([sys.executable, "src/review_linter.py", str(rp)],
                         capture_output=True, text=True)
     assert ok.returncode == 0, ok.stdout + ok.stderr
+
+
+def test_source_line_anchor_typed_geshi_warns():
+    # 来源行三样错的修复点在研究文件，定成 格式 会绕过补研究闸口 → WARN（2026-08-05）
+    text = VALID.replace("原文：`此事沉寂数月后再度引发关注`",
+                         "原文：`2026.06.01，搜狐。*标题*。https://a`")
+    vs = validate_format(text)
+    assert any(v.startswith("WARN：") and "来源行" in v for v in vs)
+    assert all(v.startswith("WARN：") for v in vs)   # 仅告警，无阻断违规
+
+
+def test_source_line_anchor_typed_shishi_no_warn():
+    text = VALID.replace(
+        "类型：事实\n原文：`法院一审判处王某有期徒刑三年`",
+        "类型：事实\n原文：`2026.06.01，搜狐。*标题*。https://a`")
+    assert validate_format(text) == []
