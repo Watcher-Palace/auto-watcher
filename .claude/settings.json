@@ -42,7 +42,21 @@
       "Bash(source src/venv/bin/activate && python src/linter.py:*)",
       "Bash(source src/venv/bin/activate && python src/review_linter.py:*)",
       "Bash(source src/venv/bin/activate && python src/research_linter.py:*)",
-      "Bash(source src/venv/bin/activate)"
+      "Bash(source src/venv/bin/activate)",
+      "Bash(/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py status)",
+      "Bash(/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py harvest)",
+      "Bash(/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py ping-due)",
+      "Bash(/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/pipeline_cli.py dedup:*)",
+      "Bash(src/venv/bin/python src/pipeline_cli.py status)",
+      "Bash(src/venv/bin/python src/pipeline_cli.py harvest)",
+      "Bash(src/venv/bin/python src/pipeline_cli.py ping-due)",
+      "Bash(src/venv/bin/python src/pipeline_cli.py dedup:*)",
+      "Bash(source src/venv/bin/activate && python src/pipeline_cli.py status)",
+      "Bash(source src/venv/bin/activate && python src/pipeline_cli.py harvest)",
+      "Bash(source src/venv/bin/activate && python src/pipeline_cli.py ping-due)",
+      "Bash(/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/wbfetch.py:*)",
+      "Bash(/home/jc/Projects/auto-watcher/src/venv/bin/python src/wbfetch.py:*)",
+      "Bash(src/venv/bin/python src/wbfetch.py:*)"
     ]
   }
 }
