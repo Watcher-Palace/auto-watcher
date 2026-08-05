@@ -9,15 +9,24 @@ hexo.extend.generator.register('calendar-index', function (locals) {
   const ELLIPSIS_CATS = new Set(['N']);                        // 显示"……"
   const RENDER_CATS = new Set(['S', 'A', 'B', 'C', 'D', 'N']); // 上日历（M 不上）；均重置绿色计数
   const CAT_PRIORITY = { S: 0, A: 1, B: 2, C: 3, D: 4, N: 5 };
+  const RETRO_COLOR = '#6b5b95';                               // 那年今日回顾：紫色 ↺
   const root = hexo.config.root || '/';
 
   // Build date map: 'YYMMDD' -> [{ cat, urlPath, title }, ...] sorted by priority
+  // 那年今日回顾（frontmatter `retrospect`）走 retroMap，不进 dateMap：它重访的是往年
+  // 的失败，不是当天新发生的失败，所以既不显示"挑战失败"、也不重置绿色 Day N 计数。
   const dateMap = {};
+  const retroMap = {};
   locals.posts.each(post => {
-    const cat = (post.categories.first() || { name: 'N' }).name;
-    if (!RENDER_CATS.has(cat)) return;
     const key = post.date.format('YYMMDD');
     const urlPath = root + post.path.replace(/\/index\.html$/, '/');
+    if (post.retrospect) {
+      if (!retroMap[key]) retroMap[key] = [];
+      retroMap[key].push({ urlPath, title: post.title });
+      return;
+    }
+    const cat = (post.categories.first() || { name: 'N' }).name;
+    if (!RENDER_CATS.has(cat)) return;
     if (!dateMap[key]) dateMap[key] = [];
     dateMap[key].push({ cat, urlPath, title: post.title });
   });
@@ -56,6 +65,22 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     return parts;
   }
 
+  // One clickable calendar entry (popover shows the post title, links to the post)
+  function trigger(post, text, color, bold) {
+    const safeTitle = escapeAttr(post.title);
+    const safeUrl = escapeAttr(post.urlPath);
+    return `<span class="cal-trigger" role="button" tabindex="0" data-title="${safeTitle}" data-url="${safeUrl}" style="color:${color};${bold || ''}">${text}</span>`;
+  }
+
+  // Day number, followed by a ↺ per 那年今日回顾 post — same line as the number so a
+  // real event on that day still gets the second line to itself.
+  function dayHead(day, key) {
+    const retros = retroMap[key];
+    if (!retros) return String(day);
+    const marks = retros.map(p => trigger(p, '↺', RETRO_COLOR)).join('');
+    return `${day} ${marks}`;
+  }
+
   // Sorted list of boundary event dates (S/A/B/C/D/N) — each resets the green counter
   const boundaryDates = Object.keys(dateMap)
     .map(k => moment('20' + k, 'YYYYMMDD'))
@@ -76,37 +101,33 @@ hexo.extend.generator.register('calendar-index', function (locals) {
     if (date.isAfter(today, 'day')) return String(day);
 
     const key = date.format('YYMMDD');
+    const head = dayHead(day, key);
     const posts = dateMap[key];
 
     if (posts) {
       const failPosts = posts.filter(p => FAIL_CATS.has(p.cat));
       const nPosts = posts.filter(p => ELLIPSIS_CATS.has(p.cat));
       const labels = splitLabel(failPosts.length);
-      const trigger = (post, text) => {
-        const color = CAT_COLOR[post.cat];
-        const bold = CAT_BOLD.has(post.cat) ? 'font-weight:bold;' : '';
-        const safeTitle = escapeAttr(post.title);
-        const safeUrl = escapeAttr(post.urlPath);
-        return `<span class="cal-trigger" role="button" tabindex="0" data-title="${safeTitle}" data-url="${safeUrl}" style="color:${color};${bold}">${text}</span>`;
-      };
-      const segs = failPosts.slice(0, 4).map((post, i) => trigger(post, labels[i]));
-      nPosts.forEach(post => segs.push(trigger(post, '……')));
+      const catTrigger = (post, text) =>
+        trigger(post, text, CAT_COLOR[post.cat], CAT_BOLD.has(post.cat) ? 'font-weight:bold;' : '');
+      const segs = failPosts.slice(0, 4).map((post, i) => catTrigger(post, labels[i]));
+      nPosts.forEach(post => segs.push(catTrigger(post, '……')));
       const sep = '<span style="color:#999;">-</span>';
-      return `${day}<br>${segs.join(sep)}`;
+      return `${head}<br>${segs.join(sep)}`;
     }
 
     // Untracked gap: leave blank
     const gapStart = moment('2026-01-28');
     const gapEnd = moment('2026-03-20');
-    if (date.isBetween(gapStart, gapEnd, 'day', '[]')) return String(day);
+    if (date.isBetween(gapStart, gapEnd, 'day', '[]')) return head;
 
     const lastBoundary = lastBoundaryBefore(date);
     if (lastBoundary) {
       const dayN = date.diff(lastBoundary, 'days');
-      return `${day}<br><span style="color:green;">Day ${dayN}</span>`;
+      return `${head}<br><span style="color:green;">Day ${dayN}</span>`;
     }
 
-    return String(day);
+    return head;
   }
 
   function monthTable(m) {
