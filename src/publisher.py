@@ -74,20 +74,28 @@ def copy_draft(src: Path, dst: Path) -> None:
     shutil.copy2(src, dst)
 
 
-def move_assets(src: Path, dst: Path) -> None:
+def move_assets(src: Path, dst: Path, keep: set[str] | None = None) -> None:
     """把 src 目录里的资产**并入** dst，与 dst 既有文件平铺同级。
 
     不能直接 `shutil.move(src, dst)`：dst 已存在为目录时那是"移进去"，会得到
     `dst/<src 目录名>/图.jpg` 套一层的结构，而 Hexo 的 `asset_path` 只在文章资产
     目录根下找同名文件，套一层就渲染成空 `src`。dst 已存在是常规情形——手工放进去的
     文书附件，或对同一事件重跑发布。
+
+    `keep` 给定时只搬集合内的文件名（＝正文 `{% asset_path %}` 引用到的），其余留在
+    原地、由 finalize_event 归档。研究阶段"照抓不筛"、写作阶段裁掉的证据图常涉隐私
+    （伤情照、未打码文书），整目录搬运会把它们连同文章一起推上 gh-pages——正文虽不
+    链接，URL 却是公开可访问的。（用户裁定 2026-08-05，260721-3 已发生一次。）
     """
     if not src.exists():
         return
-    dst.mkdir(parents=True, exist_ok=True)
-    for item in src.iterdir():
+    for item in sorted(src.iterdir()):
+        if keep is not None and item.name not in keep:
+            continue
+        dst.mkdir(parents=True, exist_ok=True)
         shutil.move(str(item), str(dst / item.name))
-    src.rmdir()
+    if not any(src.iterdir()):
+        src.rmdir()
 
 
 def check_todo_tag(tags, allow_todo: bool) -> None:
@@ -140,9 +148,15 @@ def publish(date_str: str, n: int, title: str, draft_path: Path, deploy: bool = 
     print(f"Copied draft → {posts_dir / f'{post_slug}.md'}")
 
     assets_src = PIPELINE / "draft" / f"{date_str}-{n}-assets"
-    move_assets(assets_src, posts_dir / post_slug)
+    from src.linter import ASSET_REF_RE
+    referenced = {m.group(1).strip().strip("\"'") for m in ASSET_REF_RE.finditer(content)}
+    skipped = sorted(p.name for p in assets_src.iterdir()
+                     if p.name not in referenced) if assets_src.is_dir() else []
+    move_assets(assets_src, posts_dir / post_slug, keep=referenced)
     if (posts_dir / post_slug).exists():
         print(f"Moved assets → {posts_dir / post_slug}")
+    for name in skipped:
+        print(f"  ~ 未引用，不发布（留待归档）：{name}")
 
     # The landing-page calendar is generated at build time by
     # scripts/calendar.js from post frontmatter — no manual injection needed.

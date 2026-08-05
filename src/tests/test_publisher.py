@@ -50,6 +50,32 @@ def test_move_assets_merges_into_existing_dir(tmp_path):
     assert not assets_src.exists()
 
 
+def test_move_assets_keeps_unreferenced_behind(tmp_path):
+    # 正文没引用的资产不得随文章上线：研究阶段"照抓不筛"的证据图常涉隐私（伤情照、
+    # 未打码文书），整目录搬运会把它们推上 gh-pages，URL 公开可访问。未引用的留在
+    # 原地由 finalize_event 归档。复现：260721-3 的伤情照与嫌疑人照。
+    assets_src = tmp_path / "src-assets"
+    assets_src.mkdir()
+    (assets_src / "used.jpg").write_bytes(b"data")
+    (assets_src / "unused.jpg").write_bytes(b"data")
+    assets_dst = tmp_path / "dst"
+
+    move_assets(assets_src, assets_dst, keep={"used.jpg"})
+
+    assert (assets_dst / "used.jpg").exists()
+    assert not (assets_dst / "unused.jpg").exists(), "未引用的资产不得发布"
+    assert (assets_src / "unused.jpg").exists(), "未引用的资产应留在原地待归档"
+    assert assets_src.exists(), "还有残留时不得删除源目录"
+
+
+def test_move_assets_keep_all_referenced_removes_src(tmp_path):
+    assets_src = tmp_path / "src-assets"
+    assets_src.mkdir()
+    (assets_src / "a.jpg").write_bytes(b"data")
+    move_assets(assets_src, tmp_path / "dst", keep={"a.jpg"})
+    assert not assets_src.exists()
+
+
 def test_read_frontmatter_extracts_fields():
     content = "---\ntitle: 测试\ncategories: A\n---\n## 内容"
     fm = read_frontmatter(content)
