@@ -54,5 +54,8 @@ def test_status_line_suffix_for_stale_research(tmp_path, monkeypatch):
     from src.pipeline_cli import research_age_suffix
     assert research_age_suffix("260701", 1) == "（research 已 5 天）"
     assert research_age_suffix("260701", 2) == ""   # no research file
+    old2 = time.time() - 2 * 86400                  # 2 天：新阈值下不再提示
+    os.utime(p, (old2, old2))
+    assert research_age_suffix("260701", 1) == ""
     os.utime(p, None)                               # fresh now
-    assert research_age_suffix("260701", 1) == ""   # < 2 days → no suffix
+    assert research_age_suffix("260701", 1) == ""   # < 3 days → no suffix

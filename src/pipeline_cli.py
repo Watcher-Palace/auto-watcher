@@ -21,10 +21,10 @@ from src.utils.archive import finalize_event, stage_event, sweep
 
 
 def research_age_suffix(date_str: str, n) -> str:
-    """在途事件研究文件年龄提示；≥2 天提醒 orchestrator 建议刷新。"""
+    """在途事件研究文件年龄提示；≥3 天提醒 orchestrator 建议刷新。"""
     from src.utils.pipeline import research_age_days
     age = research_age_days(date_str, int(n))
-    return f"（research 已 {age} 天）" if age is not None and age >= 2 else ""
+    return f"（research 已 {age} 天）" if age is not None and age >= 3 else ""
 
 
 def cmd_status() -> int:
