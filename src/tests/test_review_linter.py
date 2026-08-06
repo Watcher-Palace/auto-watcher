@@ -130,6 +130,13 @@ def test_check_dispositions_vocabulary():
     violations, unresolved = check_dispositions(deleted)
     assert violations == [] and unresolved is False
 
+    # 已删除（用户裁定） is valid too — 用户裁定删除内容，非查证失败
+    ruled = VALID.replace(
+        "处理：\n\n## 问题 2", "处理：已删除（用户裁定）\n\n## 问题 2")
+    ruled = ruled[: ruled.rfind("处理：")] + "处理：已修改\n"
+    violations, unresolved = check_dispositions(ruled)
+    assert violations == [] and unresolved is False
+
 
 def test_cli_exit_codes(tmp_path):
     review_dir = tmp_path / "review"

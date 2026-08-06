@@ -41,7 +41,7 @@ Read the current draft, the review file, and the (updated) research file togethe
 - `类型：事实` → locate its mark `（评审vN-问题K）` in the research file and act on it: apply a 补充 or 更正 by editing the prose; on 查证失败 remove the affected content. **No mark in the research file → take no action on the draft**; set `处理：未解决：研究文件无对应裁定` and report it at the end.
 - `类型：格式` → your own judgment: apply it, or reject with reasoning.
 - 修正涉及 `## 概述` 的问题后，把**整段概述**与时间线重新逐句比对——不要只改评审 `原文：` 点名的那一句，同段相邻句的出入会在下一轮评审再开一条（同批三篇复现：260721-3/260722-2/260717-2；链条见 casebook）。
-- Fill each item's `处理：` line with exactly one of: `已修改` / `拒绝：<理由>` / `已删除（查证失败）` / `未解决：<缺口说明>`.
+- Fill each item's `处理：` line with exactly one of: `已修改` / `拒绝：<理由>` / `已删除（查证失败）` / `已删除（用户裁定）` / `未解决：<缺口说明>`.
 - 标签提案: if the review's `## 标签提案` section carries a `[USER]` adjudication — approved: add the tag to the new draft's frontmatter `tags:` and delete the matching `<!-- [TAG-PROPOSAL]: ... -->` comment; rejected: delete the comment only. (The registry `src/tags.yml` is updated by the orchestrator at approval time.)
 
 Apply ONLY changes tied to review items — no other rewrites. **User annotations take precedence over all reviewer suggestions.** Apply them exactly as written.

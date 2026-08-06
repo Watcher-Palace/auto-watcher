@@ -118,13 +118,17 @@ def check_tag_proposals(review_text: str, draft_text: str) -> list[str]:
 
 
 def check_dispositions(text: str) -> tuple[list[str], bool]:
-    """处理 行必须是四种形式之一：已修改 / 拒绝：<理由> / 已删除（查证失败） / 未解决：<缺口说明>。"""
+    """处理 行必须是五种形式之一：已修改 / 拒绝：<理由> / 已删除（查证失败） / 已删除（用户裁定） / 未解决：<缺口说明>。"""
     v, unresolved = [], False
     for it in parse_review(text).items:
         d = it.disposition
         if not d:
             v.append(f"问题 {it.num}: 处理 行为空")
-        elif d.startswith("已修改") or d.startswith("已删除（查证失败）"):
+        elif (
+            d.startswith("已修改")
+            or d.startswith("已删除（查证失败）")
+            or d.startswith("已删除（用户裁定）")
+        ):
             pass  # 合法；允许其后附加说明
         elif d.startswith("拒绝："):
             if not d[len("拒绝："):].strip():
@@ -137,7 +141,7 @@ def check_dispositions(text: str) -> tuple[list[str], bool]:
         else:
             v.append(
                 f"问题 {it.num}: 处理 值不在词汇表"
-                f"（已修改/拒绝：…/已删除（查证失败）/未解决：…）"
+                f"（已修改/拒绝：…/已删除（查证失败）/已删除（用户裁定）/未解决：…）"
             )
     return v, unresolved
 
