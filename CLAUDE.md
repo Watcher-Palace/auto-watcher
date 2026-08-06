@@ -92,6 +92,15 @@ To change calendar appearance or color mapping, edit `scripts/calendar.js`.
 
 Month headings also show a `本月总结` link when that month has a **published summary page** (see the on-demand Monthly Summary stage). `scripts/calendar.js` builds the link by scanning pages for a `summary_month: "YYMM"` frontmatter marker; no summary page means no link.
 
+## 发布热力图（关于页）
+
+`scripts/heatmap.js` 注册 Hexo tag `{% publish_heatmap %}`，`source/about/index.md` 的
+**版本信息**节顶部调用它。它读 `_pipeline/events.csv` 里 `状态=published` 的行，按
+**发布日期**列统计每天发布几篇——文章 frontmatter 的 `date` 是事件发生日、不是发布日，
+账本那列是发布日的唯一权威记录。月份范围与脚注起始日都从数据算，账本里补进更早的发布
+日期（早期手写期文章目前连行都没有）图会自动往前长，不需要改代码。与首页日历画的不是
+一回事：日历按事件日画事件密度，热力图按发布日画本站产出节奏，紫色深浅只表示当天篇数。
+
 ## Tests
 
 ```bash
