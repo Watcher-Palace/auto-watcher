@@ -102,6 +102,8 @@ def check_marks(text: str, research_text: str, version: int) -> list[str]:
     for it in parse_review(text).items:
         if it.type != "事实":
             continue
+        if (it.disposition or "").startswith("已删除（用户裁定）"):
+            continue  # 用户裁定删除的内容不补研究，永远不会有标记
         if f"（评审v{version}-问题{it.num}）" not in research_text:
             v.append(f"问题 {it.num}: 研究文件缺少（评审v{version}-问题{it.num}）标记")
     return v

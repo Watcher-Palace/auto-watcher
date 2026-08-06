@@ -90,6 +90,9 @@ def test_check_marks():
     assert check_marks(VALID, "## 事实\n无标记\n", 1) != []
     # wrong version does not count:
     assert check_marks(VALID, "**更正（评审v2-问题1）**：x", 1) != []
+    # 已删除（用户裁定）的事实项不补研究，不该再要求研究文件标记
+    ruled = VALID.replace("处理：\n\n## 问题 2", "处理：已删除（用户裁定）\n\n## 问题 2")
+    assert check_marks(ruled, "## 事实\n无标记\n", 1) == []
 
 
 def test_check_dispositions():
