@@ -286,6 +286,34 @@ def test_opinion_filler_warn_not_fail():
     assert any("舆论" in w for w in lint_warnings(content))
 
 
+def test_grey_quote_matches_through_speaker_prefix_in_excerpt():
+    """研究文件把说话人写进引号内（`"邓煜：能与我…"`）时，草稿里同一句灰字仍应命中——
+    半角引号原先没被归一化剥掉，整句因此判不命中报假 WARN（260721-3、260726-1）。"""
+    from src.linter import crosscheck_research
+    body = ('## 概述\n他说<font color="grey">"能与我一直敬仰的那些伟大数学家名字并列。"</font>\n'
+            '<font color="blue">2026年1月1日判决</font>\n'
+            '## 信息来源\n2026.01.01，来源。*题*。https://a/\n')
+    research = ('## 信息来源\n- 2026.01.01，新华网。*题*。https://a/ — '
+                '"邓煜：能与我一直敬仰的那些伟大数学家名字并列。""王虹：另一句。"（正文原话）\n')
+    _, ws = crosscheck_research(_doc(body), research)
+    assert not any("逐字命中" in w for w in ws)
+
+
+def test_title_passive_warns_through_place_prefix():
+    """称谓前带地名/机构限定语时不得漏报——原正则锚在 ^，"吉林女子遭…" 整条逃过
+    机械闸口，260725-2 靠人工评审才发现。"""
+    for t in ["女子遭前男友杀害", "吉林女子遭丈夫追打", "大连工业大学女生遭网暴"]:
+        assert any("受害人被动句" in w for w in lint_warnings(_doc(BODY_OK, title=t))), t
+
+
+def test_title_passive_not_warned_when_perpetrator_is_subject():
+    """限定语里出现施动者称谓或加害动词时，女性称谓是宾语——那是合规标题，
+    放宽前缀不能把它们连带误报。"""
+    for t in ["医生猥亵女童被开除", "男子砍伤妻子被刑拘", "教师性侵女生被判刑",
+              "男子持刀砍伤妻子被刑事拘留"]:
+        assert not any("受害人被动句" in w for w in lint_warnings(_doc(BODY_OK, title=t))), t
+
+
 def test_title_over_length_warns_but_does_not_fail():
     """用户裁定 2026-07-31：标题上限 40 字（含标点），超出只 WARN，不阻断发布。"""
     over = "男" * (TITLE_MAX_LEN + 1)

@@ -52,9 +52,21 @@ MASK_RE = re.compile(r"＊+")
 # 标题被动句启发（2026-07-31 裁定的机械面）：典型受害人称谓开头 + 遭/被 → WARN。
 # 只认受害人称谓起头，避免误报"男子杀害女儿被判死刑"这类加害人主语+被判的正确形态。
 TITLE_PASSIVE_RE = re.compile(
-    r"^(?:女子|女生|女童|女孩|女性|少女|女大学生|女乘客|女顾客|女员工|女教师|母亲|妻子)"
+    r"(?:女子|女生|女童|女孩|女性|少女|女大学生|女乘客|女顾客|女员工|女教师|母亲|妻子)"
     r"[^，。]{0,8}?(?:遭|被)"
 )
+# 称谓前允许一小段地名/机构限定语——原来锚在 ^，"吉林女子遭…" 这类带前缀的
+# 标题整条漏报（260725-2 靠人工评审才发现）。但限定语里出现施动者称谓或加害
+# 动词时，女性称谓是宾语不是主语（"医生猥亵女童被开除"），那是合规标题。
+TITLE_PASSIVE_PREFIX_MAX = 6
+TITLE_ACTOR_RE = re.compile(r"[男夫父生师警员]|[杀打伤猥奸骚拐拍虐砍捅泼骗]")
+
+
+def title_is_victim_passive(title: str) -> bool:
+    m = TITLE_PASSIVE_RE.search(title)
+    if m is None or m.start() > TITLE_PASSIVE_PREFIX_MAX:
+        return False
+    return not TITLE_ACTOR_RE.search(title[: m.start()])
 GREY_SPAN_RE = re.compile(r'<font color="grey">(.*?)</font>', re.S)
 CN_DATE_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
 
@@ -209,7 +221,7 @@ def lint_warnings(content: str) -> list[str]:
         )
     if OPINION_WARN_RE.search(prose):
         warnings.append("正文含舆论反应措辞（引发关注类）——舆论事件难免时可保留，否则删")
-    if TITLE_PASSIVE_RE.match(title):
+    if title_is_victim_passive(title):
         warnings.append("标题疑似受害人被动句——改以加害人为主语（加害人未知/无法特指时保留施动主体即可）")
     # frontmatter date 必须是蓝字进展的发生日（template 规定；曾有偏一天靠用户读出）
     d = fm.get("date")
@@ -305,9 +317,14 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
 
 
 def _norm_quote(s: str) -> str:
-    """引文比对前的归一化：剥标签、空白与引号壳，保留其余标点（逐字含标点）。"""
+    """引文比对前的归一化：剥标签、空白与引号壳，保留其余标点（逐字含标点）。
+
+    引号壳含半角 `"` `'`——漏掉它们时，研究文件把说话人写进引号内
+    （`"邓煜：能与我…"`）的摘录会让草稿里同一句灰字判不命中，报假 WARN。
+    同一根因 2026-08-06 一天内命中两次（260721-3、260726-1）。
+    """
     s = re.sub(r"<[^>]+>", "", s)
-    return re.sub(r"[\s「」『』“”]", "", s)
+    return re.sub(r"[\s「」『』“”\"']", "", s)
 
 
 def lint_file(path: Path) -> list[str]:
