@@ -197,6 +197,17 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
   清洗时一并纠 `## 前情`/`## 后续` 的用法漂移：template 规定这两节**只放站内已发布前后篇
   的链接**，但 260121、260123、260330、260326-10 把它们当外部来源行或散文节在用（2026-08-05 记）。
 
+- **研究/评审职责重构（2026-08-07 记，未排期）**：`blog-researcher` 的职责改为
+  **抓取快照存档 ＋ 整合**——用 `src/srcfetch.py` 把每条来源的原始页面落成快照存档，
+  研究文件里的**一切内容都必须有出处**（可回指到某条快照的某处），而不是由 agent
+  凭读过的印象转写。`blog-reviewer` 维持**独立审核**不变——它的价值正在于不共享
+  研究阶段的信息通路，重构时不得把它降级成"核对研究文件"。
+  背景：WebFetch 按其说明是"用小模型读页面后作答"，返回的从来不是页面本身，
+  研究与评审此前都经这一层，"逐字"两端都是改写（见 `src/srcfetch.py` 模块注释）。
+  已落地的第一步：srcfetch ＋ `research_linter` 对 `正文原话` 摘录的逐字核对
+  （commit `1494969`）；**尚未接进 `blog-researcher` 的强制 Lint gate**，
+  该文件里"见 Lint gate"目前是空引用，重构时一并解决。
+
 ## Keeping Docs Accurate (anti-drift)
 
 When a learned correction contradicts this file, a `SKILL.md`, or an agent file (`.claude/agents/*.md`), fix that file directly — do not park the correction in a memory file as a permanent shadow copy. Auto-memory is for facts *not yet* in the canonical docs; once a fact lands here, in a skill, or in an agent file, the memory should be deleted. This is the rule that keeps CLAUDE.md, the skills, and the agents from drifting out of sync with reality (e.g. venv path, tracker LLM backend, script flags).
