@@ -81,6 +81,48 @@ def test_tracked_uid_in_sources_fails(tmp_path, monkeypatch):
     vs = lint_research(_mk(tmp_path, text))
     assert any("追踪账号" in v for v in vs)
 
+def test_title_wording_quoted_as_body_speech_fails(tmp_path):
+    # 叙述节的引文若只在某条来源的 *标题* 里出现、任何摘录里都没有，就是把标题措辞
+    # 当成了当事人原话——标题惯把第三人称改写成第一人称，写手无网络只能照单全收。
+    # （blog-researcher「形态标注」条已明文禁止，四次复现后落成机械闸口）
+    text = GOOD.replace(
+        "## 当事方\n某人\n", "## 当事方\n她表示：\"我不认识他，他欠我一个道歉\"（正文原话）\n"
+    ).replace("*真标题*", "*女销冠回应：\"我不认识他，他欠我一个道歉\"*")
+    vs = lint_research(_mk(tmp_path, text))
+    assert any("只见于来源标题" in v for v in vs)
+
+def test_same_quote_present_in_an_excerpt_passes(tmp_path):
+    # 同一句在某条摘录里有逐字登记 → 有正文原话依据，不拦
+    text = GOOD.replace(
+        "## 当事方\n某人\n", "## 当事方\n她表示：\"我不认识他，他欠我一个道歉\"（正文原话）\n"
+    ).replace("*真标题*", "*女销冠回应：\"我不认识他，他欠我一个道歉\"*").replace(
+        " — 摘录", " — 「我不认识他，他欠我一个道歉」（正文原话）"
+    )
+    assert lint_research(_mk(tmp_path, text)) == []
+
+def test_quote_explicitly_marked_as_title_passes(tmp_path):
+    # 标好形态「标题」的照收（agent 规则就是"照收但必须标形态"）
+    text = GOOD.replace(
+        "## 当事方\n某人\n", "## 当事方\n报道标题作\"我不认识他，他欠我一个道歉\"（标题措辞）\n"
+    ).replace("*真标题*", "*女销冠回应：\"我不认识他，他欠我一个道歉\"*")
+    assert lint_research(_mk(tmp_path, text)) == []
+
+def test_correction_note_quoting_the_bad_line_passes(tmp_path):
+    # update 模式的更正说明要原样引回被推翻的错句，否则读者看不出改了什么——
+    # 那是留痕不是主张，不能被自己的闸口拦住
+    text = GOOD.replace(
+        "## 当事方\n某人\n",
+        "## 当事方\n**更正（评审v2-问题1）**：原稿将两句拼接为\"我不认识他，他欠我一个道歉\""
+        "并误标\"正文原话\"，经核实该合并句不存在\n",
+    ).replace("*真标题*", "*女销冠回应：\"我不认识他，他欠我一个道歉\"*")
+    assert lint_research(_mk(tmp_path, text)) == []
+
+def test_short_quoted_term_not_flagged(tmp_path):
+    # 短词（案由、状态等）在标题里撞上不算伪引用
+    text = GOOD.replace("## 当事方\n某人\n", "## 当事方\n案件状态\"待审核\"\n").replace(
+        "*真标题*", "*立案\"待审核\"*")
+    assert lint_research(_mk(tmp_path, text)) == []
+
 def test_assets_bidirectional(tmp_path):
     listed = GOOD.replace("## 资产\n无\n", "## 资产\n- 990101-1-图.jpg — https://a — 2026.1.1 — 通报截图\n")
     vs = lint_research(_mk(tmp_path, listed, assets=[]))          # 登记了但文件不存在

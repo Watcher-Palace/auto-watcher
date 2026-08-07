@@ -1,9 +1,9 @@
 """研究文件机械闸口 —— initial/update 研究完成前都必须通过（blog-researcher 的 lint gate）。
 
 FAIL＝阻断；"WARN："前缀的条目只提示不阻断（LINT OK 下方照常打印）。
-这些检查只拦"形状"——裸平台品牌作来源名、带引号摘录缺形态标注、标题疑似抄自
-URL slug、来源 URL 落在本站追踪账号——署名与标题的**真伪**没有网络判不了，
-仍靠研究阶段打开页面核。
+这些检查只拦"形状"——裸平台品牌作来源名、带引号摘录缺形态标注、自称正文原话的引文
+只在来源标题里找得到、标题疑似抄自 URL slug、来源 URL 落在本站追踪账号——署名与标题的
+**真伪**没有网络判不了，仍靠研究阶段打开页面核。
 """
 from __future__ import annotations
 import re
@@ -34,6 +34,17 @@ PLATFORM_BRANDS = {"搜狐", "新浪", "新浪新闻", "新浪财经", "网易",
 # 摘录带引号时必须标出处形态（用户裁定 2026-08-03）。词表宽握（转述/转录也算数），
 # 拦的是"完全没标"，不是用词偏好。
 FORM_TOKENS = ("正文原话", "第三人称转述", "标题", "转述", "转录")
+# 叙述节里的引文若只在某条来源的 *标题* 里出现、任何摘录里都没有，那是把标题措辞
+# 当成了当事人原话（标题惯把第三人称改写成第一人称）。写手无网络、灰字全押研究文件的
+# 标注，只能照单全收，最后由评审判成伪引用。agent「形态标注」条明文禁止，四次复现
+# （260717-1/260721-3/260724-2/260731-1）后落成机械闸口。
+NARRATIVE_SECTIONS = ("事实", "当事方")
+QUOTE_RES = (re.compile(r"「([^」]+)」"), re.compile(r'"([^"]+)"'))
+QUOTE_MIN = 8          # 短词（案由、状态）撞上标题不算伪引用
+FORM_LOOKAHEAD = 30    # 引号后多远内出现「正文原话」＝作了这个声明
+# update 模式的更正说明要原样引回被推翻的错句（"原稿…误标正文原话"），那是留痕不是主张
+CORRECTION_RE = re.compile(r"更正（|误标|原稿|伪引用|查证失败")
+CORRECTION_LOOKBEHIND = 60
 
 
 def _sections(text: str) -> dict[str, str]:
@@ -58,6 +69,8 @@ def lint_research(path: Path) -> list[str]:
         if r not in secs:
             vs.append(f"缺少必需章节 ## {r}")
     src_text = secs.get("信息来源") or ""
+    src_titles: list[str] = []
+    src_tails: list[str] = []
     for ln in src_text.splitlines():
         ln = ln.strip()
         if not ln or ln.startswith("<!--"):
@@ -69,6 +82,8 @@ def lint_research(path: Path) -> list[str]:
         if not m2:
             continue
         name, title, url, tail = m2.group(2), m2.group(3), m2.group(4), m2.group(5)
+        src_titles.append(title)
+        src_tails.append(tail)
         if name in PLATFORM_BRANDS:
             vs.append(
                 f"来源名是裸平台品牌「{name}」——写正文/文末署名的原始媒体，"
@@ -86,6 +101,22 @@ def lint_research(path: Path) -> list[str]:
                 f"来源 URL 指向本站追踪账号 uid {uid}（安全事项，用户裁定 2026-08-04）"
                 "——换该内容自己的原始出处，取不到就不收"
             )
+    for sec in NARRATIVE_SECTIONS:
+        body = secs.get(sec) or ""
+        for qre in QUOTE_RES:
+            for qm in qre.finditer(body):
+                q = qm.group(1).strip()
+                # 只拦"自称正文原话"的：引号里放标题/话题/案由本身是常态写法，
+                # 不带这个声明就不是伪引用（全量扫 140 份研究文件校准过）
+                if len(q) < QUOTE_MIN or "正文原话" not in body[qm.end():qm.end() + FORM_LOOKAHEAD]:
+                    continue
+                if CORRECTION_RE.search(body[max(0, qm.start() - CORRECTION_LOOKBEHIND):qm.start()]):
+                    continue
+                if any(q in t for t in src_titles) and not any(q in t for t in src_tails):
+                    vs.append(
+                        f"## {sec} 的引文只见于来源标题、未见于任何摘录——标题措辞不是正文原话"
+                        f"（标题惯把第三人称改写成第一人称）：{q[:30]}"
+                    )
     blues = BLUE_RE.findall(text)
     if len(blues) != 1:
         vs.append(f"蓝字标记应恰好 1 处（现 {len(blues)} 处）")
