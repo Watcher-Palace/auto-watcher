@@ -1,9 +1,10 @@
 """研究文件机械闸口 —— initial/update 研究完成前都必须通过（blog-researcher 的 lint gate）。
 
 FAIL＝阻断；"WARN："前缀的条目只提示不阻断（LINT OK 下方照常打印）。
-这些检查只拦"形状"——裸平台品牌作来源名、带引号摘录缺形态标注、自称正文原话的引文
-只在来源标题里找得到、标题疑似抄自 URL slug、来源 URL 落在本站追踪账号——署名与标题的
-**真伪**没有网络判不了，仍靠研究阶段打开页面核。
+这些检查多数只拦"形状"——裸平台品牌作来源名、带引号摘录缺形态标注、自称正文原话的引文
+只在来源标题里找得到、标题疑似抄自 URL slug、来源 URL 落在本站追踪账号。唯一真核内容的
+是摘录逐字核：标着 `正文原话` 的引文拿 `srcfetch` 的原文快照比对（无快照＝WARN，不阻断）。
+署名与标题的**真伪**仍没有网络判不了，靠研究阶段打开页面核。
 """
 from __future__ import annotations
 import re
@@ -12,8 +13,10 @@ from pathlib import Path
 
 try:
     from src.linter import tracked_uids
+    from src.srcfetch import load as load_snapshot, normalize as norm_quote
 except ImportError:  # 以脚本方式直跑时无包上下文
     from linter import tracked_uids
+    from srcfetch import load as load_snapshot, normalize as norm_quote
 
 REQUIRED = ("事实", "当事方", "信息来源", "资产")
 # 日期必须补零（2026.01.01）。此处若放行 \d{1,2}，研究阶段随手选的格式会经
@@ -39,9 +42,13 @@ FORM_TOKENS = ("正文原话", "第三人称转述", "标题", "转述", "转录
 # 标注，只能照单全收，最后由评审判成伪引用。agent「形态标注」条明文禁止，四次复现
 # （260717-1/260721-3/260724-2/260731-1）后落成机械闸口。
 NARRATIVE_SECTIONS = ("事实", "当事方")
-QUOTE_RES = (re.compile(r"「([^」]+)」"), re.compile(r'"([^"]+)"'))
+QUOTE_RES = (re.compile(r"「([^」]+)」"), re.compile(r'"([^"]+)"'), re.compile(r"“([^”]+)”"))
 QUOTE_MIN = 8          # 短词（案由、状态）撞上标题不算伪引用
 FORM_LOOKAHEAD = 30    # 引号后多远内出现「正文原话」＝作了这个声明
+# 标着 `正文原话` 的摘录拿 srcfetch 快照逐字核（快照走裸 HTTP／无头浏览器，模型不介入；
+# WebFetch 返回的是小模型对页面的答复，拿它比对＝两次改写互比，核不出伪引用）。
+# 抓不到快照的信源（JS 壳、反爬、付费墙）只给 WARN——机械核不了是事实，不能假装核过了。
+VERIFY_MIN = 6
 # update 模式的更正说明要原样引回被推翻的错句（"原稿…误标正文原话"），那是留痕不是主张
 CORRECTION_RE = re.compile(r"更正（|误标|原稿|伪引用|查证失败")
 CORRECTION_LOOKBEHIND = 60
@@ -59,6 +66,31 @@ def _slug_tokens(url: str) -> list[str]:
     if tokens and tokens[-1].isdigit() and len(tokens[-1]) >= 5:
         tokens.pop()
     return tokens
+
+
+def _claimed_verbatim(tail: str) -> list[str]:
+    """摘录里明确声明为 `正文原话` 的引文（其余形态照收，不在此核）。"""
+    out = []
+    for qre in QUOTE_RES:
+        for qm in qre.finditer(tail):
+            q = qm.group(1).strip()
+            if len(q) >= VERIFY_MIN and "正文原话" in tail[qm.end():qm.end() + FORM_LOOKAHEAD]:
+                out.append(q)
+    return out
+
+
+def _verify_quotes(tail: str, url: str) -> list[str]:
+    quotes = _claimed_verbatim(tail)
+    if not quotes:
+        return []
+    snap = load_snapshot(url)
+    if snap is None:
+        # 抓不到快照 ≠ 引文有问题：形态标注照页面实况，不许因工具抓不到而改标
+        return [f"WARN：无原文快照，`正文原话` 无法机械核对——跑 src/srcfetch.py "
+                f"落快照；抓不到不改形态标注：{url}"]
+    body = norm_quote(snap)
+    return [f"摘录自称 `正文原话`，但该句不在原文快照里（拼接/改写/张冠李戴）：{q[:30]}"
+            for q in quotes if norm_quote(q) not in body]
 
 
 def lint_research(path: Path) -> list[str]:
@@ -92,6 +124,7 @@ def lint_research(path: Path) -> list[str]:
         has_quote = "「" in tail or "“" in tail or tail.count('"') >= 2
         if has_quote and not any(t in tail for t in FORM_TOKENS):
             vs.append(f"摘录带引号但缺形态标注（正文原话/标题/第三人称转述）：{ln[:40]}")
+        vs += _verify_quotes(tail, url)
         title_tokens = re.findall(r"[a-z0-9]+", title.lower().replace("'", ""))
         if len(title_tokens) >= 3 and _slug_tokens(url) == title_tokens:
             vs.append(f"WARN：标题与 URL slug 完全一致——核对页面真标题（slug 未必是真标题）：{ln[:40]}")
