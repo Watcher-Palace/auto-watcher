@@ -68,6 +68,10 @@ def title_is_victim_passive(title: str) -> bool:
         return False
     return not TITLE_ACTOR_RE.search(title[: m.start()])
 GREY_SPAN_RE = re.compile(r'<font color="grey">(.*?)</font>', re.S)
+RED_SPAN_RE = re.compile(r'<font color="red">(.*?)</font>', re.S)
+# 红字与来源逐字重合多少字算「近乎逐字」。16 是实测取的：276 份历史草稿里 12 命中 20 份、
+# 16 命中 14 份、18 命中 9 份——16 处仍是人工复核认下的真违规，再低开始混进无害的短套语。
+RED_ECHO_MIN = 16
 CN_DATE_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
 
 
@@ -313,7 +317,39 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
                 f"灰字引文未在研究文件 信息来源 节逐字命中：{span.strip()[:24]}…"
                 "（化名替换/外文译文属预期；否则改用确有的摘录，或按缺口上报）"
             )
+    # 红字转述官方结论时不得以「近乎逐字、又有改写」的形态呈现（blog-writer 规则的机械面）：
+    # 与 信息来源 逐字重合 ≥ RED_ECHO_MIN 字即报。改法二选一——够格逐字就改灰字整段引用，
+    # 否则去色写成明确转述。只 WARN 不拦：重合也可能落在无法改写的法条名、机构全称上。
+    for span in RED_SPAN_RE.findall(body):
+        frag = _echo_span(_norm_quote(span), base, RED_ECHO_MIN)
+        # 案号、金额、外文原句这类本就只能逐字的标识串不构成改写风险，按非汉字占比排除
+        if not frag or sum("一" <= c <= "鿿" for c in frag) / len(frag) < 0.6:
+            continue
+        ws.append(
+            f"红字与来源逐字重合 {len(frag)} 字：「{frag[:40]}」"
+            f"（红字起始：{span.strip()[:20]}…）"
+            "——改灰字逐字引用，或去色写成明确转述，不要两者之间"
+        )
     return vs, ws
+
+
+def _echo_span(a: str, b: str, k: int) -> str:
+    """a 中长度 ≥ k、且整段出现在 b 里的一个极大片段（没有则空串）。
+
+    等价于「最长公共子串 ≥ k」：LCS ≥ k 当且仅当 a 的某个 k 字窗口是 b 的子串。
+    逐窗 `in` 走 C 层字符串搜索，比 O(len(a)·len(b)) 的 DP 快两个数量级——研究文件
+    信息来源 节可达上万字，DP 会让每次 lint 多跑几秒。
+    """
+    for i in range(len(a) - k + 1):
+        if a[i:i + k] not in b:
+            continue
+        j = i + k
+        while j < len(a) and a[i:j + 1] in b:
+            j += 1
+        while i > 0 and a[i - 1:j] in b:
+            i -= 1
+        return a[i:j]
+    return ""
 
 
 def _norm_quote(s: str) -> str:

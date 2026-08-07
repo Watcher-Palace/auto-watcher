@@ -419,3 +419,39 @@ def test_grey_quote_must_hit_research_sources():
     miss = make_draft(body="\n<font color=\"grey\">「编造的另一句话」</font>\n")
     _, ws2 = crosscheck_research(miss, research)
     assert any("灰字引文" in w for w in ws2)
+
+
+# --- 红字不得「近乎逐字又改写」（2026-08-07 落为 WARN；规则见 blog-writer） ---
+
+RED_RESEARCH = (
+    "## 信息来源\n- 2026.06.01，来源。*标题*。https://example.com/a — "
+    "通报称，经查，该民警在执行职务过程中存在违规使用警械的行为，已被停止执行职务\n"
+)
+
+
+def test_red_echoing_source_warns():
+    # 逐字照抄一长段、只把首尾改掉几个字 = 规则要打的「近乎逐字又改写」
+    draft = make_draft(body="\n<font color=\"red\">该民警在执行职务过程中存在违规使用警械</font>\n")
+    _, ws = crosscheck_research(draft, RED_RESEARCH)
+    assert any("红字与来源逐字重合" in w for w in ws)
+
+
+def test_red_genuine_paraphrase_no_warn():
+    draft = make_draft(body="\n<font color=\"red\">通报认定该警员违规动用警械并将其停职</font>\n")
+    _, ws = crosscheck_research(draft, RED_RESEARCH)
+    assert not any("红字与来源逐字重合" in w for w in ws)
+
+
+def test_red_short_overlap_no_warn():
+    draft = make_draft(body="\n<font color=\"red\">违规使用警械</font>\n")
+    _, ws = crosscheck_research(draft, RED_RESEARCH)
+    assert not any("红字与来源逐字重合" in w for w in ws)
+
+
+def test_red_nonchinese_identifier_no_warn():
+    # 案号/金额/外文原句本就只能逐字，非汉字占比高则排除
+    research = ("## 信息来源\n- 2026.06.01，来源。*标题*。https://example.com/a — "
+                "（2026）京0105民初12345号，赔偿 1,250,000 元\n")
+    draft = make_draft(body="\n<font color=\"red\">（2026）京0105民初12345号，赔偿 1,250,000 元</font>\n")
+    _, ws = crosscheck_research(draft, research)
+    assert not any("红字与来源逐字重合" in w for w in ws)
