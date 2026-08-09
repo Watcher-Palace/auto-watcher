@@ -18,7 +18,7 @@
 - **跑任何 python 都要绝对解释器**：`cd /home/jc/Projects/auto-watcher && source src/venv/bin/activate && python …`。Bash 的工作目录跨调用保留、shell 状态不保留。
 - **测试必须 hermetic**：不许真联网。`requests.get`、`playwright`、`src.wbfetch.fetch_post` 一律 monkeypatch。
 - **中文成文**：注释、linter 输出、agent 文件正文一律简体中文；英文仅限专名与标识符。
-- **`.claude/agents/*.md` 每个文件 ≤ 180 行**（`test_docs_consistency.py::test_agent_files_within_line_cap`）。`blog-researcher.md` 现 169 行，本次重写按**净增 ≤ 0** 落。
+- **`.claude/agents/*.md` 行数帽**（`test_docs_consistency.py::test_agent_files_within_line_cap`）：默认 180；`blog-researcher.md` 本次**临时放宽到 190**（用户裁定 2026-08-09）。原计划写的「净增 ≤ 0」**作废**——实测可删的只有 5 行（那几处是超长 markdown 行，L117 单行 323 字符也只算 1 行），而职责改写需要约 +17 行，硬守只能靠删真规则凑数。放宽以**按文件设帽**实现，不抬全局帽（否则顺带给 `blog-writer.md` 松了 27 行的绳），并在 CLAUDE.md `## 待办` 记欠账。
 - **agent 文件里的命令不许出现裸 `python src/`**（`test_docs_consistency.py::test_agent_python_commands_use_absolute_interpreter`），必须是 `/home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/<script>.py`。
 - **不迁移存量**：`_pipeline_archive/` 的历史文件与在途的 260630-1／260731-1 走旧格式，新旧规则共存。
 - **`[E]` 编号只增不改**：update 模式追加新编号，重编会让历史引用全部错位。
@@ -1677,7 +1677,27 @@ EOF
 - Modify: `.claude/agents/blog-writer.md`（163 行）
 - Modify: `CLAUDE.md`
 - Modify: `.claude/skills/blog-orchestrate/SKILL.md`
-- Test: `src/tests/test_docs_consistency.py`（已有，不改，必须通过）
+- Modify: `src/tests/test_docs_consistency.py`（按文件设帽）
+
+- [ ] **Step 0: 按文件设行数帽（用户裁定 2026-08-09）**
+
+`src/tests/test_docs_consistency.py` 的 `test_agent_files_within_line_cap` 改为：
+
+```python
+DEFAULT_LINE_CAP = 180
+# blog-researcher 的职责在 2026-08-09 的快照重构里整体改写（抓快照存档＋整合），
+# 新增的流程说明抵不过可删的旧叮嘱（可删的只有 5 行）。按文件临时放宽，不抬全局帽——
+# 抬全局帽等于顺带给 blog-writer 松了 27 行的绳。欠账记在 CLAUDE.md ## 待办，
+# 由 blog-curate 压回 180 后删掉这一条。
+LINE_CAPS = {"blog-researcher.md": 190}
+
+
+def test_agent_files_within_line_cap():
+    for p in AGENTS:
+        cap = LINE_CAPS.get(p.name, DEFAULT_LINE_CAP)
+        n = len(p.read_text(encoding="utf-8").splitlines())
+        assert n <= cap, f"{p.name} {n} 行 > {cap}（curate 规定需压缩）"
+```
 
 - [ ] **Step 1: `.gitignore`**
 
@@ -1750,14 +1770,15 @@ _pipeline/.srccache/
 `update` 尤其不能省——它改的来源行与新增摘录正是这里唯一能拦的东西。
 ```
 
-- [ ] **Step 4: 确认 `blog-researcher.md` 行数没涨**
+- [ ] **Step 4: 确认 `blog-researcher.md` 在放宽后的帽内**
 
 ```bash
 cd /home/jc/Projects/auto-watcher && wc -l .claude/agents/blog-researcher.md
 ```
 
-预期：**≤ 169**。超了就继续压缩第 73–80 行那批 Coverage Standard 条目（合并同类项，
-不要删规则本身）。
+预期：**≤ 190**（Step 0 设的帽）。超了就压缩新写的流程说明本身，**不要**动第 73–80 行
+那批 Coverage Standard（不收评论、转发帖不作来源、追踪账号安全闸口、自媒体两层判断
+都是真规则，为凑字数删它们是拿规则质量换体积）。
 
 - [ ] **Step 5: `blog-reviewer.md` —— 加两处**
 
@@ -1815,6 +1836,16 @@ cd /home/jc/Projects/auto-watcher && wc -l .claude/agents/blog-researcher.md
 - Stage 2 段落末尾加一句：
   `研究文件采两层制：`## 摘录` 逐字取自 `srcfetch` 快照（linter 核），`## 事实`／`## 当事方` 每句挂 `[E]` 编号回指。旧格式（无 `## 摘录` 节）照旧规则收尾。`
 - **删除**「## 待办」里整条「研究/评审职责重构（2026-08-07 记，未排期）」——本次已落地。
+- 「## 待办」新增一条（记欠账，Step 0 的放宽有归还路径）：
+
+```markdown
+- **blog-researcher 体积欠账（2026-08-09 记）**：快照重构把该文件从 169 行推到约 186，
+  行数帽按文件临时放宽到 190（见 `src/tests/test_docs_consistency.py` 的 `LINE_CAPS`）。
+  待 `blog-curate` 压回 180 并删掉那条 `LINE_CAPS` 条目。可压处已看到三处：
+  L75 追踪账号安全闸口（两层 linter 已覆盖，长篇「为什么」可移进 casebook）、
+  L124 尾部署名/标题段（裸平台品牌与 slug 已是机械检查）、
+  L156「下『查不到』之前先读完手上材料」（评审新增的「去快照集 grep」正是接这个的）。
+```
 - 「附件（图片/文书）的责任分工」段不动。
 
 - [ ] **Step 8: `.claude/skills/blog-orchestrate/SKILL.md`**
