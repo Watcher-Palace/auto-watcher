@@ -6,12 +6,12 @@ GOOD = ("# Research: 题 (990101, #1)\n\n## 事实\n"
         "<font color=\"blue\">2026年1月1日宣判</font>\n\n## 当事方\n某人\n\n"
         "## 信息来源\n- 2026.01.01，澎湃新闻。*真标题*。https://a/b — 摘录\n\n## 资产\n无\n")
 
-def _mk(tmp_path, text, assets: list[str] | None = None):
+def _mk(tmp_path, text, assets: list[str] | None = None, event="990101-1"):
     (tmp_path / "research").mkdir(parents=True, exist_ok=True)
-    p = tmp_path / "research" / "990101-1-题.md"
+    p = tmp_path / "research" / f"{event}-题.md"
     p.write_text(text, encoding="utf-8")
     if assets is not None:
-        d = tmp_path / "draft" / "990101-1-assets"
+        d = tmp_path / "draft" / f"{event}-assets"
         d.mkdir(parents=True, exist_ok=True)
         for name in assets:
             (d / name).write_text("x", encoding="utf-8")
@@ -124,41 +124,48 @@ def test_short_quoted_term_not_flagged(tmp_path):
         "*真标题*", "*立案\"待审核\"*")
     assert lint_research(_mk(tmp_path, text)) == []
 
-def _snap(tmp_path, monkeypatch, url, body):
+def _snap(tmp_path, monkeypatch, url, body, event="260731-1"):
     from src import srcfetch
-    monkeypatch.setattr(srcfetch, "CACHE", tmp_path / ".srccache")
-    if body is not None:
-        (tmp_path / ".srccache").mkdir(parents=True, exist_ok=True)
-        srcfetch.snapshot_path(url).write_text(
-            f"# SOURCE: {url}\n# FETCHED: x\n\n{body}", encoding="utf-8")
+
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    p = srcfetch.snapshot_path(url, event)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(f"# SOURCE: {url}\n# FETCHED: 2026-08-07\n\n{body}", encoding="utf-8")
+    return p
 
 def test_verbatim_quote_absent_from_snapshot_fails(tmp_path, monkeypatch):
     # 摘录自称 `正文原话`，但原文快照里根本没有这句 —— 拼接/改写/张冠李戴，
     # 这是唯一能机械核出"内容"而非"形状"的检查（WebFetch 的模型转述做不到）
     _snap(tmp_path, monkeypatch, "https://a/b", "她告诉记者，自己并不认识对方。")
     text = GOOD.replace(" — 摘录", " — 「我不认识他，他欠我一个道歉」（正文原话）")
-    vs = lint_research(_mk(tmp_path, text))
+    vs = lint_research(_mk(tmp_path, text, event="260731-1"))
     assert any("不在原文快照里" in v for v in vs)
 
 def test_verbatim_quote_present_in_snapshot_passes(tmp_path, monkeypatch):
     # 快照里逐字有（空白/引号差异不算），照过
     _snap(tmp_path, monkeypatch, "https://a/b", '她说：“我不认识他， 他欠我一个道歉”。')
     text = GOOD.replace(" — 摘录", " — 「我不认识他，他欠我一个道歉」（正文原话）")
-    assert lint_research(_mk(tmp_path, text)) == []
+    assert lint_research(_mk(tmp_path, text, event="260731-1")) == []
 
 def test_missing_snapshot_warns_not_fails(tmp_path, monkeypatch):
-    # 抓不到快照的信源（JS 壳/反爬/付费墙）是常态，机械核不了是事实——WARN，不阻断
-    _snap(tmp_path, monkeypatch, "https://a/b", None)
+    # 抓不到快照的信源（JS 壳/反爬/付费墙）是常态，机械核不了是事实——WARN，不阻断。
+    # 不经 _snap：body=None 没有对应"写一份内容为 None 的假快照"的意义，直接把
+    # SNAPSHOTS 指到空目录才是"确实没抓到"的真实语义（对齐 Step 2 新格式测试的写法）。
+    from src import srcfetch
+
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "empty")
     text = GOOD.replace(" — 摘录", " — 「我不认识他，他欠我一个道歉」（正文原话）")
-    vs = lint_research(_mk(tmp_path, text))
+    vs = lint_research(_mk(tmp_path, text, event="260731-1"))
     assert any(v.startswith("WARN：") and "无原文快照" in v for v in vs)
     assert all(v.startswith("WARN：") for v in vs)
 
 def test_non_verbatim_form_not_checked_against_snapshot(tmp_path, monkeypatch):
     # 标题/转述照收，本来就不承诺逐字 —— 不核，也不该 WARN
-    _snap(tmp_path, monkeypatch, "https://a/b", None)
+    from src import srcfetch
+
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "empty")
     text = GOOD.replace(" — 摘录", " — 「女销冠回应造谣者」（标题）")
-    assert lint_research(_mk(tmp_path, text)) == []
+    assert lint_research(_mk(tmp_path, text, event="260731-1")) == []
 
 def test_assets_bidirectional(tmp_path):
     listed = GOOD.replace("## 资产\n无\n", "## 资产\n- 990101-1-图.jpg — https://a — 2026.1.1 — 通报截图\n")
@@ -166,3 +173,102 @@ def test_assets_bidirectional(tmp_path):
     assert any("不存在" in v for v in vs)
     vs2 = lint_research(_mk(tmp_path, GOOD, assets=["990101-1-孤儿.jpg"]))  # 存在但未登记
     assert any("未登记" in v for v in vs2)
+
+
+# ==================== 新格式（## 摘录）====================
+
+NEW_DOC = """# Research: 标题 (260731, #1)
+
+## 事实
+- 2025.10.12：李沧分局对一男子作出行拘5日决定[E1]。
+<font color="blue">2026年7月31日：牟倩文提起民事诉讼[E1]。</font>
+
+## 当事方
+**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。
+
+## 信息来源
+- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）
+
+## 摘录
+[E1] 信源1 · 第三人称转述 · 2026-08-07
+被给予行政拘留五日
+[E2] 信源1 · 正文原话 · 2026-08-07
+我有一度想从这个楼上我就直接跳下去了
+
+## 资产
+无 —— 本案无可抓证据图。
+"""
+SNAP_BODY = "决定书显示 被给予行政拘留五日 她说 我有一度想从这个楼上我就直接跳下去了"
+
+
+def _new_doc(tmp_path, monkeypatch, doc=NEW_DOC, snap=SNAP_BODY):
+    _snap(tmp_path, monkeypatch, "https://a.example/1", snap)
+    p = tmp_path / "260731-1-标题.md"
+    p.write_text(doc, encoding="utf-8")
+    return p
+
+
+def test_new_format_clean_doc_passes(tmp_path, monkeypatch):
+    assert lint_research(_new_doc(tmp_path, monkeypatch)) == []
+
+
+def test_extract_absent_from_snapshot_fails(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("被给予行政拘留五日", "被给予行政拘留十日")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("不在原文快照里" in v and "[E1]" in v for v in vs)
+
+
+def test_illegal_extract_form_fails(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("· 第三人称转述 ·", "· 大概是这个意思 ·")
+    assert any("形态不合法" in v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc)))
+
+
+def test_extract_pointing_at_missing_source_fails(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("[E1] 信源1 ·", "[E1] 信源7 ·")
+    assert any("不存在的信源7" in v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc)))
+
+
+def test_source_without_snapshot_fails(tmp_path, monkeypatch):
+    from src import srcfetch
+
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "empty")
+    p = tmp_path / "260731-1-标题.md"
+    p.write_text(NEW_DOC, encoding="utf-8")
+    vs = lint_research(p)
+    assert any("无快照" in v and not v.startswith("WARN：") for v in vs)
+
+
+def test_snapshot_failed_source_may_not_back_a_verbatim_extract(tmp_path, monkeypatch):
+    doc = (NEW_DOC.replace("— 快照 2026-08-07（900字）", "— 快照失败：25s 无响应")
+                  .replace("[E1] 信源1 · 第三人称转述", "[E1] 信源1 · 正文原话"))
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("快照失败" in v and "正文原话" in v for v in vs)
+
+
+def test_orphan_extract_only_warns(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("自述曾有轻生念头[E2]", "自述曾有轻生念头[E1]")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any(v.startswith("WARN：") and "[E2]" in v for v in vs)
+    assert [v for v in vs if not v.startswith("WARN：")] == []
+
+
+def test_duplicate_extract_id_fails(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("[E2] 信源1 · 正文原话", "[E1] 信源1 · 正文原话")
+    assert any("编号重复" in v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc)))
+
+
+def test_asset_transcription_skips_snapshot_check(tmp_path, monkeypatch):
+    # 图是二进制，字节比对不成立；指针成立即可，不得因此 FAIL
+    doc = NEW_DOC.replace(
+        "## 资产\n无 —— 本案无可抓证据图。",
+        "## 资产\n- 260731-1-立案截图.jpg — https://a.example/1 — 2026.07.31 — 法院立案截图",
+    ).replace(
+        "[E2] 信源1 · 正文原话 · 2026-08-07\n我有一度想从这个楼上我就直接跳下去了",
+        "[E2] 资产 260731-1-立案截图.jpg · 图上转录 · —\n案由：名誉权纠纷",
+    )
+    (tmp_path.parent / "draft" / "260731-1-assets").mkdir(parents=True, exist_ok=True)
+    (tmp_path.parent / "draft" / "260731-1-assets" / "260731-1-立案截图.jpg").write_bytes(b"x")
+    p = tmp_path / "260731-1-标题.md"
+    _snap(tmp_path, monkeypatch, "https://a.example/1", SNAP_BODY)
+    p.write_text(doc, encoding="utf-8")
+    assert [v for v in lint_research(p) if not v.startswith("WARN：")] == []
