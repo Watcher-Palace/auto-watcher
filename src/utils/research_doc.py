@@ -13,7 +13,13 @@ from pathlib import Path
 # 后的内容整段吞进 URL，「快照失败」标记随之从 tail 消失，snapshot_failed 被静默
 # 判成 False——而这里解析出的 Source 直接喂给 srcfetch --from-research（研究阶段
 # 抓快照时，文件还没被 research_linter lint 过），静默口子不能只堵在 linter 一侧。
-SRC_PARSE_RE = re.compile(r"^- (\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。([^\s—]+)(.*)$")
+# 日期字段还接受「发布日期查证失败」（可带一个（…）括注，括注里允许中文逗号，
+# 所以内部用 [^）]* 不用 [^，]*）——agent 文件明文支持这种写法（日期确实核不出来），
+# 若这里仍只认 \d{4}\.\d{2}\.\d{2}，这类行会解析失败、整体从 sources() 里消失，
+# 它之后所有来源的 Source.num 会集体错一位，摘录层"信源N"引用随之全部张冠李戴。
+SRC_PARSE_RE = re.compile(
+    r"^- (\d{4}\.\d{2}\.\d{2}|发布日期查证失败(?:（[^）]*）)?)，(.+?)。\*(.+?)\*。([^\s—]+)(.*)$"
+)
 SNAPSHOT_FAILED = "快照失败"
 _EVENT_RE = re.compile(r"^(\d{6}-\d+)-")
 

@@ -72,12 +72,16 @@ def snapshot_path(url: str, event: str) -> Path:
 
 
 def load(url: str, event: str) -> str | None:
-    """返回该 URL 在该事件下的快照正文；没抓过返回 None（＝无法机械核对，不等于核不过）。"""
+    """返回该 URL 在该事件下的快照正文；没抓过、或抓到的只是空壳（无正文）都返回 None
+    （＝无法机械核对，不等于核不过——`save()` 已拒写空正文，这里防的是写了一半/
+    手工占位的快照文件：正文为空白时若返回 ""，逐字核对分支会把"抓失败"错判成
+    "研究造假"，报出"摘录不在原文快照里"）。"""
     p = snapshot_path(url, event)
     if not p.is_file():
         return None
     body = p.read_text(encoding="utf-8").split("\n\n", 1)
-    return body[1] if len(body) == 2 else ""
+    text = body[1] if len(body) == 2 else ""
+    return text if text.strip() else None
 
 
 def _is_chrome(tag) -> bool:

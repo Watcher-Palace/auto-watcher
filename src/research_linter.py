@@ -54,8 +54,11 @@ SRC_RE = re.compile(r"^- \d{4}\.\d{2}\.\d{2}，.+?。\*.+?\*。[^\s—]+(?: — 
 # `_lint_legacy` 在解析前已经过 SRC_RE 这道格式闸，但 research_doc.sources() 是
 # 独立的第二条解析路径（`_lint_extracts`/`srcfetch --from-research` 都走它，后者
 # 研究阶段就会跑、文件还没被 lint 过），URL 组同样必须排除全角破折号，否则那条路径
-# 里 snapshot_failed 依旧会被静默吞成 False。
-SRC_PARSE_RE = re.compile(r"^- (\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。([^\s—]+)(.*)$")
+# 里 snapshot_failed 依旧会被静默吞成 False。日期字段同时放宽到接受「发布日期查证
+# 失败」（可带 （…） 括注）——见 research_doc.py 同一行的注释，理由一致。
+SRC_PARSE_RE = re.compile(
+    r"^- (\d{4}\.\d{2}\.\d{2}|发布日期查证失败(?:（[^）]*）)?)，(.+?)。\*(.+?)\*。([^\s—]+)(.*)$"
+)
 UNVERIFIED = "发布日期查证失败"
 BLUE_RE = re.compile(r'<font color="blue">(.*?)</font>', re.S)
 DATE_IN_RE = re.compile(r"\d{4}年|\d{1,2}月\d{1,2}日")
@@ -157,6 +160,34 @@ def _lint_source_lines(src_text: str) -> list[str]:
     return vs
 
 
+def _lint_new_source_quotes(src_text: str) -> list[str]:
+    """新格式专用：来源行尾不得内嵌引文——逐字通道只有 ## 摘录 一条。
+
+    评审实证：同一条伪造引文写在来源行尾，旧格式 FAIL（走 `_verify_quotes`），
+    新格式零违规——把逐字核对接回来源行尾（`_verify_quotes`）会造出第二条逐字
+    通道，与"逐字通道只有摘录层一条"的设计相反；但完全不闻不问又是覆盖倒退
+    （研究 agent 从旧格式切过来，"引文写在来源行尾"是肌肉记忆，写手读的又正是
+    这份文件）。折中：只要行尾出现引号就报违规，逼着把引文挪进 ## 摘录，不在
+    这里核对内容。
+    """
+    vs: list[str] = []
+    for ln in src_text.splitlines():
+        ln = ln.strip()
+        if not ln or ln.startswith("<!--"):
+            continue
+        m2 = SRC_PARSE_RE.match(ln)
+        if not m2:
+            continue
+        tail = m2.group(5)
+        has_quote = "「" in tail or "“" in tail or tail.count('"') >= 2
+        if has_quote:
+            vs.append(
+                f"来源行尾带着引文——新格式的引文一律写进 ## 摘录（逐字通道只有摘录层"
+                f"一条，来源行尾的引文不会被核对，也不会被写手看到）：{ln[:40]}"
+            )
+    return vs
+
+
 def _lint_blue(text: str) -> list[str]:
     """蓝字三检查——新旧格式共用。"""
     vs: list[str] = []
@@ -199,6 +230,25 @@ def _lint_extracts(path: Path, text: str) -> tuple[list[str], dict[int, bool]]:
     assets_dir = path.parent.parent / "draft" / f"{event}-assets"
     present = {p.name for p in assets_dir.iterdir()} if assets_dir.is_dir() else set()
     vs: list[str] = []
+    # 不变量：过了格式闸（SRC_RE 匹配，或含 发布日期查证失败 旁路）的来源行条数
+    # 必须等于 doc_sources() 实际解析出的信源数——Source.num 是"解析成功的第几条"
+    # 不是"第几行"，两者一旦不等，它之后所有信源的编号在 linter 眼里全部错位，
+    # 摘录写"信源N"引用的其实是另一条来源，逐字核对可能拿错来源的快照核（转载多的
+    # 语料下核得过的概率还不低）。这条闸不依赖任何具体脏行样式，SRC_RE 与
+    # SRC_PARSE_RE 今后任何一侧单独改动导致的分歧都会被它拦住，而不是静默错位。
+    passed_lines = 0
+    for ln in (secs.get("信息来源") or "").splitlines():
+        ln = ln.strip()
+        if not ln or ln.startswith("<!--"):
+            continue
+        if SRC_RE.match(ln) or UNVERIFIED in ln:
+            passed_lines += 1
+    if passed_lines != len(srcs):
+        vs.append(
+            f"## 信息来源 节有 {passed_lines} 行过了格式闸，但只解析出 {len(srcs)} 个"
+            "信源——有来源行未能解析，其后所有信源编号会整体错位，摘录里的「信源N」"
+            "会指向错误的来源"
+        )
     failed: dict[int, bool] = {}
     seen: set[int] = set()
     for e in es:
@@ -267,8 +317,38 @@ def _lint_extracts(path: Path, text: str) -> tuple[list[str], dict[int, bool]]:
 
 def lint_research(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
+    try:
+        event_of(path)
+    except ValueError as e:
+        # 文件名不含 YYMMDD-N- 前缀：新旧两条路径都会无保护地调 event_of(path)
+        # 抛裸 traceback。main() 是给人跑的，崩出 traceback 会让人以为是环境坏了，
+        # 这里改成一条正常的 lint 违规。
+        return [str(e)]
+    # sections() 是 dict：同名的 `## ` 标题后者覆盖前者，前一节的全部内容会被
+    # 整节静默丢弃——与结转第 4 项描述的失败模式一模一样，但因为标题是已知的，
+    # 未知节标题闸口（见下）拦不住。放在分派之前、新旧两条路径都走：旧格式里
+    # 同一个坑（比如两个 `## 信息来源`）同样会静默吞前一节。
+    heads = [h.strip() for h in re.findall(r"^## (.+)$", text, re.MULTILINE)]
+    if len(heads) != len(set(heads)):
+        dupes = sorted({h for h in heads if heads.count(h) > 1})
+        return [
+            f"存在同名重复的二级标题：{'、'.join(dupes)}——sections() 是 dict，"
+            "同名节后者覆盖前者，前一节的全部内容会被整节静默丢弃"
+        ]
     if is_new_format(text):
         return _lint_new(path, text)
+    secs = _doc_sections(text)
+    # 旧格式绝不会带 [E] 引用，也绝不会有含「摘录」的节标题（140 份存量实测为 0）。
+    # 命中任一条＝这是一份摘录节标题写歪了的新格式文件，不能悄悄降级走旧闸口——
+    # 旧闸口对摘录层一无所知，会让整套新闸口连跑都没跑却仍报"过了"，是"闸口失效
+    # 不会有人发现"的教科书形态。判据取全文而非只取 事实/当事方 两节：更严格，
+    # 也能兜住"标题缺空格且事实层恰好没挂 [E]"这类变体，140 份存量实测假阳性仍是 0。
+    drifted = [k for k in secs if "摘录" in k]
+    if drifted or E_REF_RE.search(text):
+        return [
+            f"疑似新格式但没有恰好名为 ## 摘录 的节（现有：{drifted or '无'}）——"
+            "摘录层闸口会被整体跳过，必须把标题改回 ## 摘录"
+        ]
     return _lint_legacy(path, text)
 
 
@@ -285,6 +365,7 @@ def _lint_new(path: Path, text: str) -> list[str]:
                 "从摘录里蒸发、无报错无痕迹；若是笔误请改回已知章节名，不要在这几节内用 ## 标题"
             )
     vs += _lint_source_lines(secs.get("信息来源") or "")
+    vs += _lint_new_source_quotes(secs.get("信息来源") or "")
     ex_vs, _failed = _lint_extracts(path, text)
     vs += ex_vs
     vs += _lint_blue(text)

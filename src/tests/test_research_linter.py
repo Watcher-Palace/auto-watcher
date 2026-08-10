@@ -202,8 +202,15 @@ SNAP_BODY = "决定书显示 被给予行政拘留五日 她说 我有一度想�
 
 
 def _new_doc(tmp_path, monkeypatch, doc=NEW_DOC, snap=SNAP_BODY):
+    # 研究文件落在 tmp_path/"research"/（与旧格式的 _mk 一致），不是 tmp_path/ 根上——
+    # _lint_assets/_lint_extracts 按 path.parent.parent 推资产目录，落在 tmp_path/ 根
+    # 上会让 path.parent.parent 变成 pytest 整场共享的 basetemp，不是本用例私有的
+    # tmp_path。评审证实这会打爆用同一事件号、断言"零 FAIL"且排在污染源之后的用例
+    # （已确认会打中 Task 6 计划里写死的 4 个测试）。
     _snap(tmp_path, monkeypatch, "https://a.example/1", snap)
-    p = tmp_path / "260731-1-标题.md"
+    d = tmp_path / "research"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / "260731-1-标题.md"
     p.write_text(doc, encoding="utf-8")
     return p
 
@@ -305,16 +312,10 @@ def test_glued_snapshot_failed_source_is_recognized_as_failed_not_just_missing(t
 
 def test_source_line_with_proper_spacing_still_passes(tmp_path, monkeypatch):
     # 收紧 SRC_RE 的同时不能误伤写对了的行——" — " 两侧带空格必须照常放行。
-    # 用独立事件号 260731-9（不复用 _new_doc 的 260731-1），避免与
-    # test_asset_transcription_skips_snapshot_check 共享 tmp_path.parent/draft/
-    # 260731-1-assets/——_lint_assets 按 path.parent.parent 推导资产目录，
-    # 那是跨用例共享的 pytest 会话临时根目录，不是每个用例独立的 tmp_path，
-    # 该用例真的在那里落过一个文件，顺序在后的用例会看见它。
-    _snap(tmp_path, monkeypatch, "https://a.example/1", SNAP_BODY, event="260731-9")
-    doc = NEW_DOC.replace("(260731, #1)", "(260731, #9)")
-    p = tmp_path / "260731-9-标题.md"
-    p.write_text(doc, encoding="utf-8")
-    assert lint_research(p) == []
+    # fix 轮 2 起 _new_doc 把研究文件落进 tmp_path/"research"/，path.parent.parent
+    # 变成本用例私有的 tmp_path，不再是跨用例共享的 pytest basetemp，不需要再用
+    # 独立事件号绕开污染——直接用 _new_doc 的默认事件即可。
+    assert lint_research(_new_doc(tmp_path, monkeypatch)) == []
 
 
 def test_multiline_extract_body_fully_checked_not_just_first_line(tmp_path, monkeypatch):
@@ -375,3 +376,108 @@ def test_legacy_doc_without_extract_section_unaffected_by_unknown_section_check(
     text = GOOD + "\n## 编辑注\n与本案无关的备注\n"
     vs = lint_research(_mk(tmp_path, text))
     assert not any("未知章节" in v for v in vs)
+
+
+# ==================== fix 轮 2（评审 task-5-review.md）====================
+
+def test_drifted_摘录_heading_with_parenthetical_suffix_is_not_downgraded(tmp_path, monkeypatch):
+    # C-1（Critical，结转第 4 项的另一半）：## 摘录 标题只要不是恰好"摘录"两个字，
+    # is_new_format 判 False，文件整个掉进 _lint_legacy——摘录层闸口连跑都没跑，
+    # 而 _lint_legacy 既没有"缺少 ## 摘录"检查也没有未知节标题检查，零违规通过。
+    # 分派处必须兜底：命中"节标题含摘录"或"全文出现 [E数字]"任一条就不许降级。
+    doc = NEW_DOC.replace("## 摘录\n", "## 摘录（补充）\n").replace(
+        "被给予行政拘留五日", "被给予行政拘留十年"  # 摘录正文换成编的，证明不是碰巧过关
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert vs != []
+    assert any("摘录" in v for v in vs)
+
+
+def test_drifted_摘录_heading_missing_space_variant_is_not_downgraded(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("## 摘录\n", "##摘录\n")  # 缺一个空格
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert vs != []
+    assert any("摘录" in v for v in vs)
+
+
+def test_extract_section_entirely_missing_but_e_refs_remain_is_not_downgraded(tmp_path, monkeypatch):
+    # 整个 ## 摘录 节缺失，但 ## 事实/## 当事方 仍挂着 [E1][E2] 引用——
+    # 判据取全文而不是只取这两节，兜的正是"节标题缺空格且事实层恰好没挂 [E]"这类变体，
+    # 这里反过来验证"节没了但 [E] 还在"同样触发
+    doc = NEW_DOC.split("## 摘录\n")[0] + "## 资产\n无 —— 本案无可抓证据图。\n"
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert vs != []
+    assert any("摘录" in v for v in vs)
+
+
+def test_consistency_gate_catches_source_lines_that_pass_format_but_fail_to_parse(tmp_path, monkeypatch):
+    # I-1 结转的第二件（一致性闸，不变量）：过了格式闸（SRC_RE 匹配或含"发布日期查证
+    # 失败"旁路）的来源行条数必须等于 doc_sources() 实际解析出的信源数——这条不依赖
+    # 任何具体脏行样式，SRC_RE 与 SRC_PARSE_RE 今后任何一侧单独改动导致的分歧都会响。
+    # 这里构造一种因半角逗号（应为全角"，"）导致 SRC_PARSE_RE 解析失败、但因含
+    # "发布日期查证失败"字样而被判"过了格式闸"的行。
+    doc = NEW_DOC.replace(
+        "## 信息来源\n- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）",
+        "## 信息来源\n"
+        "- 发布日期查证失败,极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("信源编号会整体错位" in v for v in vs)
+
+
+def test_unverified_date_marker_no_longer_triggers_the_consistency_gate(tmp_path, monkeypatch):
+    # 反证：I-1 结转第一件（放宽 SRC_PARSE_RE 的日期组）落地后，规范写法的
+    # "发布日期查证失败（…）" 不应该再触发第二件的一致性闸——它现在能被正常解析。
+    doc = NEW_DOC.replace(
+        "## 信息来源\n- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）",
+        "## 信息来源\n"
+        "- 发布日期查证失败（页面未展示可核实日期），极目新闻。*甲*。"
+        "https://a.example/1 — 快照 2026-08-07（900字）",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("信源编号会整体错位" in v for v in vs)
+
+
+def test_new_format_source_tail_with_embedded_quote_is_flagged(tmp_path, monkeypatch):
+    # I-2：新格式的逐字通道只有 ## 摘录 一条，_lint_new 连 _verify_quotes 一起丢了，
+    # 但没有任何检查强制"来源行尾不能带引文"——同一条伪造引文写在来源行尾，旧格式
+    # FAIL、新格式零违规，比它取代的旧闸口更松且无声。行尾出现引号必须报违规，
+    # 逼着把引文挪进 ## 摘录（不在这里核对内容——_verify_quotes 不接回 _lint_new，
+    # 那会造出第二条逐字通道）。
+    doc = NEW_DOC.replace(
+        "https://a.example/1 — 快照 2026-08-07（900字）",
+        "https://a.example/1 — 「我当时真的撑不下去了」（正文原话）",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("来源行尾带着引文" in v for v in vs)
+
+
+def test_duplicate_摘录_section_heading_is_flagged(tmp_path, monkeypatch):
+    # I-3：sections() 是 dict，同名节后者覆盖前者。两个 ## 摘录 节时，前一节的全部
+    # 摘录从 extracts()/malformed_extract_heads() 里同时消失——与结转第 4 项描述的
+    # 失败模式一模一样，但因为标题是已知的，未知节标题闸口拦不住。
+    doc = NEW_DOC.replace(
+        "## 资产\n无 —— 本案无可抓证据图。\n",
+        "## 资产\n无 —— 本案无可抓证据图。\n\n## 摘录\n[E9] 信源1 · 正文原话 · 2026-08-07\n又一条编的\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("重复" in v and "摘录" in v for v in vs)
+
+
+def test_duplicate_legacy_section_heading_is_also_flagged(tmp_path):
+    # I-3 顺带覆盖旧格式：评审只要求新格式，但"同名节静默覆盖"在旧格式里是同一个坑，
+    # 覆盖旧格式是免费的（存量语料里同名重复节 0 份，检查放在 lint_research 分派前，
+    # 新旧两条路径都走）
+    text = GOOD + "\n## 信息来源\n- 2026.01.02，另一报。*另一题*。https://c/d — 摘录\n"
+    vs = lint_research(_mk(tmp_path, text))
+    assert any("重复" in v and "信息来源" in v for v in vs)
+
+
+def test_filename_without_event_prefix_is_a_lint_violation_not_a_traceback(tmp_path):
+    # M-3：event_of 在新旧两条路径上都无保护地调用，文件名不含 YYMMDD-N- 前缀时
+    # 原本会抛裸 ValueError traceback——main() 是给人跑的，崩出 traceback 会让人
+    # 以为是环境坏了，应该是一条正常的 LINT FAIL 而不是程序崩溃。
+    p = tmp_path / "题目.md"  # 没有 YYMMDD-N- 前缀
+    p.write_text(GOOD, encoding="utf-8")
+    vs = lint_research(p)
+    assert any("事件标识" in v for v in vs)

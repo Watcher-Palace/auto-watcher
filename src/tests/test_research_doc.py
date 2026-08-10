@@ -178,3 +178,38 @@ def test_sources_url_stops_before_glued_snapshot_failed_tag():
     ss = sources(doc)
     assert ss[0].url == "https://a.example/1"
     assert ss[0].snapshot_failed is True
+
+
+# ---- fix 轮 2（评审 I-1）：「发布日期查证失败」来源行不再让信源编号整体错位 ----
+
+def test_unverified_date_marker_source_line_parses_as_a_real_source():
+    # 日期字段放宽为"日期 或 发布日期查证失败（可带括注）"之前，这种行（agent 文件
+    # 明文支持的写法，本仓库存量语料里有 17 条、分布 7 份文件）完全解析不出 Source，
+    # 它之后每一条来源的 num 都会集体错一位——摘录写"信源N"引用的其实是下一条来源，
+    # 转载为主的语料里"拿错来源的快照去核"极大概率核得过，闸口全程沉默。
+    doc = ("## 信息来源\n"
+           "- 2026.07.31，甲媒体。*标题甲*。https://a.example/a — 快照 2026-08-07（100字）\n"
+           "- 发布日期查证失败（页面未展示可核实日期），乙媒体。*标题乙*。"
+           "https://b.example/b — 快照 2026-08-07（100字）\n"
+           "- 2026.07.31，丙媒体。*标题丙*。https://c.example/c — 快照 2026-08-07（100字）\n")
+    ss = sources(doc)
+    assert [s.num for s in ss] == [1, 2, 3]
+    assert ss[1].date == "发布日期查证失败（页面未展示可核实日期）"
+    assert ss[2].url == "https://c.example/c"  # 第三条编号仍是 3，不是错位后的 2
+
+
+def test_unverified_date_marker_without_parenthetical_still_parses():
+    # 括注是可选的——裸「发布日期查证失败」不带 （…） 也要能解析
+    doc = "## 信息来源\n- 发布日期查证失败，甲媒体。*标题甲*。https://a.example/a — 摘录\n"
+    ss = sources(doc)
+    assert len(ss) == 1 and ss[0].date == "发布日期查证失败"
+
+
+def test_unverified_date_marker_parenthetical_with_comma_not_truncated():
+    # 括注里可能有中文逗号——不能用 [^，]* 之类会在第一个逗号处截断的写法
+    doc = ("## 信息来源\n"
+           "- 发布日期查证失败（当事方提供，无公开发布记录），甲媒体。*标题甲*。"
+           "https://a.example/a — 摘录\n")
+    ss = sources(doc)
+    assert len(ss) == 1
+    assert ss[0].date == "发布日期查证失败（当事方提供，无公开发布记录）"

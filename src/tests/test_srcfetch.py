@@ -45,6 +45,17 @@ def test_load_returns_none_when_never_fetched():
     assert load(URL, EVENT) is None
 
 
+def test_load_returns_none_for_header_only_snapshot(snapshots):
+    # fix 轮 2（评审 M-2）：只有头部没有正文的快照（写了一半/手工占位）——语义上
+    # 等于"没有可用快照"，不能被下游误判成"抓到了空文本"去跟摘录逐字比对，那会把
+    # "抓失败"错报成"研究造假"（[E1] 摘录不在原文快照里）。save() 已拒写空正文，
+    # 这条防的是那之外手工/半成品文件的情况。
+    p = snapshot_path(URL, EVENT)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(f"# SOURCE: {URL}\n# FETCHED: x\n\n   \n", encoding="utf-8")
+    assert load(URL, EVENT) is None
+
+
 def test_empty_body_is_not_saved(monkeypatch):
     monkeypatch.setattr(srcfetch, "fetch_text", lambda u: "   ")
     with pytest.raises(SrcFetchError):
