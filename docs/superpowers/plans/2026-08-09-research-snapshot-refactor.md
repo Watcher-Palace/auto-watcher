@@ -793,7 +793,26 @@ EOF
 - Consumes: `research_doc.{sources, extracts, is_new_format, event_of, FORMS}`、`srcfetch.{load, normalize}`
 - Produces: `research_linter.lint_research(path: Path) -> list[str]`（签名不变，内部分派）
 
-- [ ] **Step 1: 修既有测试的快照 fixture（Task 1 遗留的 4 个失败）**
+**从前序任务结转的三项，本任务必须一并处理（2026-08-10 追加）：**
+
+1. **`SRC_PARSE_RE` 的 `(\S+)` 贪婪吃 URL**（Task 2 评审的 Important）。` — ` 缺空格时
+   「快照失败」会被吞进 URL，`snapshot_failed` 静默判成 False，实测：
+   `https://b.example/2—快照失败：25s无响应` 整串成了 url。该正则在 `research_linter.py`
+   与 `research_doc.py` 两处同形，**必须同改**，不许只改一边。
+   **首选修法不是动 URL 正则，而是收紧 `SRC_RE` 强制 ` — ` 两侧空格**——缺空格直接报
+   格式违规，把静默误判变成响的失败。两处都要有测试钉住。
+
+2. **摘录层闸口不许欠采样**（Task 3 评审的 Important）。Task 3 用的临时核对脚本只认
+   「引号后 30 字内出现 `正文原话`」这一种写法，14 条摘录只覆盖到 3 条，漏掉了
+   「一个标签管多句引号」的场景。**生产闸口必须覆盖 `## 摘录` 节里全部标为逐字的条目**，
+   并且要有一条测试专门验证多句引号共用一个标签时每句都被核对——欠采样的闸口比没有闸口
+   更坏，因为它会让人以为查过了。
+
+3. **Step 1 说的是 5 个失败，不是 4 个**：`test_same_quote_present_in_an_excerpt_passes`、
+   `test_verbatim_quote_absent_from_snapshot_fails`、`test_verbatim_quote_present_in_snapshot_passes`、
+   `test_missing_snapshot_warns_not_fails`、`test_non_verbatim_form_not_checked_against_snapshot`。
+
+- [ ] **Step 1: 修既有测试的快照 fixture（Task 1 遗留的 5 个失败）**
 
 `src/tests/test_research_linter.py` 里的 `_snap` 辅助改为按事件写：
 
