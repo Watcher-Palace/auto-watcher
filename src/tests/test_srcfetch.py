@@ -2,16 +2,19 @@ import pytest
 import requests
 
 from src import srcfetch
-from src.srcfetch import SrcFetchError, fetch_text, load, normalize, save, snapshot_path
+from src.srcfetch import (
+    SrcFetchError, fetch_text, load, normalize, save, snapshot_path,
+)
 
 URL = "https://news.example.com/a/2026/0731/12345.shtml"
+EVENT = "260731-1"
 LONG = "正文" * 200
 
 
 @pytest.fixture(autouse=True)
-def cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(srcfetch, "CACHE", tmp_path / ".srccache")
-    return tmp_path / ".srccache"
+def snapshots(tmp_path, monkeypatch):
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    return tmp_path / "snapshots"
 
 
 class FakeResp:
@@ -32,21 +35,21 @@ def test_normalize_ignores_whitespace_and_quote_variants():
 
 def test_save_then_load_roundtrip(monkeypatch):
     monkeypatch.setattr(srcfetch, "fetch_text", lambda u: "她说：我不认识他")
-    p = save(URL)
-    assert p == snapshot_path(URL) and URL in p.read_text(encoding="utf-8")
-    assert load(URL) == "她说：我不认识他"
+    p = save(URL, EVENT)
+    assert p == snapshot_path(URL, EVENT) and URL in p.read_text(encoding="utf-8")
+    assert load(URL, EVENT) == "她说：我不认识他"
 
 
 def test_load_returns_none_when_never_fetched():
     # 没抓过 ≠ 核不过：linter 据此降级为 WARN，不能当成 FAIL
-    assert load(URL) is None
+    assert load(URL, EVENT) is None
 
 
 def test_empty_body_is_not_saved(monkeypatch):
     monkeypatch.setattr(srcfetch, "fetch_text", lambda u: "   ")
     with pytest.raises(SrcFetchError):
-        save(URL)
-    assert not snapshot_path(URL).exists()
+        save(URL, EVENT)
+    assert not snapshot_path(URL, EVENT).exists()
 
 
 def test_http_path_strips_scripts_and_tags(monkeypatch):
@@ -91,3 +94,47 @@ def test_weibo_url_goes_through_wbfetch(monkeypatch):
     monkeypatch.setattr(wbfetch, "fetch_post", lambda u: {"text": "微博正文"})
     monkeypatch.setattr(requests, "get", lambda *a, **k: pytest.fail("微博不该走 HTTP 抽取"))
     assert fetch_text("https://weibo.com/1234567890/AbCdE") == "微博正文"
+
+
+def test_snapshots_are_partitioned_by_event(monkeypatch, snapshots):
+    # 快照是事件的证据底本，随事件归档——两个事件引同一 URL 各存一份
+    monkeypatch.setattr(srcfetch, "fetch_text", lambda u: "同一篇报道")
+    save(URL, "260731-1")
+    save(URL, "260801-2")
+    assert load(URL, "260731-1") == "同一篇报道"
+    assert load(URL, "260801-2") == "同一篇报道"
+    assert (snapshots / "260731-1").is_dir() and (snapshots / "260801-2").is_dir()
+
+
+def test_load_is_none_for_other_event():
+    # 别的事件抓过不算本事件抓过，否则归档后证据链对不上
+    assert load(URL, "260731-1") is None
+
+
+def test_snapshot_filename_carries_host():
+    p = snapshot_path(URL, EVENT)
+    assert p.name.startswith("news.example.com-") and p.suffix == ".txt"
+
+
+def test_chrome_blocks_are_stripped_by_class_and_id(monkeypatch):
+    html = (
+        '<div class="nav">网易首页 应用 网易新闻 网易公开课</div>'
+        '<div class="article-header"><h1>保时捷女销冠起诉造黄谣者</h1></div>'
+        "<p>牟倩文说，他一直都没道歉。</p>"
+        '<div id="footer">© 1997-2026 网易公司版权所有 联系方法 招聘信息</div>'
+        '<div class="recommend-list">罗永浩罕见夸赞 军事要闻 乌防空导弹严重短缺</div>'
+    )
+    monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResp(html))
+    # 剥完 chrome 后正文仅 20 余字，低于 MIN_TEXT=200 会触发无头浏览器兜底、打真实网络请求，
+    # 与本仓库"测试全程 hermetic"的约定冲突；此处只测 class/id 剥除逻辑，与 MIN_TEXT 兜底无关，故临时调低
+    monkeypatch.setattr(srcfetch, "MIN_TEXT", 0)
+    text = fetch_text(URL)
+    assert "他一直都没道歉" in text
+    assert "网易首页" not in text and "版权所有" not in text and "罗永浩" not in text
+
+
+def test_article_header_survives_stripping(monkeypatch):
+    # header/hot 只做整词匹配：article-header 常含标题，标题本身可被摘为 `标题` 形态
+    html = '<div class="article-header"><h1>' + "标题" * 100 + "</h1></div>"
+    monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResp(html))
+    assert "标题标题" in fetch_text(URL)
