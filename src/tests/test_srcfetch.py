@@ -158,3 +158,30 @@ def test_main_with_event_value_swallowing_flag_prints_usage(capsys):
 def test_main_with_event_but_no_url_prints_usage(capsys):
     assert main(["--event", "260731-1"]) == 2
     assert capsys.readouterr().out.strip() == USAGE
+
+
+def test_from_research_collects_every_source_url(tmp_path, monkeypatch):
+    # 没有这个批量入口，agent 要手敲十几个 URL，必然漏
+    doc = tmp_path / "260731-1-标题.md"
+    doc.write_text(
+        "## 信息来源\n"
+        "- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照失败：超时\n"
+        "- 2026.07.31，紫牛新闻。*乙*。https://b.example/2 — 快照 2026-08-07（900字）\n"
+        "\n## 摘录\n[E1] 信源2 · 标题 · 2026-08-07\n乙\n",
+        encoding="utf-8",
+    )
+    fetched = []
+    monkeypatch.setattr(srcfetch, "fetch_text", lambda u: fetched.append(u) or "正文")
+    assert srcfetch.main(["--event", "260731-1", "--from-research", str(doc)]) == 0
+    assert fetched == ["https://a.example/1", "https://b.example/2"]
+
+
+def test_refresh_overwrites_an_existing_snapshot(monkeypatch):
+    # 评审查「有没有更新进展」时读到研究阶段几天前的字节就是错的
+    monkeypatch.setattr(srcfetch, "fetch_text", lambda u: "旧正文")
+    save(URL, EVENT)
+    monkeypatch.setattr(srcfetch, "fetch_text", lambda u: "新正文")
+    srcfetch.main(["--event", EVENT, URL])
+    assert load(URL, EVENT) == "旧正文"          # 无 --refresh：已有快照跳过
+    srcfetch.main(["--event", EVENT, "--refresh", URL])
+    assert load(URL, EVENT) == "新正文"

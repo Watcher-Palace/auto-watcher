@@ -7,8 +7,10 @@ and **answers `prompt` against it using a small fast model**" —— 它从不�
 （把某报道的标题措辞标成当事人原话）正是从这个口子进的，评审也只是碰巧抓住。
 本模块走裸 HTTP／无头浏览器取原始 HTML，模型不介入，快照才配当比对基准。
 
-CLI: python src/srcfetch.py --event <YYMMDD-N> <url>...        # 抓并落快照
-     python src/srcfetch.py --event <YYMMDD-N> --check <url>   # 只看快照在不在
+CLI: python src/srcfetch.py --event 260731-1 <url>...              # 抓并落快照
+     python src/srcfetch.py --event 260731-1 --from-research <研究文件>  # 按书目批量抓
+     python src/srcfetch.py --event 260731-1 --refresh <url>       # 强制重抓（评审查新进展用）
+     python src/srcfetch.py --event 260731-1 --check <url>         # 只看快照在不在
 """
 from __future__ import annotations
 import hashlib
@@ -164,7 +166,8 @@ def save(url: str, event: str) -> Path:
     return p
 
 
-USAGE = "usage: python src/srcfetch.py --event <YYMMDD-N> [--check] <url>..."
+USAGE = ("usage: python src/srcfetch.py --event <YYMMDD-N> "
+         "[--check] [--refresh] (<url>... | --from-research <research.md>)")
 
 
 def main(argv: list[str]) -> int:
@@ -173,22 +176,35 @@ def main(argv: list[str]) -> int:
         return 2
     i = argv.index("--event") + 1
     # 取值必须存在且不是另一个 flag——`--event` 是最后一个参数，或后面紧跟
-    # `--check` 之类，都不是合法事件号，不能当参数收下
+    # `--check` 之类，都不是合法事件号，不能当参数收下。`--from-research` 的取值
+    # 同理校验，理由一样：漏查会把下一个 flag 当文件路径吞下，报错会很远才炸出来
     if i >= len(argv) or argv[i].startswith("-"):
         print(USAGE)
         return 2
     event = argv[i]
-    check_only = "--check" in argv
+    check_only, refresh = "--check" in argv, "--refresh" in argv
     urls = [a for a in argv if a.startswith("http")]
+    if "--from-research" in argv:
+        from src.utils.research_doc import sources
+
+        j = argv.index("--from-research") + 1
+        if j >= len(argv) or argv[j].startswith("-"):
+            print(USAGE)
+            return 2
+        doc = Path(argv[j])
+        urls += [s.url for s in sources(doc.read_text(encoding="utf-8"))]
     if not urls:
         print(USAGE)
         return 2
     rc = 0
-    for u in urls:
+    for u in dict.fromkeys(urls):          # 去重且保序：CLI 直给的 URL 与研究文件里的可能重叠
         if check_only:
             snap = load(u, event)
             print(f"{'HAVE' if snap is not None else 'MISS'} {len(snap or '')} 字 {u}")
             rc = rc or (0 if snap is not None else 1)
+            continue
+        if not refresh and load(u, event) is not None:
+            print(f"SNAPSHOT SKIP {u}（已有快照；要重抓加 --refresh）")
             continue
         try:
             p = save(u, event)
