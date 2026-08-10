@@ -47,7 +47,7 @@ def test_event_of_strips_title_and_version():
     assert event_of(Path("_pipeline/review/260731-10-某标题-v3.md")) == "260731-10"
 
 
-from src.utils.research_doc import Extract, extracts, is_new_format
+from src.utils.research_doc import Extract, extracts, is_new_format, malformed_extract_heads
 
 EXTRACT_DOC = """## 信息来源
 - 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（4211字）
@@ -90,3 +90,58 @@ def test_is_new_format_keys_on_the_extract_section():
     # 新旧分派的唯一判据：在途事件不带 ## 摘录，照旧规则收尾
     assert is_new_format(EXTRACT_DOC) is True
     assert is_new_format("## 事实\n无。\n\n## 信息来源\n- 略\n") is False
+
+
+# ---- 第二轮修复：畸形标签必须响，不能被吞进上一条摘录的 body ----
+
+MISATTACH_DOC = """## 摘录
+[E1] 信源1 · 正文原话 · 2026-08-07
+她说她不认识对方
+
+[E2]信源2 · 正文原话 · 2026-08-07
+警方通报称视频系拼接
+"""
+
+
+def test_malformed_head_does_not_leak_body_into_prior_extract():
+    # 最重要的一条：]后缺空格的 [E2] 解析不出来时，它的正文不能被并进 E1——
+    # 那样闸口逐字核对会拿 E1 的身份核过 E2 的引文，命中的却是错的一条。
+    es = extracts(MISATTACH_DOC)
+    assert [e.eid for e in es] == [1]
+    assert es[0].body == "她说她不认识对方"
+    assert "警方通报称视频系拼接" not in es[0].body
+
+
+def test_malformed_extract_heads_flags_common_typos():
+    doc = """## 摘录
+[E1] 信源1·正文原话·2026-08-07
+甲
+[E2]信源2 · 正文原话 · 2026-08-07
+乙
+- [E3] 信源3 · 正文原话 · 2026-08-07
+丙
+[E4a] 信源4 · 正文原话 · 2026-08-07
+丁
+"""
+    heads = malformed_extract_heads(doc)
+    assert len(heads) == 4
+    assert "[E1]" in heads[0]   # · 两侧缺空格
+    assert "[E2]" in heads[1]   # ] 后缺空格
+    assert "[E3]" in heads[2]   # 行首多了 "- " 列表前缀
+    assert "[E4a]" in heads[3]  # eid 非纯数字
+
+
+def test_malformed_extract_heads_empty_for_well_formed_doc():
+    assert malformed_extract_heads(EXTRACT_DOC) == []
+
+
+def test_inline_e_reference_in_body_not_flagged_as_malformed_head():
+    # 正文里的 [E99] 引用不在行首，不能被 LOOSE_HEAD_RE 误判成畸形标签
+    doc = """## 摘录
+[E1] 信源1 · 正文原话 · 2026-08-07
+参见[E99]相关表述
+"""
+    assert malformed_extract_heads(doc) == []
+    es = extracts(doc)
+    assert len(es) == 1
+    assert es[0].body == "参见[E99]相关表述"

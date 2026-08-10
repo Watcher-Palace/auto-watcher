@@ -59,6 +59,9 @@ def event_of(path: Path) -> str:
 # 摘录头：[E12] 信源3 · 正文原话 · 2026-08-07
 EXTRACT_HEAD_RE = re.compile(r"^\[E(\d+)\]\s+(.+?)\s+·\s+(.+?)\s+·\s+(.+?)\s*$")
 E_REF_RE = re.compile(r"\[E(\d+)\]")
+# 宽判据：看起来想当摘录标签（行首 [E...，容许误加的列表前缀），但不保证真解析得出来。
+# 只用来识别"标签写歪了"的行——EXTRACT_HEAD_RE 本身不放宽，格式漂移不能被悄悄吃掉。
+LOOSE_HEAD_RE = re.compile(r"^-?\s*\[E")
 # 只有 正文原话 能作写手灰字的依据；标题惯把第三人称改写成第一人称，转述同理。
 # 图上转录指向资产图，图是二进制、字节比对不成立，是「有出处但机械核不了」的唯一缺口。
 FORMS = {"正文原话", "第三人称转述", "标题", "图上转录"}
@@ -76,19 +79,39 @@ class Extract:
 def extracts(text: str) -> list[Extract]:
     out: list[Extract] = []
     buf: list[str] = []
+    # 上一行是畸形标签：正文归属未知，之后的行一律不并入任何摘录，直到下一个合法标签
+    # 出现为止——否则畸形标签自己的正文会被静静并进上一条摘录，冒充它的引文核过闸口。
+    orphaned = False
     for ln in (sections(text).get("摘录") or "").splitlines():
-        m = EXTRACT_HEAD_RE.match(ln.strip())
+        s = ln.strip()
+        m = EXTRACT_HEAD_RE.match(s)
         if m:
-            if out:
+            if out and not orphaned:
                 out[-1].body = " ".join(buf).strip()
             buf = []
+            orphaned = False
             out.append(Extract(eid=int(m.group(1)), ref=m.group(2).strip(),
                                form=m.group(3).strip(), fetched=m.group(4).strip(),
                                body=""))
-        elif out and ln.strip() and not ln.strip().startswith("<!--"):
-            buf.append(ln.strip())
-    if out:
+        elif LOOSE_HEAD_RE.match(s):
+            if out and not orphaned:
+                out[-1].body = " ".join(buf).strip()
+            buf = []
+            orphaned = True
+        elif not orphaned and out and s and not s.startswith("<!--"):
+            buf.append(s)
+    if out and not orphaned:
         out[-1].body = " ".join(buf).strip()
+    return out
+
+
+def malformed_extract_heads(text: str) -> list[str]:
+    """`## 摘录` 里像标签却解析不了的行，原样返回供 linter 报违规。"""
+    out: list[str] = []
+    for ln in (sections(text).get("摘录") or "").splitlines():
+        s = ln.strip()
+        if LOOSE_HEAD_RE.match(s) and not EXTRACT_HEAD_RE.match(s):
+            out.append(s)
     return out
 
 
