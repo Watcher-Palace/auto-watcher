@@ -814,7 +814,30 @@ EOF
    `research_doc.malformed_extract_heads(text) -> list[str]`。**本任务必须消费它，每条畸形
    标签出一条 lint 违规**，不许让它只是个没人调的函数。
 
-4. **Step 1 说的是 5 个失败，不是 4 个**：`test_same_quote_present_in_an_excerpt_passes`、
+4. **未知 `## ` 节标题必须报违规**（Task 4 评审的 Critical，**本重构最危险的一个静默口子**）。
+   `sections()` 按 `## ` 切分，所以摘录正文里一旦出现以 `## ` 开头的行，该行之后的一切
+   ——包括后面所有**格式完全合规**的摘录——会从 `extracts()` 与 `malformed_extract_heads()`
+   **同时**消失，无报错无痕迹。实测复现：
+
+   ```
+   ## 摘录
+   [E1] 信源1 · 正文原话 · 2026-08-07
+   她说她不认识对方
+   ## 网友评论区截图说明        ← 任何未预期的二级标题
+   [E2] 信源2 · 正文原话 · 2026-08-07     ← 合法，但蒸发
+   [E3]信源3 · 标题 · 2026-08-07          ← 畸形，也蒸发
+   ```
+   → `extracts()` 只返回 E1，`malformed_extract_heads()` 返回空。两层检测一起哑火。
+
+   这个缺陷**不能在解析层修**：让 `extracts()` 跳过未知标题继续吃，等于把异常悄悄吞掉，
+   方向错了；`## ` 切分本身又是 Task 2 定的规格。正确位置就是本任务的策略层：
+
+   现有 `REQUIRED = ("事实", "当事方", "信息来源", "资产")` **只检查必需节存在，不检查有没有
+   多出来的节**，所以今天任何未知标题都能过闸。本任务把 `摘录` 并入已知集合后，**必须补一条
+   闸口：`set(sections(text))` 里出现已知集合之外的标题即报违规**。这样是在成因处拦截，
+   不依赖"有没有东西恰好被搁浅"。
+
+5. **Step 1 说的是 5 个失败，不是 4 个**：`test_same_quote_present_in_an_excerpt_passes`、
    `test_verbatim_quote_absent_from_snapshot_fails`、`test_verbatim_quote_present_in_snapshot_passes`、
    `test_missing_snapshot_warns_not_fails`、`test_non_verbatim_form_not_checked_against_snapshot`。
 
