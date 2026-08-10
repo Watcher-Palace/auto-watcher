@@ -54,3 +54,44 @@ def event_of(path: Path) -> str:
     if not m:
         raise ValueError(f"文件名不含事件标识（YYMMDD-N-）：{path.name}")
     return m.group(1)
+
+
+# 摘录头：[E12] 信源3 · 正文原话 · 2026-08-07
+EXTRACT_HEAD_RE = re.compile(r"^\[E(\d+)\]\s+(.+?)\s+·\s+(.+?)\s+·\s+(.+?)\s*$")
+E_REF_RE = re.compile(r"\[E(\d+)\]")
+# 只有 正文原话 能作写手灰字的依据；标题惯把第三人称改写成第一人称，转述同理。
+# 图上转录指向资产图，图是二进制、字节比对不成立，是「有出处但机械核不了」的唯一缺口。
+FORMS = {"正文原话", "第三人称转述", "标题", "图上转录"}
+
+
+@dataclass
+class Extract:
+    eid: int
+    ref: str          # "信源N" 或 "资产 <文件名>"
+    form: str
+    fetched: str      # 快照日期，图上转录为 "—"
+    body: str
+
+
+def extracts(text: str) -> list[Extract]:
+    out: list[Extract] = []
+    buf: list[str] = []
+    for ln in (sections(text).get("摘录") or "").splitlines():
+        m = EXTRACT_HEAD_RE.match(ln.strip())
+        if m:
+            if out:
+                out[-1].body = " ".join(buf).strip()
+            buf = []
+            out.append(Extract(eid=int(m.group(1)), ref=m.group(2).strip(),
+                               form=m.group(3).strip(), fetched=m.group(4).strip(),
+                               body=""))
+        elif out and ln.strip() and not ln.strip().startswith("<!--"):
+            buf.append(ln.strip())
+    if out:
+        out[-1].body = " ".join(buf).strip()
+    return out
+
+
+def is_new_format(text: str) -> bool:
+    """有 ## 摘录 节＝两层制新格式。在途事件不带这一节，走旧规则收尾。"""
+    return "摘录" in sections(text)
