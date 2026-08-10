@@ -9,7 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # 与 research_linter.SRC_PARSE_RE 同形：- YYYY.MM.DD，来源名。*标题*。URL 其余
-SRC_PARSE_RE = re.compile(r"^- (\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。(\S+)(.*)$")
+# URL 段排除全角破折号「—」：" — " 缺空格时（如 "URL—快照失败：..."）\S+ 会把破折号
+# 后的内容整段吞进 URL，「快照失败」标记随之从 tail 消失，snapshot_failed 被静默
+# 判成 False——而这里解析出的 Source 直接喂给 srcfetch --from-research（研究阶段
+# 抓快照时，文件还没被 research_linter lint 过），静默口子不能只堵在 linter 一侧。
+SRC_PARSE_RE = re.compile(r"^- (\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。([^\s—]+)(.*)$")
 SNAPSHOT_FAILED = "快照失败"
 _EVENT_RE = re.compile(r"^(\d{6}-\d+)-")
 
@@ -59,9 +63,12 @@ def event_of(path: Path) -> str:
 # 摘录头：[E12] 信源3 · 正文原话 · 2026-08-07
 EXTRACT_HEAD_RE = re.compile(r"^\[E(\d+)\]\s+(.+?)\s+·\s+(.+?)\s+·\s+(.+?)\s*$")
 E_REF_RE = re.compile(r"\[E(\d+)\]")
-# 宽判据：看起来想当摘录标签（行首 [E...，容许误加的列表前缀），但不保证真解析得出来。
-# 只用来识别"标签写歪了"的行——EXTRACT_HEAD_RE 本身不放宽，格式漂移不能被悄悄吃掉。
-LOOSE_HEAD_RE = re.compile(r"^-?\s*\[E")
+# 宽判据：看起来想当摘录标签（行首 [E...，容许误加的列表前缀 ／ 全角方括号），但不保证
+# 真解析得出来。只用来识别"标签写歪了"的行——EXTRACT_HEAD_RE 本身不放宽，格式漂移不能
+# 被悄悄吃掉。左方括号接受全角「［」：中文输入法全角/半角切换下默认敲出的就是它，不是
+# 边缘输入；不放宽会导致该行既不匹配 EXTRACT_HEAD_RE 也不匹配这条宽判据，从而被当成普通
+# 正文并入上一条摘录的 body（Task 4 修过的误挂，原样在全角方括号上复现）。
+LOOSE_HEAD_RE = re.compile(r"^-?\s*[\[［]E")
 # 只有 正文原话 能作写手灰字的依据；标题惯把第三人称改写成第一人称，转述同理。
 # 图上转录指向资产图，图是二进制、字节比对不成立，是「有出处但机械核不了」的唯一缺口。
 FORMS = {"正文原话", "第三人称转述", "标题", "图上转录"}

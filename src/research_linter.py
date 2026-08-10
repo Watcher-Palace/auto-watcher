@@ -50,7 +50,12 @@ KNOWN_SECTIONS_NEW = set(REQUIRED) | {"摘录"}
 # 于实际抽取，改了两处必须同改），而是在这个纯格式校验正则里收紧，让缺空格的行
 # 直接报格式违规——把静默误判变成响的失败。
 SRC_RE = re.compile(r"^- \d{4}\.\d{2}\.\d{2}，.+?。\*.+?\*。[^\s—]+(?: — .+)?$")
-SRC_PARSE_RE = re.compile(r"^- (\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。(\S+)(.*)$")
+# 与 research_doc.SRC_PARSE_RE 同形——两处必须同改，不许留一边旧一边新。旧格式的
+# `_lint_legacy` 在解析前已经过 SRC_RE 这道格式闸，但 research_doc.sources() 是
+# 独立的第二条解析路径（`_lint_extracts`/`srcfetch --from-research` 都走它，后者
+# 研究阶段就会跑、文件还没被 lint 过），URL 组同样必须排除全角破折号，否则那条路径
+# 里 snapshot_failed 依旧会被静默吞成 False。
+SRC_PARSE_RE = re.compile(r"^- (\d{4}\.\d{2}\.\d{2})，(.+?)。\*(.+?)\*。([^\s—]+)(.*)$")
 UNVERIFIED = "发布日期查证失败"
 BLUE_RE = re.compile(r'<font color="blue">(.*?)</font>', re.S)
 DATE_IN_RE = re.compile(r"\d{4}年|\d{1,2}月\d{1,2}日")

@@ -145,3 +145,36 @@ def test_inline_e_reference_in_body_not_flagged_as_malformed_head():
     es = extracts(doc)
     assert len(es) == 1
     assert es[0].body == "参见[E99]相关表述"
+
+
+# ---- fix 轮 1：全角方括号标签、SRC_PARSE_RE 贪婪吃 URL（两处结转的真缺口） ----
+
+def test_fullwidth_bracket_head_is_flagged_not_swallowed_into_prior_body():
+    # 中文输入法全角/半角切换下默认敲出的就是全角方括号「［］」，不是边缘输入。
+    # LOOSE_HEAD_RE 若只认半角 [，这行既不匹配 EXTRACT_HEAD_RE 也不匹配 LOOSE_HEAD_RE，
+    # 会被当成普通正文并入上一条摘录的 body——Task 4 修过的同一种误挂，原样在全角上复现。
+    doc = """## 摘录
+[E1] 信源1 · 正文原话 · 2026-08-07
+她说她不认识对方
+［E2］ 信源2 · 正文原话 · 2026-08-07
+警方通报称视频系拼接
+"""
+    es = extracts(doc)
+    assert [e.eid for e in es] == [1]
+    assert es[0].body == "她说她不认识对方"
+    assert "警方通报称视频系拼接" not in es[0].body
+    heads = malformed_extract_heads(doc)
+    assert len(heads) == 1
+    assert "［E2］" in heads[0]
+
+
+def test_sources_url_stops_before_glued_snapshot_failed_tag():
+    # " — " 缺空格时（如 "URL—快照失败：..."）旧正则的 (\S+) 会把破折号后的内容整段
+    # 吞进 URL，snapshot_failed 因此被静默判成 False。这里解析出的 Source 直接喂给
+    # srcfetch --from-research（研究阶段跑它时文件还没被 research_linter lint 过），
+    # 静默口子不能只靠下游 linter 挡。
+    doc = ("## 信息来源\n"
+           "- 2026.07.31，某站。*标题甲*。https://a.example/1—快照失败：25s无响应\n")
+    ss = sources(doc)
+    assert ss[0].url == "https://a.example/1"
+    assert ss[0].snapshot_failed is True

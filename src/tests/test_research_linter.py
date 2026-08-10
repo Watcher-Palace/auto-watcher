@@ -288,6 +288,21 @@ def test_source_line_glued_snapshot_failed_tag_is_a_format_violation(tmp_path, m
     assert any("来源行" in v and not v.startswith("WARN：") for v in vs)
 
 
+def test_glued_snapshot_failed_source_is_recognized_as_failed_not_just_missing(tmp_path, monkeypatch):
+    # fix 轮 1：research_doc.SRC_PARSE_RE 的 URL 组也要收紧（与 research_linter.SRC_RE
+    # 同形关系，两处必须同改）——它是 doc_sources()/_lint_extracts 走的独立解析路径，
+    # 不经过 SRC_RE 这道格式闸。收紧前，即便 _lint_source_lines 已经报了格式违规，
+    # 这里解析出的 Source.snapshot_failed 依旧是 False，一条 正文原话 摘录引用它时
+    # 只会撞上笼统的"无快照"，而不是更准确、更能提示"这条来源本就抓不到"的
+    # "标了 快照失败，不得作 正文原话 依据"。
+    doc = (NEW_DOC.replace(
+        "https://a.example/1 — 快照 2026-08-07（900字）",
+        "https://a.example/1—快照失败：25s无响应",
+    ).replace("[E1] 信源1 · 第三人称转述", "[E1] 信源1 · 正文原话"))
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("快照失败" in v and "正文原话" in v and "[E1]" in v for v in vs)
+
+
 def test_source_line_with_proper_spacing_still_passes(tmp_path, monkeypatch):
     # 收紧 SRC_RE 的同时不能误伤写对了的行——" — " 两侧带空格必须照常放行。
     # 用独立事件号 260731-9（不复用 _new_doc 的 260731-1），避免与
