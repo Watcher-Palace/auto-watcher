@@ -272,3 +272,91 @@ def test_asset_transcription_skips_snapshot_check(tmp_path, monkeypatch):
     _snap(tmp_path, monkeypatch, "https://a.example/1", SNAP_BODY)
     p.write_text(doc, encoding="utf-8")
     assert [v for v in lint_research(p) if not v.startswith("WARN：")] == []
+
+
+# ---- 从前序任务结转的四项，本任务必须一并处理（见 brief 开头） ----
+
+def test_source_line_glued_snapshot_failed_tag_is_a_format_violation(tmp_path, monkeypatch):
+    # 结转项 1：SRC_PARSE_RE 的 (\S+) 会贪婪吃 URL。" — " 缺空格时"快照失败"整段被吞进
+    # url，snapshot_failed 会被静默判成 False（实测复现 https://b.example/2—快照失败：
+    # 25s无响应）。SRC_RE 收紧后，缺空格必须在这里就响一条格式违规，不能悄悄放过。
+    doc = NEW_DOC.replace(
+        "https://a.example/1 — 快照 2026-08-07（900字）",
+        "https://a.example/1—快照失败：25s无响应",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("来源行" in v and not v.startswith("WARN：") for v in vs)
+
+
+def test_source_line_with_proper_spacing_still_passes(tmp_path, monkeypatch):
+    # 收紧 SRC_RE 的同时不能误伤写对了的行——" — " 两侧带空格必须照常放行。
+    # 用独立事件号 260731-9（不复用 _new_doc 的 260731-1），避免与
+    # test_asset_transcription_skips_snapshot_check 共享 tmp_path.parent/draft/
+    # 260731-1-assets/——_lint_assets 按 path.parent.parent 推导资产目录，
+    # 那是跨用例共享的 pytest 会话临时根目录，不是每个用例独立的 tmp_path，
+    # 该用例真的在那里落过一个文件，顺序在后的用例会看见它。
+    _snap(tmp_path, monkeypatch, "https://a.example/1", SNAP_BODY, event="260731-9")
+    doc = NEW_DOC.replace("(260731, #1)", "(260731, #9)")
+    p = tmp_path / "260731-9-标题.md"
+    p.write_text(doc, encoding="utf-8")
+    assert lint_research(p) == []
+
+
+def test_multiline_extract_body_fully_checked_not_just_first_line(tmp_path, monkeypatch):
+    # 结转项 2：一个 [E] 标签下若排成多行/多句，必须整段都核对，不能只核第一句就放行——
+    # 否则"一个标签管多句"时后半句的伪造会被漏判（Task 3 评审：临时核对脚本 14 条摘录
+    # 只覆盖到 3 条，正是这种写法漏的）。此处只有第一句在快照里，第二句是编的。
+    doc = NEW_DOC.replace(
+        "[E2] 信源1 · 正文原话 · 2026-08-07\n我有一度想从这个楼上我就直接跳下去了",
+        "[E2] 信源1 · 正文原话 · 2026-08-07\n"
+        "我有一度想从这个楼上我就直接跳下去了\n随后又被送去了精神病院",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("不在原文快照里" in v and "[E2]" in v for v in vs)
+
+
+NEW_DOC_3E = NEW_DOC.replace(
+    "[E2] 信源1 · 正文原话 · 2026-08-07\n我有一度想从这个楼上我就直接跳下去了\n",
+    "[E2] 信源1 · 正文原话 · 2026-08-07\n我有一度想从这个楼上我就直接跳下去了\n"
+    "[E3] 信源1 · 正文原话 · 2026-08-07\n这句话是编的\n",
+).replace("自述曾有轻生念头[E2]。", "自述曾有轻生念头[E2][E3]。")
+
+
+def test_third_of_three_extracts_is_still_checked_not_sampled_away(tmp_path, monkeypatch):
+    # 结转项 2 的另一面：证明没有早停/抽样上限——第三条（也是最后一条）摘录同样要核，
+    # 不能因为前两条核过了就放过它
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, NEW_DOC_3E))
+    assert any("不在原文快照里" in v and "[E3]" in v for v in vs)
+
+
+def test_malformed_extract_head_is_flagged(tmp_path, monkeypatch):
+    # 结转项 3：] 后缺空格这四类手误，原实现会静默丢弃整条摘录、把正文并入上一条——
+    # 那是误挂不是漏判（E2 的引文会拿 E1 的身份通过核对）。必须消费
+    # research_doc.malformed_extract_heads()，每条畸形标签单独出一条违规。
+    doc = NEW_DOC.replace(
+        "[E2] 信源1 · 正文原话 · 2026-08-07",
+        "[E2]信源1 · 正文原话 · 2026-08-07",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("[E2]" in v and not v.startswith("WARN：") for v in vs)
+
+
+def test_unknown_section_heading_inside_extracts_is_flagged(tmp_path, monkeypatch):
+    # 结转项 4（本重构最危险的静默口子）：sections() 按 ## 切分，## 摘录 节正文里
+    # 一旦混入未预期的二级标题，该行之后的一切——含格式完全合规的摘录——会从
+    # extracts()/malformed_extract_heads() 同时消失，无报错无痕迹。不能在解析层修
+    # （放宽解析＝把异常悄悄吞掉），只能在策略层堵成因：出现已知集合之外的标题即报违规。
+    doc = NEW_DOC.replace(
+        "[E2] 信源1 · 正文原话 · 2026-08-07\n我有一度想从这个楼上我就直接跳下去了",
+        "## 网友评论区截图说明\n"
+        "[E2] 信源1 · 正文原话 · 2026-08-07\n我有一度想从这个楼上我就直接跳下去了",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("网友评论区截图说明" in v and not v.startswith("WARN：") for v in vs)
+
+
+def test_legacy_doc_without_extract_section_unaffected_by_unknown_section_check(tmp_path):
+    # 未知章节闸口只装在 _lint_new——旧格式在途事件本就不带 ## 摘录，不该被这条新规则误伤
+    text = GOOD + "\n## 编辑注\n与本案无关的备注\n"
+    vs = lint_research(_mk(tmp_path, text))
+    assert not any("未知章节" in v for v in vs)
