@@ -21,14 +21,14 @@ try:
     from src.linter import tracked_uids
     from src.srcfetch import load as load_snapshot, normalize as norm_quote
     from src.utils.research_doc import (
-        E_REF_RE, FORMS, event_of, extracts, is_new_format,
+        E_REF_LOOSE_RE, E_REF_RE, FORMS, event_of, extracts, is_new_format,
         malformed_extract_heads, sections as _doc_sections, sources as doc_sources,
     )
 except ImportError:  # 以脚本方式直跑时无包上下文
     from linter import tracked_uids
     from srcfetch import load as load_snapshot, normalize as norm_quote
     from utils.research_doc import (
-        E_REF_RE, FORMS, event_of, extracts, is_new_format,
+        E_REF_LOOSE_RE, E_REF_RE, FORMS, event_of, extracts, is_new_format,
         malformed_extract_heads, sections as _doc_sections, sources as doc_sources,
     )
 
@@ -161,14 +161,21 @@ def _lint_source_lines(src_text: str) -> list[str]:
 
 
 def _lint_new_source_quotes(src_text: str) -> list[str]:
-    """新格式专用：来源行尾不得内嵌引文——逐字通道只有 ## 摘录 一条。
+    """新格式专用：来源行尾不得内嵌**长**引文——逐字通道只有 ## 摘录 一条。
 
     评审实证：同一条伪造引文写在来源行尾，旧格式 FAIL（走 `_verify_quotes`），
     新格式零违规——把逐字核对接回来源行尾（`_verify_quotes`）会造出第二条逐字
     通道，与"逐字通道只有摘录层一条"的设计相反；但完全不闻不问又是覆盖倒退
     （研究 agent 从旧格式切过来，"引文写在来源行尾"是肌肉记忆，写手读的又正是
-    这份文件）。折中：只要行尾出现引号就报违规，逼着把引文挪进 ## 摘录，不在
-    这里核对内容。
+    这份文件）。折中：行尾出现够长的引号跨度就报违规，逼着把引文挪进 ## 摘录，
+    不在这里核对内容。
+
+    判据不是"出现引号字符"（复审复现三例假阳性：「深度报道」栏目名、12"／15"
+    英寸符、"回应"这类短词加引号——旧格式命中后还有补形态标注放行的逃生口，
+    新格式命中就是硬 FAIL、只能整句挪走，粗判据的误伤成本被放大，闸口一旦
+    开始误伤就会被绕开）。改用 `QUOTE_RES` 取出引号跨度、量长度是否 ≥
+    `QUOTE_MIN`——两个常量都是 `_lint_legacy` 判"是不是当真引用"现成用的，
+    不新写正则、不新引阈值。
     """
     vs: list[str] = []
     for ln in src_text.splitlines():
@@ -179,10 +186,10 @@ def _lint_new_source_quotes(src_text: str) -> list[str]:
         if not m2:
             continue
         tail = m2.group(5)
-        has_quote = "「" in tail or "“" in tail or tail.count('"') >= 2
-        if has_quote:
+        spans = [qm.group(1) for qre in QUOTE_RES for qm in qre.finditer(tail)]
+        if any(len(s.strip()) >= QUOTE_MIN for s in spans):
             vs.append(
-                f"来源行尾带着引文——新格式的引文一律写进 ## 摘录（逐字通道只有摘录层"
+                f"来源行尾带着长引文——新格式的引文一律写进 ## 摘录（逐字通道只有摘录层"
                 f"一条，来源行尾的引文不会被核对，也不会被写手看到）：{ln[:40]}"
             )
     return vs
@@ -333,7 +340,10 @@ def lint_research(path: Path) -> list[str]:
         dupes = sorted({h for h in heads if heads.count(h) > 1})
         return [
             f"存在同名重复的二级标题：{'、'.join(dupes)}——sections() 是 dict，"
-            "同名节后者覆盖前者，前一节的全部内容会被整节静默丢弃"
+            "同名节后者覆盖前者，前一节的全部内容会被整节静默丢弃。若并非笔误新增了"
+            "两个真实标题，也可能是 ## 摘录 里某条逐字引文本身顶格写着「## 事实」"
+            "一类文本（判决书/聊天记录转录场景常见）——同样会被切开、吞掉其后内容；"
+            "这种情况应让该行不顶格（缩进或加前缀），不要改引文的字（摘录必须逐字）"
         ]
     if is_new_format(text):
         return _lint_new(path, text)
@@ -343,8 +353,11 @@ def lint_research(path: Path) -> list[str]:
     # 旧闸口对摘录层一无所知，会让整套新闸口连跑都没跑却仍报"过了"，是"闸口失效
     # 不会有人发现"的教科书形态。判据取全文而非只取 事实/当事方 两节：更严格，
     # 也能兜住"标题缺空格且事实层恰好没挂 [E]"这类变体，140 份存量实测假阳性仍是 0。
+    # [E] 判据用 E_REF_LOOSE_RE（收全半角方括号）而非 E_REF_RE——复审复现：标题漂成
+    # 不含"摘录"的变体、且全文 [E] 引用全写成全角 ［E1］ 时，E_REF_RE 只认半角会同样
+    # 落空，两个兜底判据一起哑火。E_REF_RE 本身不放宽，理由见该常量的定义处注释。
     drifted = [k for k in secs if "摘录" in k]
-    if drifted or E_REF_RE.search(text):
+    if drifted or E_REF_LOOSE_RE.search(text):
         return [
             f"疑似新格式但没有恰好名为 ## 摘录 的节（现有：{drifted or '无'}）——"
             "摘录层闸口会被整体跳过，必须把标题改回 ## 摘录"

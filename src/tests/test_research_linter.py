@@ -441,15 +441,47 @@ def test_unverified_date_marker_no_longer_triggers_the_consistency_gate(tmp_path
 def test_new_format_source_tail_with_embedded_quote_is_flagged(tmp_path, monkeypatch):
     # I-2：新格式的逐字通道只有 ## 摘录 一条，_lint_new 连 _verify_quotes 一起丢了，
     # 但没有任何检查强制"来源行尾不能带引文"——同一条伪造引文写在来源行尾，旧格式
-    # FAIL、新格式零违规，比它取代的旧闸口更松且无声。行尾出现引号必须报违规，
-    # 逼着把引文挪进 ## 摘录（不在这里核对内容——_verify_quotes 不接回 _lint_new，
-    # 那会造出第二条逐字通道）。
+    # FAIL、新格式零违规，比它取代的旧闸口更松且无声。行尾出现够长的引号跨度必须
+    # 报违规，逼着把引文挪进 ## 摘录（不在这里核对内容——_verify_quotes 不接回
+    # _lint_new，那会造出第二条逐字通道）。真·内嵌长引文（10 字）必须仍被拦下——
+    # 只加放行测试而不钉住拦截行为，等于把闸口拆了没人知道（F-2 收工要求）。
     doc = NEW_DOC.replace(
         "https://a.example/1 — 快照 2026-08-07（900字）",
         "https://a.example/1 — 「我当时真的撑不下去了」（正文原话）",
     )
     vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
-    assert any("来源行尾带着引文" in v for v in vs)
+    assert any("来源行尾带着长引文" in v for v in vs)
+
+
+def test_source_tail_column_name_in_brackets_not_flagged(tmp_path, monkeypatch):
+    # F-2 假阳性 1：「深度报道」是栏目名不是引文，跨度只有 4 字，< QUOTE_MIN(8)
+    doc = NEW_DOC.replace(
+        "https://a.example/1 — 快照 2026-08-07（900字）",
+        "https://a.example/1 — 快照 2026-08-07（900字），系「深度报道」栏目稿",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("来源行尾带着长引文" in v for v in vs)
+
+
+def test_source_tail_inch_marks_not_flagged(tmp_path, monkeypatch):
+    # F-2 假阳性 2：12"／15" 是英寸符，两个 ASCII 双引号凑够 count>=2 的旧判据会
+    # 误报；跨度（"与 15" 去空白后）远小于 QUOTE_MIN
+    doc = NEW_DOC.replace(
+        "https://a.example/1 — 快照 2026-08-07（900字）",
+        "https://a.example/1 — 快照 2026-08-07（900字），涉案显示器 12\" 与 15\" 两款",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("来源行尾带着长引文" in v for v in vs)
+
+
+def test_source_tail_short_fullwidth_quote_not_flagged(tmp_path, monkeypatch):
+    # F-2 假阳性 3（复审补试，原评审没试全角引号）："回应"二字，跨度 2 字
+    doc = NEW_DOC.replace(
+        "https://a.example/1 — 快照 2026-08-07（900字）",
+        "https://a.example/1 — 快照 2026-08-07（900字），标题含“回应”二字",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("来源行尾带着长引文" in v for v in vs)
 
 
 def test_duplicate_摘录_section_heading_is_flagged(tmp_path, monkeypatch):
@@ -481,3 +513,34 @@ def test_filename_without_event_prefix_is_a_lint_violation_not_a_traceback(tmp_p
     p.write_text(GOOD, encoding="utf-8")
     vs = lint_research(p)
     assert any("事件标识" in v for v in vs)
+
+
+# ==================== fix 轮 3（复审 task-5-rereview2.md）====================
+
+def test_drifted_title_with_fullwidth_e_refs_is_not_downgraded(tmp_path, monkeypatch):
+    # F-1（C-1 残余）：复审复现的复合绕过——标题改成不含"摘录"子串的 ## 引文摘编，
+    # 且全文所有 [E] 引用（含事实/当事方叙述句里的）都写成全角 ［E1］／［E2］，
+    # 两个兜底判据同时落空（标题不含"摘录"、E_REF_RE 只认半角）。改用
+    # E_REF_LOOSE_RE（收全半角方括号，只给这条兜底用，不放宽 E_REF_RE 本身）后
+    # 必须重新被拦下。
+    doc = (
+        NEW_DOC.replace("## 摘录\n", "## 引文摘编\n")
+        .replace("[E1]", "［E1］")
+        .replace("[E2]", "［E2］")
+        .replace("被给予行政拘留五日", "被给予行政拘留十年")  # 正文也换成编的
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert vs != []
+    assert any("摘录" in v for v in vs)
+
+
+def test_duplicate_section_message_points_at_flush_left_line_in_excerpt(tmp_path, monkeypatch):
+    # F-3：逻辑不改（摘录正文里顶格的 ## 事实 确实会被 sections() 切开、吞掉其后
+    # 内容，检测和严重度都是对的），只在消息里补一句诊断线索：这也可能来自摘录
+    # 正文里的顶格 ## 行，处理办法是让该行不顶格，不是改引文的字（摘录必须逐字）。
+    doc = NEW_DOC.replace(
+        "被给予行政拘留五日",
+        "被给予行政拘留五日\n## 事实\n（判决书原文摘录，顶格小标题）",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("重复" in v and "摘录" in v and "顶格" in v for v in vs)
