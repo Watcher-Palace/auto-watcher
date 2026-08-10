@@ -3,7 +3,7 @@ import requests
 
 from src import srcfetch
 from src.srcfetch import (
-    SrcFetchError, fetch_text, load, normalize, save, snapshot_path,
+    USAGE, SrcFetchError, fetch_text, load, main, normalize, save, snapshot_path,
 )
 
 URL = "https://news.example.com/a/2026/0731/12345.shtml"
@@ -120,14 +120,11 @@ def test_chrome_blocks_are_stripped_by_class_and_id(monkeypatch):
     html = (
         '<div class="nav">网易首页 应用 网易新闻 网易公开课</div>'
         '<div class="article-header"><h1>保时捷女销冠起诉造黄谣者</h1></div>'
-        "<p>牟倩文说，他一直都没道歉。</p>"
+        "<p>牟倩文说，他一直都没道歉。" + "正文" * 100 + "</p>"
         '<div id="footer">© 1997-2026 网易公司版权所有 联系方法 招聘信息</div>'
         '<div class="recommend-list">罗永浩罕见夸赞 军事要闻 乌防空导弹严重短缺</div>'
     )
     monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResp(html))
-    # 剥完 chrome 后正文仅 20 余字，低于 MIN_TEXT=200 会触发无头浏览器兜底、打真实网络请求，
-    # 与本仓库"测试全程 hermetic"的约定冲突；此处只测 class/id 剥除逻辑，与 MIN_TEXT 兜底无关，故临时调低
-    monkeypatch.setattr(srcfetch, "MIN_TEXT", 0)
     text = fetch_text(URL)
     assert "他一直都没道歉" in text
     assert "网易首页" not in text and "版权所有" not in text and "罗永浩" not in text
@@ -138,3 +135,26 @@ def test_article_header_survives_stripping(monkeypatch):
     html = '<div class="article-header"><h1>' + "标题" * 100 + "</h1></div>"
     monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResp(html))
     assert "标题标题" in fetch_text(URL)
+
+
+# 以下四条都在发起任何抓取之前就返回（拒绝路径），天然 hermetic，不需要 mock 网络——
+# 提前返回正是要测的性质，mock 掉网络反而会掩盖这一点
+def test_main_with_no_args_prints_usage(capsys):
+    assert main([]) == 2
+    assert capsys.readouterr().out.strip() == USAGE
+
+
+def test_main_with_event_missing_value_prints_usage(capsys):
+    assert main(["--event"]) == 2
+    assert capsys.readouterr().out.strip() == USAGE
+
+
+def test_main_with_event_value_swallowing_flag_prints_usage(capsys):
+    # `--event --check <url>` 不能把 `--check` 当成事件号收下
+    assert main(["--event", "--check", "https://a/b"]) == 2
+    assert capsys.readouterr().out.strip() == USAGE
+
+
+def test_main_with_event_but_no_url_prints_usage(capsys):
+    assert main(["--event", "260731-1"]) == 2
+    assert capsys.readouterr().out.strip() == USAGE

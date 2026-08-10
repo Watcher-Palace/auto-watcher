@@ -164,15 +164,24 @@ def save(url: str, event: str) -> Path:
     return p
 
 
+USAGE = "usage: python src/srcfetch.py --event <YYMMDD-N> [--check] <url>..."
+
+
 def main(argv: list[str]) -> int:
     if "--event" not in argv:
-        print("usage: python src/srcfetch.py --event <YYMMDD-N> [--check] <url>...")
+        print(USAGE)
         return 2
-    event = argv[argv.index("--event") + 1]
+    i = argv.index("--event") + 1
+    # 取值必须存在且不是另一个 flag——`--event` 是最后一个参数，或后面紧跟
+    # `--check` 之类，都不是合法事件号，不能当参数收下
+    if i >= len(argv) or argv[i].startswith("-"):
+        print(USAGE)
+        return 2
+    event = argv[i]
     check_only = "--check" in argv
     urls = [a for a in argv if a.startswith("http")]
     if not urls:
-        print("usage: python src/srcfetch.py --event <YYMMDD-N> [--check] <url>...")
+        print(USAGE)
         return 2
     rc = 0
     for u in urls:
