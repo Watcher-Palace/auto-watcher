@@ -808,7 +808,13 @@ EOF
    并且要有一条测试专门验证多句引号共用一个标签时每句都被核对——欠采样的闸口比没有闸口
    更坏，因为它会让人以为查过了。
 
-3. **Step 1 说的是 5 个失败，不是 4 个**：`test_same_quote_present_in_an_excerpt_passes`、
+3. **畸形摘录标签必须报违规**（Task 4 实测）。`## 摘录` 里 `] ` 后缺空格、`·` 两侧缺空格、
+   行首多 `- `、eid 非纯数字这四类手误，原实现会**静默丢弃整条摘录、并把它的正文并进上一条
+   的 body**——那不是漏判是误挂：属于 E2 的引文会拿 E1 的身份通过核对。Task 4 已加
+   `research_doc.malformed_extract_heads(text) -> list[str]`。**本任务必须消费它，每条畸形
+   标签出一条 lint 违规**，不许让它只是个没人调的函数。
+
+4. **Step 1 说的是 5 个失败，不是 4 个**：`test_same_quote_present_in_an_excerpt_passes`、
    `test_verbatim_quote_absent_from_snapshot_fails`、`test_verbatim_quote_present_in_snapshot_passes`、
    `test_missing_snapshot_warns_not_fails`、`test_non_verbatim_form_not_checked_against_snapshot`。
 
