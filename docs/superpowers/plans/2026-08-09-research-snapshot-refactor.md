@@ -793,7 +793,8 @@ EOF
 - Consumes: `research_doc.{sources, extracts, is_new_format, event_of, FORMS}`、`srcfetch.{load, normalize}`
 - Produces: `research_linter.lint_research(path: Path) -> list[str]`（签名不变，内部分派）
 
-**从前序任务结转的三项，本任务必须一并处理（2026-08-10 追加）：**
+**从前序任务结转的四项 ＋ 一处更正，本任务必须一并处理（2026-08-10 追加）。
+本任务因此是全计划最重的一个：前四条各自都是「闸口静默失效」，正是这轮重构存在的理由。**
 
 1. **`SRC_PARSE_RE` 的 `(\S+)` 贪婪吃 URL**（Task 2 评审的 Important）。` — ` 缺空格时
    「快照失败」会被吞进 URL，`snapshot_failed` 静默判成 False，实测：
