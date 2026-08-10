@@ -1141,6 +1141,18 @@ EOF
 
 ### Task 6: research_linter 事实层 `[E]` 覆盖闸口
 
+**从 Task 5 结转的两项（先读，再看下面的 Steps）：**
+
+1. **Step 3 里 `_lint_new` 的完整函数体是写在 Task 5 之前的旧状态，不是要你照抄覆盖。**
+   现树上的 `_lint_new` 已经带着 Task 5 落的未知章节闸口（`KNOWN_SECTIONS_NEW`）、
+   来源行引号闸口、重名节检查等。本任务只做一件事：把 `_lint_facts` **插进**现有
+   `_lint_new`（位置在 `_lint_extracts` 之后、`_lint_blue` 之前），复用它已经拿到的
+   `failed`。**照抄整段会静默删掉 Task 5 的闸口**——那正是本重构反复在修的失败模式。
+2. **Step 1 的 8 个测试全部走 `_new_doc`，而 `_new_doc` 在 Task 5 的 fix 轮 2 已改为把
+   研究文件写到 `tmp_path/"research"/`。** 照抄测试即可，不要把路径改回 `tmp_path/` 根：
+   落在根上时 `_lint_assets` 的 `path.parent.parent` 会指到 pytest 整场共享的 basetemp，
+   前面用例落下的资产文件会让这 8 个测试里的 4 个随机变红（Task 5 评审已实证复现）。
+
 **Files:**
 - Modify: `src/research_linter.py`
 - Test: `src/tests/test_research_linter.py`
