@@ -544,3 +544,69 @@ def test_duplicate_section_message_points_at_flush_left_line_in_excerpt(tmp_path
     )
     vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
     assert any("重复" in v and "摘录" in v and "顶格" in v for v in vs)
+
+
+# ==================== Task 6：事实层 [E] 覆盖闸口 ====================
+
+def test_sentence_without_any_extract_ref_fails(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace(
+        "**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。",
+        "**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头。她连续三年为该中心销售冠军[E2]。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("无 [E] 出处" in v for v in vs)
+
+
+def test_short_fragment_is_not_treated_as_a_sentence(tmp_path, monkeypatch):
+    # 小标题、分组行不该误报——去掉 [E] 与标记后不足 8 个汉字的不算句子
+    doc = NEW_DOC.replace("## 当事方\n", "## 当事方\n**两组报道不一：**\n")
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []
+
+
+def test_reference_to_undefined_extract_fails(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("自述曾有轻生念头[E2]", "自述曾有轻生念头[E2][E9]")
+    assert any("不存在的 [E9]" in v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc)))
+
+
+def test_verification_failure_mark_is_exempt(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n**查证失败（评审v3-问题2）**：男子是否道歉过，多方检索无法证实。\n",
+    )
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []
+
+
+def test_search_record_mark_is_exempt(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace(
+        "## 事实\n",
+        "## 事实\n**检索记录**：检索至2026年8月9日未见后续实质性进展报道。\n",
+    )
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []
+
+
+def test_snapshot_failed_source_may_not_solely_back_a_fact(tmp_path, monkeypatch):
+    doc = (NEW_DOC.replace("— 快照 2026-08-07（900字）", "— 快照失败：25s 无响应")
+                  .replace("[E2] 信源1 · 正文原话", "[E2] 信源1 · 标题"))
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("快照失败" in v and "单独支撑" in v for v in vs)
+
+
+def test_quote_span_must_hit_an_extract(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「我当时真的撑不下去了」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_quote_span_present_in_an_extract_passes(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「我有一度想从这个楼上我就直接跳下去了」[E2]",
+    )
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []

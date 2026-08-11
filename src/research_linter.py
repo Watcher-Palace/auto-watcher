@@ -88,6 +88,14 @@ VERIFY_MIN = 6
 # update 模式的更正说明要原样引回被推翻的错句（"原稿…误标正文原话"），那是留痕不是主张
 CORRECTION_RE = re.compile(r"更正（|误标|原稿|伪引用|查证失败")
 CORRECTION_LOOKBEHIND = 60
+# 事实层每句必须挂出处。切句后去掉 [E] 与加粗标记，汉字不足这个数的不算句子——
+# 小标题、分组行、日期前缀会被误报成"无出处"。
+SENT_SPLIT_RE = re.compile(r"(?<=[。！？])")
+SENT_MIN_CJK = 8
+CJK_RE = re.compile(r"[一-鿿]")
+# 两种句子豁免 [E]：查证失败（定义上就没有出处）、检索记录（对自身检索行为的陈述，
+# 任何信源都无法作证）。此外没有第三种。
+EXEMPT_RE = re.compile(r"\*\*查证失败（评审v\d+-问题\d+）\*\*|\*\*检索记录\*\*")
 
 
 def _slug_tokens(url: str) -> list[str]:
@@ -322,6 +330,50 @@ def _lint_extracts(path: Path, text: str) -> tuple[list[str], dict[int, bool]]:
     return vs, failed
 
 
+def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]:
+    """事实层每句必须挂 [E] 出处，引号跨度须命中某条摘录——逐字通道只有摘录层一条。"""
+    secs = _doc_sections(text)
+    es = extracts(text)
+    # \x00 不在 normalize 的剥除集里，join 后不会让引文跨两条摘录拼出假命中
+    base = "\x00".join(norm_quote(e.body) for e in es)
+    vs: list[str] = []
+    for sec in NARRATIVE_SECTIONS:
+        body = secs.get(sec) or ""
+        for raw in SENT_SPLIT_RE.split(body):
+            s = raw.strip()
+            if not s or EXEMPT_RE.search(s):
+                continue
+            if len(CJK_RE.findall(E_REF_RE.sub("", s))) < SENT_MIN_CJK:
+                continue
+            ids = [int(x) for x in E_REF_RE.findall(s)]
+            if not ids:
+                vs.append(f"## {sec} 该句无 [E] 出处：{s[:30]}")
+                continue
+            for i in ids:
+                if i not in eids:
+                    vs.append(f"## {sec} 引用了不存在的 [E{i}]：{s[:30]}")
+            known = [i for i in ids if i in eids]
+            if known and all(failed.get(i) for i in known):
+                vs.append(
+                    f"## {sec} 该句只由 快照失败 的信源单独支撑，须与另一条有快照的来源并列："
+                    f"{s[:30]}"
+                )
+        for qre in QUOTE_RES:
+            for qm in qre.finditer(body):
+                q = qm.group(1).strip()
+                if len(q) < QUOTE_MIN:
+                    continue
+                if CORRECTION_RE.search(
+                    body[max(0, qm.start() - CORRECTION_LOOKBEHIND):qm.start()]
+                ):
+                    continue
+                if norm_quote(q) not in base:
+                    vs.append(
+                        f"## {sec} 的引号跨度未命中任何摘录（摘录层是唯一逐字来源）：{q[:30]}"
+                    )
+    return vs
+
+
 def lint_research(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     try:
@@ -379,8 +431,9 @@ def _lint_new(path: Path, text: str) -> list[str]:
             )
     vs += _lint_source_lines(secs.get("信息来源") or "")
     vs += _lint_new_source_quotes(secs.get("信息来源") or "")
-    ex_vs, _failed = _lint_extracts(path, text)
+    ex_vs, failed = _lint_extracts(path, text)
     vs += ex_vs
+    vs += _lint_facts(text, {e.eid for e in extracts(text)}, failed)
     vs += _lint_blue(text)
     vs += _lint_assets(path, secs)
     return vs
