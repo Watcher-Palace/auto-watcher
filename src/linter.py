@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.publisher import read_frontmatter, load_tag_registry, load_tag_group
-from src.utils.research_doc import is_new_format
+from src.utils.research_doc import extracts, is_new_format
 
 VALID_CATEGORIES = {"S", "A", "B", "C", "D", "M", "N"}
 # 犯罪 tag 必须同时带一个具体罪名，或说明为什么没有罪名（用户裁定 2026-07-20）
@@ -305,10 +305,22 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
     for name in sorted(names):
         if name not in research_text and (len(name) < 2 or name[1:] not in research_text):
             ws.append(f"称呼未在研究文件出现：{name}（自取化名时确认必要性并全篇一致）")
-    # 灰字／红字的逐字基准：新格式在 ## 摘录（那里逐条核过快照），旧格式仍在 ## 信息来源。
+    # 灰字／红字的逐字基准：新格式下两者不再共用一个基准。灰字只认 ## 摘录（逐条核过
+    # 快照的正文，把「标题当当事人原话引」这类坑天然排除在通道之外）；红字防的是「近乎
+    # 逐字复读官方结论」，标题正是最常被复读的对象，故摘录层之外还要并回 ## 信息来源。
+    # 旧格式两者都仍看 ## 信息来源，逐字不变。
     _secs = _sections(research_text)
-    base_section = "摘录" if is_new_format(research_text) else "信息来源"
-    base = _norm_quote(_secs.get(base_section, "") or "")
+    new_fmt = is_new_format(research_text)
+    base_section = "摘录" if new_fmt else "信息来源"
+    if new_fmt:
+        # 基准取 extracts() 解析出的 .body，不拿整节原文——原文混着每条摘录的头行
+        # （`[E1] 信源1 · 正文原话 · 2026-08-07`），头行本身的元数据会被误判成逐字命中。
+        # \x00 作分隔符 join：既不在 _norm_quote 的剥除集里（能活下来隔开相邻两条），
+        # 又避免「上一条尾部＋下一条头部」拼出一句从未真实存在过的假引文。
+        grey_base = "\x00".join(_norm_quote(e.body) for e in extracts(research_text))
+        red_base = grey_base + "\x00" + _norm_quote(_secs.get("信息来源", "") or "")
+    else:
+        grey_base = red_base = _norm_quote(_secs.get("信息来源", "") or "")
     # 灰字引文须逐字命中研究文件 base_section 节（blog-writer《带色引文必须逐字回查》的
     # 机械面）。化名替换与外文译文合法地对不上原文，故只 WARN 不拦——WARN 的意义是
     # 逼一次显式核对，不是判定编造。
@@ -316,16 +328,16 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
         norm = _norm_quote(span)
         if len(norm) < 6:
             continue
-        if norm not in base:
+        if norm not in grey_base:
             ws.append(
                 f"灰字引文未在研究文件 {base_section} 节逐字命中：{span.strip()[:24]}…"
                 "（化名替换/外文译文属预期；否则改用确有的摘录，或按缺口上报）"
             )
     # 红字转述官方结论时不得以「近乎逐字、又有改写」的形态呈现（blog-writer 规则的机械面）：
-    # 与 base_section 逐字重合 ≥ RED_ECHO_MIN 字即报。改法二选一——够格逐字就改灰字整段引用，
+    # 与来源逐字重合 ≥ RED_ECHO_MIN 字即报。改法二选一——够格逐字就改灰字整段引用，
     # 否则去色写成明确转述。只 WARN 不拦：重合也可能落在无法改写的法条名、机构全称上。
     for span in RED_SPAN_RE.findall(body):
-        frag = _echo_span(_norm_quote(span), base, RED_ECHO_MIN)
+        frag = _echo_span(_norm_quote(span), red_base, RED_ECHO_MIN)
         # 案号、金额、外文原句这类本就只能逐字的标识串不构成改写风险，按非汉字占比排除
         if not frag or sum("一" <= c <= "鿿" for c in frag) / len(frag) < 0.6:
             continue
@@ -342,7 +354,7 @@ def _echo_span(a: str, b: str, k: int) -> str:
 
     等价于「最长公共子串 ≥ k」：LCS ≥ k 当且仅当 a 的某个 k 字窗口是 b 的子串。
     逐窗 `in` 走 C 层字符串搜索，比 O(len(a)·len(b)) 的 DP 快两个数量级——研究文件
-    信息来源 节可达上万字，DP 会让每次 lint 多跑几秒。
+    本身可达上万字，DP 会让每次 lint 多跑几秒。
     """
     for i in range(len(a) - k + 1):
         if a[i:i + k] not in b:

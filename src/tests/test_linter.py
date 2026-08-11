@@ -487,3 +487,84 @@ def test_grey_quote_checked_against_extract_section_in_new_format():
 def test_grey_quote_absent_from_extracts_warns_in_new_format():
     _vs, ws = crosscheck_research(_draft("他从来没有跟我说过一句对不起"), RESEARCH_NEW)
     assert any("灰字引文未在研究文件" in w for w in ws)
+
+
+# --- fix 轮 1 ---
+#
+# F-1：灰字与红字不再共用一个基准——灰字只认 ## 摘录（逐字通道只留摘录层一条，不许把
+# 「标题当当事人原话引」这类坑重新放行）；红字防的是「近乎逐字复读官方结论」，标题正是
+# 最常被复读的对象，摘录层之外还要并回 ## 信息来源，否则新格式下复读标题会漏判。
+# F-2：基准改取 extracts() 逐条 .body，不拿 ## 摘录整节原文——原文混进每条摘录的头行
+# （`[E1] 信源1 · 正文原话 · 2026-08-07`），头行本身的元数据会被误判成逐字命中。
+
+TITLE = "警方通报网民举报遭网暴开盒后自杀未遂事件处置情况"
+RESEARCH_NEW_TITLE = f"""## 事实
+- 略[E1]。
+
+## 信息来源
+- 2026.07.31，极目新闻。*{TITLE}*。https://a.example/1 — 快照 2026-08-07（900字）
+
+## 摘录
+[E1] 信源1 · 正文原话 · 2026-08-07
+他一直都没道歉，他欠我一个道歉
+"""
+
+
+def _draft_colored(span_html):
+    return (
+        "---\ntitle: 标题\n---\n\n"
+        f"{span_html}\n\n"
+        "## 信息来源\n- 2026.07.31，极目新闻。*甲*。https://a.example/1\n"
+    )
+
+
+def test_red_echoing_source_title_warns_in_new_format():
+    # F-1 ①：红字近乎逐字复读来源标题——新格式下基准并回 信息来源，须重新报警
+    draft = _draft_colored(f'<font color="red">{TITLE}</font>')
+    _vs, ws = crosscheck_research(draft, RESEARCH_NEW_TITLE)
+    assert any("红字与来源逐字重合" in w for w in ws)
+
+
+def test_grey_quoting_source_title_still_warns_in_new_format():
+    # F-1 ②：灰字把来源标题当当事人原话引——灰字基准只认摘录层，不能因为红字要标题
+    # 就把灰字的基准也放宽回去，仍须报警
+    draft = _draft_colored(f'<font color="grey">{TITLE}</font>')
+    _vs, ws = crosscheck_research(draft, RESEARCH_NEW_TITLE)
+    assert any("灰字引文未在研究文件" in w for w in ws)
+
+
+def test_grey_quoting_extract_body_still_passes_with_title_in_research():
+    # F-1 ③：灰字逐字引摘录正文——即使同一份研究文件里另有一条带来源标题，仍应放行
+    draft = _draft_colored('<font color="grey">他一直都没道歉，他欠我一个道歉</font>')
+    _vs, ws = crosscheck_research(draft, RESEARCH_NEW_TITLE)
+    assert not [w for w in ws if "灰字引文未在研究文件" in w]
+
+
+RESEARCH_TWO_EXTRACTS = """## 事实
+- 略[E1][E2]。
+
+## 信息来源
+- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）
+
+## 摘录
+[E1] 信源1 · 正文原话 · 2026-08-07
+他说这是真的
+[E2] 信源2 · 正文原话 · 2026-08-07
+的确发生了，目前警方已介入调查
+"""
+
+
+def test_grey_quote_spanning_two_extracts_still_not_matched():
+    # F-1 ④：跨两条摘录首尾拼接的假引文——从未真实存在过，去掉头行噪音后仍不能靠
+    # \x00 分隔符失守，须继续报警（不能"命中"）
+    draft = _draft_colored('<font color="grey">这是真的的确发生了</font>')
+    _vs, ws = crosscheck_research(draft, RESEARCH_TWO_EXTRACTS)
+    assert any("灰字引文未在研究文件" in w for w in ws)
+
+
+def test_grey_quoting_extract_header_metadata_no_longer_passes():
+    # F-2 直接复现：摘录头行的元数据（信源号 · 形态标签）不再是整节原文的一部分，
+    # 不能再靠"混进 base"静默通过灰字逐字检查
+    draft = _draft_colored('<font color="grey">信源1·正文原话</font>')
+    _vs, ws = crosscheck_research(draft, RESEARCH_NEW_TITLE)
+    assert any("灰字引文未在研究文件" in w for w in ws)
