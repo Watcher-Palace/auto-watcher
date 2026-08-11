@@ -175,3 +175,34 @@ def test_stage_event_without_draft(tmp_path):
                                     archive_dir=tmp_path / "_arch",
                                     drafts_dir=tmp_path / "drafts")
     assert parked is None and date_done
+
+
+def test_snapshot_dir_is_archived_with_the_event(tmp_path):
+    # 快照目录名是 260731-1，不带尾部连字符——assets 那套 startswith 前缀匹配抓不到
+    pipeline = tmp_path / "_pipeline"
+    archive = tmp_path / "_pipeline_archive"
+    snap = pipeline / "snapshots" / "260731-1"
+    snap.mkdir(parents=True)
+    (snap / "a.example-deadbeef.txt").write_text("正文", encoding="utf-8")
+    (pipeline / "research").mkdir(parents=True)
+    (pipeline / "research" / "260731-1-标题.md").write_text("x", encoding="utf-8")
+
+    archive_event("260731", 1, pipeline, archive)
+
+    assert (archive / "snapshots" / "260731-1" / "a.example-deadbeef.txt").is_file()
+    assert not snap.exists()
+
+
+def test_sibling_event_snapshots_are_not_dragged_along(tmp_path):
+    # 前缀匹配必须精确：归档 260731-1 不得连带搬走 260731-10
+    pipeline = tmp_path / "_pipeline"
+    archive = tmp_path / "_pipeline_archive"
+    for ev in ("260731-1", "260731-10"):
+        d = pipeline / "snapshots" / ev
+        d.mkdir(parents=True)
+        (d / "x.txt").write_text("正文", encoding="utf-8")
+
+    archive_event("260731", 1, pipeline, archive)
+
+    assert (archive / "snapshots" / "260731-1").is_dir()
+    assert (pipeline / "snapshots" / "260731-10").is_dir()

@@ -7,7 +7,7 @@ from pathlib import Path
 from src.utils import pipeline as pl
 from src.utils import ledger
 
-_EVENT_STAGES = ("research", "draft", "review")
+_EVENT_STAGES = ("research", "draft", "review", "snapshots")
 
 _SECTION_RE = re.compile(r"(?m)^## (\d+)\.")
 
@@ -63,7 +63,9 @@ def archive_event(date_str: str, n: int | str,
         if not src_dir.exists():
             continue
         for entry in sorted(src_dir.iterdir()):
-            if entry.name.startswith(prefix):
+            # research/draft/review 的工件叫 260731-1-标题.md（靠尾部连字符区分 -1 与 -10），
+            # 快照目录只叫 260731-1，没有尾部连字符，故两种形状都要匹配。
+            if entry.name == f"{date_str}-{n}" or entry.name.startswith(prefix):
                 dst = _move_into(entry, archive_dir / stage)
                 if dst:
                     moved.append(dst)
