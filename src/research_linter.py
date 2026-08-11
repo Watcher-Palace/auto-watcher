@@ -109,6 +109,12 @@ EXEMPT_RE = re.compile(r"\*\*(?:查证失败|检索记录)[^*]*\*\*")
 # 一条"这个承诺一旦接上词面豁免就形同虚设——旧格式的 CORRECTION_RE/`_lint_legacy`
 # 不动，两条路径本就分岔。窗口宽度沿用 CORRECTION_LOOKBEHIND，不新引入第三个阈值。
 FORMAL_MARK_RE = re.compile(r"\*\*(?:查证失败|检索记录)[^*]*\*\*|\*\*更正（[^*]*\*\*")
+# fix 轮 2 F-4：`### 姓名（角色）` 这类 markdown 小标题不是事实主张，不该被当句子核
+# 出处——语料里 140 份文件有 25 份、共 155 处用 `### ` 给 `## 事实`/`## 当事方` 里的
+# 人物分节（"### 李捷（女方，当事人）"这类），标题行本身通常不带句末标点，会作为
+# 独立残留片段被判"该句无 [E] 出处"。只认 `#` 语法——`**加粗小标题**：` 是另一种写法，
+# 后面常跟着需要出处的事实主张，不在此列（同 F-2 第二条边界，不能顺手放过）。
+HEADING_LINE_RE = re.compile(r"^#{1,6}\s")
 
 
 def _slug_tokens(url: str) -> list[str]:
@@ -364,8 +370,11 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
             # 而 SENT_SPLIT_RE 只在 。！？ 处切句——豁免标记行本身常常不带句末标点
             # （后面紧跟着另一条独立事实，语料里 17 条豁免行有 4 条是这个形态），
             # 原实现按整片豁免会把这条独立事实一并放过、零信号。
+            # F-4：同一逻辑下摘掉 `### ` markdown 小标题行——它们同样常年不带句末标点，
+            # 单独留下会被当成"没挂出处的事实句"。`**加粗小标题**：` 不受影响（不同语法）。
             lines = [ln for ln in s.split("\n")
-                     if ln.strip() and not EXEMPT_RE.search(ln)]
+                     if ln.strip() and not EXEMPT_RE.search(ln)
+                     and not HEADING_LINE_RE.match(ln.strip())]
             s = "\n".join(lines).strip()
             if not s:
                 continue

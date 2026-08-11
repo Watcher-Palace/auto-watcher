@@ -723,3 +723,39 @@ def test_formal_correction_marker_still_exempts_the_quoted_old_text(tmp_path, mo
     )
     vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
     assert not any("未命中任何摘录" in v for v in vs)
+
+
+# ==================== fix 轮 2（评审复验后新增 F-4）====================
+
+def test_markdown_subheading_is_not_treated_as_a_sentence(tmp_path, monkeypatch):
+    # F-4：`### 姓名（角色）` 这类小标题不是事实主张——语料 25 份文件、155 处用它给
+    # 事实/当事方分节，标题行本身通常不带句末标点，落成独立残留片段时被误报"无出处"
+    doc = NEW_DOC.replace(
+        "## 当事方\n**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。\n",
+        "## 当事方\n**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。\n"
+        "### 曹某某（被告人，本案核心当事人）\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("无 [E] 出处" in v for v in vs)
+
+
+def test_markdown_subheading_followed_by_a_sourced_fact_still_checked(tmp_path, monkeypatch):
+    # 正例：小标题被摘掉后，紧跟的事实句仍要照常核——不是把整片一并放过
+    doc = NEW_DOC.replace(
+        "## 当事方\n**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。\n",
+        "## 当事方\n### 牟倩文（女方，当事人）\n"
+        "青岛保时捷中心销售，自述曾有轻生念头[E2]。\n",
+    )
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []
+
+
+def test_bold_label_line_is_not_treated_as_a_markdown_heading(tmp_path, monkeypatch):
+    # 正例（F-4 边界，同 F-2 第二条）：`**加粗小标题**：` 是另一种写法，不该被
+    # HEADING_LINE_RE 顺手放过——后面常跟着需要出处的事实主张，缺了 [E] 仍要报
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n**曹某某（被告人）**：本案核心当事人，涉嫌寻衅滋事罪被提起公诉。\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("无 [E] 出处" in v for v in vs)
