@@ -11,6 +11,12 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# 本文件既作为包模块被导入（`from src.review_linter import ...`），也按各 agent
+# 文档记载的方式以裸脚本直跑（`python src/review_linter.py <path>`）。后一种调用
+# 方式下仓库根目录不在 sys.path 上，check_snapshots/main 里 `from src.xxx import`
+# 会 ModuleNotFoundError——同 srcfetch.py 的开场白，同样的修法。
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 STATUS_RE = re.compile(r"^STATUS: (CLEAN|ISSUES)$")
 ITEM_RE = re.compile(r"^## 问题 (\d+)\s*$", re.MULTILINE)
 TYPE_RE = re.compile(r"^类型：(.+?)\s*$", re.MULTILINE)
@@ -22,6 +28,12 @@ TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
 # 写手无权改研究文件，定成 格式 会绕过补研究闸口（review_fact_items 只认 事实）。
 # 少数纯格式形状问题（如斜体缺失）确属 格式，故只 WARN 不拦。
 SRC_ANCHOR_RE = re.compile(r"(?:- )?\d{4}\.\d{2}\.\d{2}，.+?。\*")
+REVIEWER_COMMENT_RE = re.compile(r"<!--\s*\[REVIEWER\]:(.*?)-->", re.S)
+# 排除集只列了右括号/右引号（），」』】——评审散文里 URL 后紧跟"（来源名）"这类
+# 标注极常见（如"...doc-iniksxpc0857058.shtml（新浪财经）"），左半边不排除时会把
+# "（新浪财经" 一并吞进"URL"：那之后无论怎么抓那个真 URL 的快照，load() 用的哈希
+# 都对不上被污染的字符串，报出的"无快照"永远无法通过抓取清掉。补上左半边，与右半边对称。
+HTTP_RE = re.compile(r"https?://[^\s，。、（）()「」『』【】\"'<>]+")
 
 
 @dataclass
@@ -30,6 +42,7 @@ class Item:
     type: str | None = None
     quote: str | None = None
     disposition: str | None = None
+    body: str = ""
 
 
 @dataclass
@@ -50,6 +63,7 @@ def parse_review(text: str) -> Review:
         end = next_heading.start() if next_heading else len(text)
         block = text[start:end]
         item = Item(num=int(im.group(1)))
+        item.body = block
         if (t := TYPE_RE.search(block)):
             item.type = t.group(1)
         if (q := QUOTE_RE.search(block)):
@@ -119,6 +133,29 @@ def check_tag_proposals(review_text: str, draft_text: str) -> list[str]:
     return vs
 
 
+def check_snapshots(text: str, event: str) -> list[str]:
+    """事实项引外部来源作反证时，该来源必须有快照。
+
+    评审的独立性不变——它自己选哪些 URL 去查一律不受研究文件影响；这里管的只是
+    「断言要有证据」：WebFetch 返回的是小模型对页面的答复，拿它去推翻一个已经逐字
+    核过快照的研究文件，方向上并不比被推翻者可靠。只怀疑（"请研究阶段核实"）不需要快照。
+    """
+    from src.srcfetch import load as load_snapshot
+
+    v: list[str] = []
+    for it in parse_review(text).items:
+        if it.type != "事实":
+            continue
+        for comment in REVIEWER_COMMENT_RE.findall(it.body):
+            for url in dict.fromkeys(HTTP_RE.findall(comment)):
+                if load_snapshot(url, event) is None:
+                    v.append(
+                        f"问题 {it.num}: 引作反证的来源无快照——跑 src/srcfetch.py "
+                        f"--event {event} --refresh {url}"
+                    )
+    return v
+
+
 def check_dispositions(text: str) -> tuple[list[str], bool]:
     """处理 行必须是五种形式之一：已修改 / 拒绝：<理由> / 已删除（查证失败） / 已删除（用户裁定） / 未解决：<缺口说明>。"""
     v, unresolved = [], False
@@ -172,6 +209,10 @@ def main(argv: list[str]) -> int:
                 draft_text = draft.read_text(encoding="utf-8")
                 violations += validate_anchors(text, draft_text)
                 violations += check_tag_proposals(text, draft_text)
+
+                from src.utils.research_doc import event_of
+
+                violations += check_snapshots(text, event_of(resolved))
             else:
                 violations.append(f"找不到同版本草稿：{draft}")
     for x in violations:

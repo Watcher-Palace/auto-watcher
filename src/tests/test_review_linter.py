@@ -4,9 +4,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from src import srcfetch
 from src.review_linter import (
     parse_review, validate_format, validate_anchors,
-    check_marks, check_dispositions, check_tag_proposals,
+    check_marks, check_dispositions, check_tag_proposals, check_snapshots,
 )
 
 VALID = """STATUS: ISSUES
@@ -216,3 +217,60 @@ def test_source_line_anchor_typed_shishi_no_warn():
         "类型：事实\n原文：`法院一审判处王某有期徒刑三年`",
         "类型：事实\n原文：`2026.06.01，搜狐。*标题*。https://a`")
     assert validate_format(text) == []
+
+
+REVIEW_WITH_COUNTER_SOURCE = """STATUS: ISSUES
+
+## 问题 1
+类型：事实
+原文：`被行拘后未道歉`
+<!-- [REVIEWER]: 羊城晚报原文记载该男子已手写悔过书致歉，见 https://c.example/9 -->
+处理：
+"""
+
+
+def test_fact_item_citing_an_external_url_needs_a_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    vs = check_snapshots(REVIEW_WITH_COUNTER_SOURCE, "260731-1")
+    assert any("无快照" in v and "c.example/9" in v for v in vs)
+
+
+def test_snapshotted_counter_source_passes(tmp_path, monkeypatch):
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    p = srcfetch.snapshot_path("https://c.example/9", "260731-1")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# SOURCE: x\n# FETCHED: y\n\n手写悔过书", encoding="utf-8")
+    assert check_snapshots(REVIEW_WITH_COUNTER_SOURCE, "260731-1") == []
+
+
+def test_url_in_the_anchor_line_is_not_scanned(tmp_path, monkeypatch):
+    # 来源行锚点类事实项的 原文： 本就含 URL（草稿自己的来源），扫它是纯假阳性
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n"
+        "原文：`- 2026.07.31，极目新闻。*甲*。https://a.example/1`\n"
+        "<!-- [REVIEWER]: 该行署名与页面不符，请回研究阶段核实 -->\n处理：\n"
+    )
+    assert check_snapshots(review, "260731-1") == []
+
+
+def test_format_items_are_not_scanned(tmp_path, monkeypatch):
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    review = REVIEW_WITH_COUNTER_SOURCE.replace("类型：事实", "类型：格式")
+    assert check_snapshots(review, "260731-1") == []
+
+
+def test_url_followed_by_paren_annotation_is_not_swallowed(tmp_path, monkeypatch):
+    # 回归：评审散文里 URL 后常紧跟"（来源名）"标注（如 260731-1 v3 问题 3 的真实写法）。
+    # 排除集此前只挡了右括号，左括号不挡时会把"（新浪财经"整段吞进"URL"，快照哈希
+    # 从此对不上任何一次真实抓取——不管替那个真 URL 抓多少次快照都无法通过。
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+        "<!-- [REVIEWER]: 真实出处为 https://c.example/9（新浪财经）而非此处 -->\n"
+        "处理：\n"
+    )
+    p = srcfetch.snapshot_path("https://c.example/9", "260731-1")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# SOURCE: x\n# FETCHED: y\n\n手写悔过书", encoding="utf-8")
+    assert check_snapshots(review, "260731-1") == []
