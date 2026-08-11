@@ -29,11 +29,38 @@ TAG_PROPOSAL_RE = re.compile(r"<!--\s*\[TAG-PROPOSAL\]:\s*(.+?)\s*-->")
 # 少数纯格式形状问题（如斜体缺失）确属 格式，故只 WARN 不拦。
 SRC_ANCHOR_RE = re.compile(r"(?:- )?\d{4}\.\d{2}\.\d{2}，.+?。\*")
 REVIEWER_COMMENT_RE = re.compile(r"<!--\s*\[REVIEWER\]:(.*?)-->", re.S)
-# 排除集只列了右括号/右引号（），」』】——评审散文里 URL 后紧跟"（来源名）"这类
-# 标注极常见（如"...doc-iniksxpc0857058.shtml（新浪财经）"），左半边不排除时会把
-# "（新浪财经" 一并吞进"URL"：那之后无论怎么抓那个真 URL 的快照，load() 用的哈希
-# 都对不上被污染的字符串，报出的"无快照"永远无法通过抓取清掉。补上左半边，与右半边对称。
-HTTP_RE = re.compile(r"https?://[^\s，。、（）()「」『』【】\"'<>]+")
+# fix 轮 1（评审 C-1）：手工逐字符列举排除集是错误方向——加一个漏一个（上一轮补的
+# "（）「」『』【】"仍漏了"——…“”‘’·；：！？》《"等一整批评审散文常用的中文/通用标点，
+# 逐个实测均被吞进"URL"），且上一轮加的 ASCII 左括号反过来把维基消歧义链接这类
+# 合法带括号 URL（如 .../水星_(行星)）从中间反向截断——两个方向都是"污染后的字符串
+# 永远无法通过抓取收敛"的同一类故障。改用 Unicode 区段一次性排除，不再单字符打补丁：
+#    -⁯ 通用标点（— … “ ” ‘ ’ 等）
+#   　-〿 CJK 标点（。、《》「」『』【】，含全角空格）
+#   ＀-￯ 全角形式（， （ ） ； ： ！ ？ 等）
+#   ·        中点 ·（不落在以上任何区段内，单列）
+# ASCII 的 ( ) 不进排除集——切掉它们就是上一轮反噬维基链接的原因；抓漏的右括号/
+# 句末标点改由 _strip_trailing() 事后剥离，且右括号只在左右不配平时才剥，
+# 配平的（如 "_(行星)"）原样保留。
+HTTP_RE = re.compile(
+    r"https?://[^\s<>\"' -⁯　-〿＀-￯·]+"
+)
+_TRAILING_PUNCT = ".,;:!?"
+
+
+def _strip_trailing(url: str) -> str:
+    """剥掉与后续中文行文粘连、明显不属于 URL 本身的尾部字符。
+
+    句末 ASCII 标点（. , ; : ! ?）直接剥；右括号只在这段匹配文本里左右不配平时才剥——
+    维基消歧义链接这类 URL 内部合法带 (...)，配平时必须原样保留，否则抓的是个残缺 URL，
+    同样永远对不上真实快照的哈希。"""
+    while url:
+        if url[-1] in _TRAILING_PUNCT:
+            url = url[:-1]
+        elif url.endswith(")") and url.count(")") > url.count("("):
+            url = url[:-1]
+        else:
+            break
+    return url
 
 
 @dataclass
@@ -146,13 +173,20 @@ def check_snapshots(text: str, event: str) -> list[str]:
     for it in parse_review(text).items:
         if it.type != "事实":
             continue
-        for comment in REVIEWER_COMMENT_RE.findall(it.body):
-            for url in dict.fromkeys(HTTP_RE.findall(comment)):
-                if load_snapshot(url, event) is None:
-                    v.append(
-                        f"问题 {it.num}: 引作反证的来源无快照——跑 src/srcfetch.py "
-                        f"--event {event} --refresh {url}"
-                    )
+        # fix 轮 1（评审 M-1）：去重范围从"单条注释"提到"整个问题项"——同一 URL 分散在
+        # 该项下两条不同 [REVIEWER] 注释里时只报一次；不同问题项各自独立，不跨项去重
+        # （两个问题各自引同一 URL，处理的是不同问题，本来就该各报一条）。
+        urls = [
+            _strip_trailing(u)
+            for comment in REVIEWER_COMMENT_RE.findall(it.body)
+            for u in HTTP_RE.findall(comment)
+        ]
+        for url in dict.fromkeys(urls):
+            if load_snapshot(url, event) is None:
+                v.append(
+                    f"问题 {it.num}: 引作反证的来源无快照——跑 src/srcfetch.py "
+                    f"--event {event} --refresh {url}"
+                )
     return v
 
 

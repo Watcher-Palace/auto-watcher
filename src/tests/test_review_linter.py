@@ -274,3 +274,112 @@ def test_url_followed_by_paren_annotation_is_not_swallowed(tmp_path, monkeypatch
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("# SOURCE: x\n# FETCHED: y\n\n手写悔过书", encoding="utf-8")
     assert check_snapshots(review, "260731-1") == []
+
+
+# fix 轮 1（评审 C-1）：URL 边界判定的形态逐条钉死，不许再退化成"撞一个补一个"的
+# 手工排除集。9 条同一干净 URL（https://c.example/9）配不同的中文/通用标点尾巴。
+URL_BOUNDARY_TRAILERS = [
+    "见 https://c.example/9——现已无法访问",     # 中文破折号 U+2014
+    "见《报道》https://c.example/9》",           # 书名号 U+300B
+    "见 https://c.example/9；另见其他说法",       # 全角分号 U+FF1B
+    "见 https://c.example/9：正文称如此",         # 全角冒号 U+FF1A
+    "见 https://c.example/9“原话”如下",           # 弯引号 U+201C/D
+    "见 https://c.example/9·补充说明",            # 中点 U+00B7
+    "见 https://c.example/9……仍在核实",           # 省略号 U+2026
+    "见 https://c.example/9（新浪财经）报道",      # 全角括号标注（上一轮已修，钉住不回归）
+    "见 https://c.example/9。到此为止",           # 全角句号 U+3002
+    "见 (https://c.example/9) 的记录",           # 半角括号包裹，尾括号不配平须剥
+]
+
+
+def test_url_boundary_trailers_all_extract_the_clean_url(tmp_path, monkeypatch):
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    p = srcfetch.snapshot_path("https://c.example/9", "260731-1")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# SOURCE: x\n# FETCHED: y\n\n正文", encoding="utf-8")
+    for comment in URL_BOUNDARY_TRAILERS:
+        review = (
+            "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+            f"<!-- [REVIEWER]: {comment} -->\n处理：\n"
+        )
+        assert check_snapshots(review, "260731-1") == [], f"应放行：{comment!r}"
+
+
+def test_bare_paren_wrapped_url_strips_trailing_paren_not_matches_dirty_form(
+    tmp_path, monkeypatch
+):
+    # "(URL)" 场景需双向钉住：上一条测试已证明干净 URL 有快照时放行；这里证明只在
+    # 带着尾括号的脏字符串"URL)"下存快照**不能**放行——不然可能是巧合两边都宽松通过，
+    # 不是真的在剥括号。
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+        "<!-- [REVIEWER]: 见 (https://c.example/9) 的记录 -->\n处理：\n"
+    )
+    p = srcfetch.snapshot_path("https://c.example/9)", "260731-1")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# SOURCE: x\n# FETCHED: y\n\n正文", encoding="utf-8")
+    vs = check_snapshots(review, "260731-1")
+    assert any("无快照" in v for v in vs)
+
+
+def test_wikipedia_style_balanced_parens_url_preserved_in_full(tmp_path, monkeypatch):
+    # 方向①（评审场景2）：URL 内部合法带配平的 (...) 时必须完整保留——上一轮补的
+    # ASCII 左括号排除曾把这类 URL 从中间反向截断（.../水星_(行星) → .../水星_）。
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    full_url = "https://zh.wikipedia.org/wiki/水星_(行星)"
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+        f"<!-- [REVIEWER]: 见 {full_url} 的条目 -->\n处理：\n"
+    )
+    p = srcfetch.snapshot_path(full_url, "260731-1")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# SOURCE: x\n# FETCHED: y\n\n正文", encoding="utf-8")
+    assert check_snapshots(review, "260731-1") == []
+
+
+def test_wikipedia_style_url_not_silently_truncated(tmp_path, monkeypatch):
+    # 方向②：即便括号被切掉后的残缺 URL 恰好也存了快照，也不该被那份快照放行——
+    # 证明抽取的确实是完整 URL，不是恰好两边都宽松到能通过。
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    full_url = "https://zh.wikipedia.org/wiki/水星_(行星)"
+    truncated_url = "https://zh.wikipedia.org/wiki/水星_"
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+        f"<!-- [REVIEWER]: 见 {full_url} 的条目 -->\n处理：\n"
+    )
+    p = srcfetch.snapshot_path(truncated_url, "260731-1")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# SOURCE: x\n# FETCHED: y\n\n正文", encoding="utf-8")
+    vs = check_snapshots(review, "260731-1")
+    assert any("无快照" in v and full_url in v for v in vs)
+
+
+def test_same_url_across_two_reviewer_comments_in_one_item_reported_once(
+    tmp_path, monkeypatch
+):
+    # fix 轮 1（评审 M-1）：去重范围从"单条注释"提到"整个问题项"。
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+        "<!-- [REVIEWER]: 见 https://c.example/9 -->\n"
+        "<!-- [REVIEWER]: 另见 https://c.example/9 -->\n处理：\n"
+    )
+    vs = check_snapshots(review, "260731-1")
+    assert len(vs) == 1
+
+
+def test_same_url_across_two_problem_items_reported_per_item(tmp_path, monkeypatch):
+    # 不跨问题项去重：两个问题各自引同一 URL，处理的是不同问题，本来就该各报一条。
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    review = (
+        "STATUS: ISSUES\n\n"
+        "## 问题 1\n类型：事实\n原文：`x`\n"
+        "<!-- [REVIEWER]: 见 https://c.example/9 -->\n处理：\n\n"
+        "## 问题 2\n类型：事实\n原文：`y`\n"
+        "<!-- [REVIEWER]: 见 https://c.example/9 -->\n处理：\n"
+    )
+    vs = check_snapshots(review, "260731-1")
+    assert len(vs) == 2
+    assert any(v.startswith("问题 1:") for v in vs)
+    assert any(v.startswith("问题 2:") for v in vs)
