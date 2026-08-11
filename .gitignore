@@ -16,8 +16,5 @@ db.json
 # Pipeline secrets
 src/.env
 
-# 原文快照缓存（srcfetch.py）——比对基准，不入库
-_pipeline/.srccache/
-
 # Misc
 *.log

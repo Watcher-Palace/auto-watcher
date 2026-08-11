@@ -131,6 +131,9 @@ brief: <one-sentence summary from events file>
 sources: <Weibo URLs found in events file for this event, if any>
 ```
 
+研究 agent 会把每条来源落成快照到 `_pipeline/snapshots/{date}-{index}/`（入库、随事件归档）。
+派单不需要额外交代，agent 文件里已是强制步骤。
+
 Wait for the subagent to complete and confirm the research file exists at `_pipeline/research/YYMMDD-N-title.md`. Then STOP — the user reads the fact base before writing is approved.
 
 ### 3. Write (subagent)

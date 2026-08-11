@@ -26,18 +26,38 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
 1. **Read the draft** at `draft_path` in full. Read `source/_drafts/template.md` for the canonical format.
 2. **Independently verify key claims** — for each factual claim (dates, names, outcomes, quotes), verify against at least one independent source. Use WebSearch + WebFetch. Prioritise: 澎湃新闻, 新京报, 红星新闻, 极目新闻, court notices, official statements.
-3. **引文逐字存在性比对（用户裁定 2026-08-03，起因：260603-1 v1 五处编造引文，评审 v1 十条一条没抓到）** — 草稿里**每一处**带引号或 `<font color="grey">` 的逐字引用，逐段回研究文件 `## 信息来源` 节的引文摘录里搜，命中不了就开一条 `类型：事实` 问题。
-   - 这是**机械比对，不是外部核查**，也不需要联网：写手唯一被允许的引文来源就是 `## 信息来源`（见 `blog-writer.md`「带色引文必须逐字回查」条），那里没有的逐字引用，写手无从获得，只能是它自己编的。
-   - **基准只认 `## 信息来源`**，不认 `## 事实`／`## 当事方`——后两节是研究阶段的叙述性转写，拿它比对，转写版会"对上"，编造的引文照样漏过。
+3. **引文逐字存在性比对（用户裁定 2026-08-03，起因：260603-1 v1 五处编造引文，评审 v1 十条一条没抓到）** — 草稿里**每一处**带引号或 `<font color="grey">` 的逐字引用，逐段回研究文件 `## 摘录` 节的引文摘录里搜，命中不了就开一条 `类型：事实` 问题。
+   - 这是**机械比对，不是外部核查**，也不需要联网：写手唯一被允许的引文来源就是 `## 摘录`（见 `blog-writer.md`「带色引文必须逐字回查」条），那里没有的逐字引用，写手无从获得，只能是它自己编的。
+   - **基准只认 `## 摘录`**，不认 `## 事实`／`## 当事方`——后两节是研究阶段的叙述性转写，拿它比对，转写版会"对上"，编造的引文照样漏过。
    - 漏字、改标点、把第三人称转述包装成直接引语，**都算命中失败**。近乎逐字而有几处改写的，同样开问题——那正是让读者把改写当官方原话的形态。
-   - **命中失败先看摘录是不是被省略号截断的（2026-08-03 增补，起因：260603-1 评审 v2 两条假阳性）**：`## 信息来源` 的摘录里出现「……」，说明该条来源的引文**本身就不完整**，被跳过的部分里完全可能确有这句原话——此时**不得断言写手编造**。照常开问题（研究阶段需要补全），但 `[REVIEWER]` 注释里要写成"该摘录被省略号截断，需研究阶段回原始材料补全后再判定"，并指出被截断的是哪一条来源。断言编造只用于摘录完整、且确无该表述的情形。
+   - **命中失败先看摘录是不是被省略号截断的（2026-08-03 增补，起因：260603-1 评审 v2 两条假阳性）**：`## 摘录` 里出现「……」，说明该条来源的引文**本身就不完整**，被跳过的部分里完全可能确有这句原话——此时**不得断言写手编造**。照常开问题（研究阶段需要补全），但 `[REVIEWER]` 注释里要写成"该摘录被省略号截断，需研究阶段回原始材料补全后再判定"，并指出被截断的是哪一条来源。断言编造只用于摘录完整、且确无该表述的情形。
    - **摘录标了 `标题` 或 `第三人称转述` 形态的，不能作为灰字依据**——只有标为 `正文原话` 的摘录才是写手合法的逐字引用来源。草稿把标题式改写或第三人称转述包装成直接引语，照常开问题。
    - 命中失败时 `原文：` 锚点放草稿里那句逐字引用，处理建议给两条路：改成 `## 信息来源` 里确有的逐字摘录，或去掉颜色/引号写成明确的转述。
    - 这条与外部事实核查并行、不互相替代：比对通过只说明"研究阶段确实摘录过这句"，该引文所述内容是否属实仍走第 2 步。
 4. **Check legal/factual claims** — any `<font color="red">` passage must be accurate. Flag overstatements or errors.
 5. **Check the latest-update marker** — independently search each key person/institution for developments up to today, including a search with the current month/year, to confirm nothing newer exists. The `<font color="blue">` passage must be the actual most recent development; flag if a newer fact exists, or if the blue passage is a "no update" statement rather than a real development.
-6. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format（逐条核**真实标题、原始署名媒体、发布日期**三样——多次开出问题的位置；转载页的频道品牌不等于出处，以正文/文末署名为准。**这三样核错的开 `类型：事实`，不是 格式**：修复点在研究文件的 `## 信息来源`，写手无权改研究文件，定成 格式 会绕过补研究闸口——`review_fact_items()` 只认 事实；review_linter 对"来源行锚点＋格式"组合会 WARN。同批曾两种定性并存，事实型走通、格式型卡死）, 舆论 concrete-metrics rule, 相关内容 scope, 评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）， `<font>` colour usage, category value, tag registration. Every deviation is an issue, not a stylistic preference — typed 格式 unless its fix requires the fact base to change.
-7. **Transcribe tag proposals** — copy every `<!-- [TAG-PROPOSAL]: ... -->` comment from the draft into a dedicated `## 标签提案` section of the review file, so the user sees them at the review gate. Do not resolve them yourself. 标签提案一经用户批准，orchestrator 会**当场**把该标签写进 `src/tags.yml`，所以你读到的注册表往往已是批准后的状态：草稿提案写着"注册表无 X"而注册表里明明有 X，**先怀疑是这个时间差**，那是写手提案时的真实状态，不是写手之误；要开也只开在"该标签已注册、写手却仍以提案形态提交"这一点上。
+6. **反查研究文件宣称的"查不到"** — 研究文件凡写「未见报道／查证失败／仅自媒体转述／
+   无最新进展」的，去本事件快照集 grep 一遍再放行：
+
+       grep -l "<关键词>" /home/jc/Projects/auto-watcher/_pipeline/snapshots/{date}-{index}/*.txt
+
+   五次复现都是这一类——研究阶段判"查不到"，而该事实就在它**自己已引用**的材料里
+   （例：260604-3）。快照现在是本地文件，这一步成本极低。
+7. **Check structure and format against the template** — section names/order, case-content placement per the template (standalone 前情/后续 sections are only for 参见-links to this blog's published posts), 信息来源 line format（逐条核**真实标题、原始署名媒体、发布日期**三样——多次开出问题的位置；转载页的频道品牌不等于出处，以正文/文末署名为准。**这三样核错的开 `类型：事实`，不是 格式**：修复点在研究文件的 `## 信息来源`，写手无权改研究文件，定成 格式 会绕过补研究闸口——`review_fact_items()` 只认 事实；review_linter 对"来源行锚点＋格式"组合会 WARN。同批曾两种定性并存，事实型走通、格式型卡死）, 舆论 concrete-metrics rule, 相关内容 scope, 评论禁令（以 template 风格硬规则为准，含唯一例外；草稿出现评论转述开 类型：格式 问题，你自己也不得要求写手补入评论内容）， `<font>` colour usage, category value, tag registration. Every deviation is an issue, not a stylistic preference — typed 格式 unless its fix requires the fact base to change.
+8. **Transcribe tag proposals** — copy every `<!-- [TAG-PROPOSAL]: ... -->` comment from the draft into a dedicated `## 标签提案` section of the review file, so the user sees them at the review gate. Do not resolve them yourself. 标签提案一经用户批准，orchestrator 会**当场**把该标签写进 `src/tags.yml`，所以你读到的注册表往往已是批准后的状态：草稿提案写着"注册表无 X"而注册表里明明有 X，**先怀疑是这个时间差**，那是写手提案时的真实状态，不是写手之误；要开也只开在"该标签已注册、写手却仍以提案形态提交"这一点上。
+
+## 断言要有证据（用户裁定 2026-08-09）
+
+开 `类型：事实` 问题、且引外部来源作**反证**时，该来源必须先落快照：
+
+    /home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/srcfetch.py --event {date}-{index} --refresh <URL>
+
+`<!-- [REVIEWER] -->` 里的引文逐字取自快照，`review_linter` 会机械校。**只怀疑不要**——
+写「这条存疑，请研究阶段核实」不需要快照。`--refresh` 是必须的：命中研究阶段几天前的
+旧快照，用来查"有没有更新进展"就是错的。
+
+你选哪些 URL 去查**一律不受研究文件影响**——独立性是你的全部价值，本条只管"断言要有
+证据"，不管你去查什么。
 
 ## Output Path
 

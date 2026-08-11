@@ -40,6 +40,7 @@ _pipeline/
   research/YYMMDD-N-title.md # Stage 2 输出
   draft/YYMMDD-N-title-vN.md # Stage 3 输出（+ YYMMDD-N-assets/）
   review/YYMMDD-N-title-vN.md# Stage 4 输出
+  snapshots/YYMMDD-N/          # 原文快照存档（证据底本，随事件归档）
   summary/YYMM.md            # 月度总结草稿（on-demand）
   .tracker-state.json        # tracker 增量游标（内部）
 ```
@@ -132,7 +133,7 @@ Implementation details (for debugging, not for manual reimplementation):
 - LLM filtering runs via the `claude` CLI subprocess (`--model claude-haiku-4-5-20251001`), using the local Claude Code subscription — no OpenRouter or external API key
 
 ### Stage 2 — Research (agent: `blog-researcher`)
-Dispatched by the `blog-orchestrate` skill (Sonnet; tools/model pinned in `.claude/agents/blog-researcher.md`). 微博登录墙内的**公开单帖**用 `python src/wbfetch.py <帖子URL>` 匿名抓取（无 cookie、不占账号限额、返回正文与 `image_urls`）；不要用 `tracker.py --urls`——那会写进 `_pipeline/events/` 污染账本。Owns the fact base end-to-end: `mode: initial` establishes `_pipeline/research/YYMMDD-N-title.md` (sections `## 事实`, `## 当事方`, `## 信息来源`, tracked to today, blue-font latest development with explicit date); `mode: update` verifies review-disputed facts and edits the file in place with `补充/更正/查证失败（评审vN-问题K）` marks — never destructively.
+Dispatched by the `blog-orchestrate` skill (Sonnet; tools/model pinned in `.claude/agents/blog-researcher.md`). 微博登录墙内的**公开单帖**用 `python src/wbfetch.py <帖子URL>` 匿名抓取（无 cookie、不占账号限额、返回正文与 `image_urls`）；不要用 `tracker.py --urls`——那会写进 `_pipeline/events/` 污染账本。Owns the fact base end-to-end: `mode: initial` establishes `_pipeline/research/YYMMDD-N-title.md` (sections `## 事实`, `## 当事方`, `## 信息来源`, tracked to today, blue-font latest development with explicit date); `mode: update` verifies review-disputed facts and edits the file in place with `补充/更正/查证失败（评审vN-问题K）` marks — never destructively. 研究文件采两层制：`## 摘录` 逐字取自 `srcfetch` 快照（linter 核），`## 事实`／`## 当事方` 每句挂 `[E]` 编号回指。旧格式（无 `## 摘录` 节）照旧规则收尾。
 
 ### Stage 3 — Write (agent: `blog-writer`)
 Dispatched by `blog-orchestrate` (Sonnet, **no web tools** — the research file is the sole fact source; a fact not in it does not go in the draft). Output to `_pipeline/draft/YYMMDD-N-title-vN.md`. If the fact base has gaps, the writer reports them instead of drafting. Format spec: `source/_drafts/template.md`; judgment rules live in `.claude/agents/blog-writer.md`.
@@ -197,16 +198,12 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
   清洗时一并纠 `## 前情`/`## 后续` 的用法漂移：template 规定这两节**只放站内已发布前后篇
   的链接**，但 260121、260123、260330、260326-10 把它们当外部来源行或散文节在用（2026-08-05 记）。
 
-- **研究/评审职责重构（2026-08-07 记，未排期）**：`blog-researcher` 的职责改为
-  **抓取快照存档 ＋ 整合**——用 `src/srcfetch.py` 把每条来源的原始页面落成快照存档，
-  研究文件里的**一切内容都必须有出处**（可回指到某条快照的某处），而不是由 agent
-  凭读过的印象转写。`blog-reviewer` 维持**独立审核**不变——它的价值正在于不共享
-  研究阶段的信息通路，重构时不得把它降级成"核对研究文件"。
-  背景：WebFetch 按其说明是"用小模型读页面后作答"，返回的从来不是页面本身，
-  研究与评审此前都经这一层，"逐字"两端都是改写（见 `src/srcfetch.py` 模块注释）。
-  已落地的第一步：srcfetch ＋ `research_linter` 对 `正文原话` 摘录的逐字核对
-  （commit `1494969`）；**尚未接进 `blog-researcher` 的强制 Lint gate**，
-  该文件里"见 Lint gate"目前是空引用，重构时一并解决。
+- **blog-researcher 体积欠账（2026-08-09 记）**：快照重构把该文件从 169 行推到约 186，
+  行数帽按文件临时放宽到 190（见 `src/tests/test_docs_consistency.py` 的 `LINE_CAPS`）。
+  待 `blog-curate` 压回 180 并删掉那条 `LINE_CAPS` 条目。可压处已看到三处：
+  L75 追踪账号安全闸口（两层 linter 已覆盖，长篇「为什么」可移进 casebook）、
+  L124 尾部署名/标题段（裸平台品牌与 slug 已是机械检查）、
+  L156「下『查不到』之前先读完手上材料」（评审新增的「去快照集 grep」正是接这个的）。
 
 ## Keeping Docs Accurate (anti-drift)
 
