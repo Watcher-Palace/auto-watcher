@@ -610,3 +610,116 @@ def test_quote_span_present_in_an_extract_passes(tmp_path, monkeypatch):
     )
     assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
             if not v.startswith("WARN：")] == []
+
+
+# ==================== fix 轮 1（评审 task-6-review.md）====================
+
+def test_exempt_marker_line_without_terminal_punctuation_does_not_swallow_next_fact(
+    tmp_path, monkeypatch
+):
+    # F-1：豁免标记行没有句末标点时（语料里 17 条豁免行有 4 条是这个形态），后面
+    # 紧跟的独立事实句不能被一并放过——豁免只摘掉标记所在的那一行
+    doc = NEW_DOC.replace(
+        "## 当事方\n**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。\n",
+        "## 当事方\n**查证失败（评审v2-问题3）**：男子是否曾出面道歉未能确认\n"
+        "另有一名同案人员已因该事件被警方处以行政拘留十日。\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("无 [E] 出处" in v and "另有一名同案人员" in v for v in vs)
+
+
+def test_exempt_marker_line_still_exempts_itself_when_followed_by_a_sourced_fact(
+    tmp_path, monkeypatch
+):
+    # 正例：豁免标记行（无句末标点）本身仍不需要 [E]；紧跟的事实句如果确实挂了 [E]，
+    # 不该被 F-1 的行级摘除误伤
+    doc = NEW_DOC.replace(
+        "## 当事方\n**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。\n",
+        "## 当事方\n**查证失败（评审v2-问题3）**：男子是否曾出面道歉未能确认\n"
+        "**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。\n",
+    )
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []
+
+
+def test_exempt_marker_bare_form_without_parenthetical_is_recognized(tmp_path, monkeypatch):
+    # F-2：语料实测 73% 的「查证失败」标记没有精确的（评审vN-问题K）括注——裸
+    # **查证失败** 必须也被认出，不能只认最初那一种精确写法
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n**查证失败**：男子是否道歉过，多方检索无法证实。\n",
+    )
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []
+
+
+def test_exempt_marker_with_trailing_note_is_recognized(tmp_path, monkeypatch):
+    # F-2：标记内跟着别的说明文字（"，写手不得使用该细节"）也要认
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n**查证失败，写手不得使用该细节**：所谓十五人漏罪一说未见任何可核实来源。\n",
+    )
+    assert [v for v in lint_research(_new_doc(tmp_path, monkeypatch, doc))
+            if not v.startswith("WARN：")] == []
+
+
+def test_bare_unbolded_verification_failure_word_is_not_exempt(tmp_path, monkeypatch):
+    # 正例（F-2 边界 1）：豁免必须锚在加粗上——散文里裸写"查证失败"三个字不算标记，
+    # 该句仍需要 [E]，否则就是把 F-3 的成因复制到这一侧
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n赔偿金额查证失败，另据报道她已委托律师提起上诉。\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("无 [E] 出处" in v for v in vs)
+
+
+def test_correction_marker_is_not_accidentally_exempted(tmp_path, monkeypatch):
+    # 正例（F-2 边界 2）：**更正（…）** 不在 EXEMPT_RE 的豁免范围内——更正说明本身
+    # 带事实主张，必须继续挂 [E]
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n**更正（评审v2-问题1）**：经核实，牟倩文实际为该门店销售季军。\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("无 [E] 出处" in v for v in vs)
+
+
+def test_verification_failure_word_embedded_mid_bold_span_is_not_treated_as_a_label(
+    tmp_path, monkeypatch
+):
+    # 设计选择记录：EXEMPT_RE 要求"查证失败/检索记录"紧跟在 ** 之后（标记式用法），
+    # 不匹配它出现在加粗片段中段的叙述性结论（"**判定为查证失败**"这类，语料真实存在）——
+    # 这类写法常嵌在很长的整行叙述里，若也认，会连累同一行里其余未核实的内容一起被
+    # F-1 的整行摘除放过，比原问题更糟
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n经多方检索，网传她已离职并自杀未遂一说**判定为查证失败**，不予采信。\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("无 [E] 出处" in v for v in vs)
+
+
+def test_bare_verification_failure_word_no_longer_exempts_a_fabricated_quote(
+    tmp_path, monkeypatch
+):
+    # F-3：CORRECTION_RE 词面裸匹配曾让"查证失败"三个字（不加粗）就能豁免其后 60 字内
+    # 任意引文的逐字核对——新格式必须要求加粗的正式标记，裸词不再生效
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]。",
+        "自述曾有轻生念头[E2]，警方称身份查证失败后她告诉记者「他根本没有资格评价我的人生」。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_formal_correction_marker_still_exempts_the_quoted_old_text(tmp_path, monkeypatch):
+    # 正例：真正的更正说明（加粗、带评审编号）引用被推翻的旧错句，仍应豁免逐字核对——
+    # 这是这条豁免窗口最初的设计场景，F-3 收紧后不能连它一起拦下
+    doc = NEW_DOC.replace(
+        "## 当事方\n",
+        "## 当事方\n**更正（评审v2-问题1）**：原稿将\"我不认识他，他欠我一个道歉\"误标"
+        "正文原话，经核实该句不存在[E2]。\n",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)

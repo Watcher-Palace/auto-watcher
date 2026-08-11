@@ -94,8 +94,21 @@ SENT_SPLIT_RE = re.compile(r"(?<=[。！？])")
 SENT_MIN_CJK = 8
 CJK_RE = re.compile(r"[一-鿿]")
 # 两种句子豁免 [E]：查证失败（定义上就没有出处）、检索记录（对自身检索行为的陈述，
-# 任何信源都无法作证）。此外没有第三种。
-EXEMPT_RE = re.compile(r"\*\*查证失败（评审v\d+-问题\d+）\*\*|\*\*检索记录\*\*")
+# 任何信源都无法作证）。此外没有第三种。判据锚在"加粗且紧跟在 ** 之后"——140 份存量
+# 实测过 34 个真实片段里只精确匹配旧版硬编码格式的 14 个，其余 20 个都是同一类
+# 加粗标记但括注/尾缀写法不同（**查证失败**、**查证失败，写手不得使用该细节**、
+# **查证失败（评审v1-问题2），详见事实第10条** 等），放宽到词族即可全收（fix 轮 1 F-2）。
+# 不放宽到"加粗片段中间出现该词"：语料里"**判定为查证失败**""**该说法查证失败，
+# 不应写入事实或草稿**"这类是叙述性结论，不是标记；本闸口豁免按整行摘除（见
+# `_lint_facts` F-1 部分），若连这类词也认，整段长叙述行会被从中间的一个词整行豁免掉。
+EXEMPT_RE = re.compile(r"\*\*(?:查证失败|检索记录)[^*]*\*\*")
+# F-3 专用：引号跨度豁免窗口（_lint_facts，新格式）改成只认加粗的正式标记——与
+# EXEMPT_RE 同一族（查证失败/检索记录），外加"更正（…）"（140 份存量里"**更正"
+# 开头的加粗标记 100% 紧跟括注，未见裸"**更正**"用法）。不复用 CORRECTION_RE：
+# 那是词面裸匹配（"查证失败"三个字出现即生效，不要求加粗），"逐字通道只有摘录层
+# 一条"这个承诺一旦接上词面豁免就形同虚设——旧格式的 CORRECTION_RE/`_lint_legacy`
+# 不动，两条路径本就分岔。窗口宽度沿用 CORRECTION_LOOKBEHIND，不新引入第三个阈值。
+FORMAL_MARK_RE = re.compile(r"\*\*(?:查证失败|检索记录)[^*]*\*\*|\*\*更正（[^*]*\*\*")
 
 
 def _slug_tokens(url: str) -> list[str]:
@@ -331,7 +344,11 @@ def _lint_extracts(path: Path, text: str) -> tuple[list[str], dict[int, bool]]:
 
 
 def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]:
-    """事实层每句必须挂 [E] 出处，引号跨度须命中某条摘录——逐字通道只有摘录层一条。"""
+    """事实层每句必须挂 [E] 出处，引号跨度须命中某条摘录——逐字通道只有摘录层一条。
+
+    句级归因是设计上限，不是本闸口的缺陷：一句内用逗号续接的独立事实主张不会被单独
+    核出处（按逗号再切的误伤代价实测 28%，权衡后不做，fix 轮 1 F-1/F-2 讨论区）。
+    """
     secs = _doc_sections(text)
     es = extracts(text)
     # \x00 不在 normalize 的剥除集里，join 后不会让引文跨两条摘录拼出假命中
@@ -341,7 +358,16 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
         body = secs.get(sec) or ""
         for raw in SENT_SPLIT_RE.split(body):
             s = raw.strip()
-            if not s or EXEMPT_RE.search(s):
+            if not s:
+                continue
+            # F-1：豁免只摘掉标记所在的那一行，不整片跳过。EXEMPT_RE 命中的是"一行"
+            # 而 SENT_SPLIT_RE 只在 。！？ 处切句——豁免标记行本身常常不带句末标点
+            # （后面紧跟着另一条独立事实，语料里 17 条豁免行有 4 条是这个形态），
+            # 原实现按整片豁免会把这条独立事实一并放过、零信号。
+            lines = [ln for ln in s.split("\n")
+                     if ln.strip() and not EXEMPT_RE.search(ln)]
+            s = "\n".join(lines).strip()
+            if not s:
                 continue
             if len(CJK_RE.findall(E_REF_RE.sub("", s))) < SENT_MIN_CJK:
                 continue
@@ -363,7 +389,9 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
                 q = qm.group(1).strip()
                 if len(q) < QUOTE_MIN:
                     continue
-                if CORRECTION_RE.search(
+                # F-3：豁免窗口只认加粗的正式标记（FORMAL_MARK_RE），不用 CORRECTION_RE
+                # 那种词面裸匹配——旧格式的 CORRECTION_RE/_lint_legacy 不动，见常量定义处注释
+                if FORMAL_MARK_RE.search(
                     body[max(0, qm.start() - CORRECTION_LOOKBEHIND):qm.start()]
                 ):
                     continue
