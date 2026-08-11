@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.publisher import read_frontmatter, load_tag_registry, load_tag_group
+from src.utils.research_doc import is_new_format
 
 VALID_CATEGORIES = {"S", "A", "B", "C", "D", "M", "N"}
 # 犯罪 tag 必须同时带一个具体罪名，或说明为什么没有罪名（用户裁定 2026-07-20）
@@ -304,21 +305,24 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
     for name in sorted(names):
         if name not in research_text and (len(name) < 2 or name[1:] not in research_text):
             ws.append(f"称呼未在研究文件出现：{name}（自取化名时确认必要性并全篇一致）")
-    # 灰字引文须逐字命中研究文件 信息来源 节（blog-writer《带色引文必须逐字回查》的
+    # 灰字／红字的逐字基准：新格式在 ## 摘录（那里逐条核过快照），旧格式仍在 ## 信息来源。
+    _secs = _sections(research_text)
+    base_section = "摘录" if is_new_format(research_text) else "信息来源"
+    base = _norm_quote(_secs.get(base_section, "") or "")
+    # 灰字引文须逐字命中研究文件 base_section 节（blog-writer《带色引文必须逐字回查》的
     # 机械面）。化名替换与外文译文合法地对不上原文，故只 WARN 不拦——WARN 的意义是
     # 逼一次显式核对，不是判定编造。
-    base = _norm_quote(_sections(research_text).get("信息来源", "") or "")
     for span in GREY_SPAN_RE.findall(body):
         norm = _norm_quote(span)
         if len(norm) < 6:
             continue
         if norm not in base:
             ws.append(
-                f"灰字引文未在研究文件 信息来源 节逐字命中：{span.strip()[:24]}…"
+                f"灰字引文未在研究文件 {base_section} 节逐字命中：{span.strip()[:24]}…"
                 "（化名替换/外文译文属预期；否则改用确有的摘录，或按缺口上报）"
             )
     # 红字转述官方结论时不得以「近乎逐字、又有改写」的形态呈现（blog-writer 规则的机械面）：
-    # 与 信息来源 逐字重合 ≥ RED_ECHO_MIN 字即报。改法二选一——够格逐字就改灰字整段引用，
+    # 与 base_section 逐字重合 ≥ RED_ECHO_MIN 字即报。改法二选一——够格逐字就改灰字整段引用，
     # 否则去色写成明确转述。只 WARN 不拦：重合也可能落在无法改写的法条名、机构全称上。
     for span in RED_SPAN_RE.findall(body):
         frag = _echo_span(_norm_quote(span), base, RED_ECHO_MIN)

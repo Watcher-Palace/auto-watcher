@@ -455,3 +455,35 @@ def test_red_nonchinese_identifier_no_warn():
     draft = make_draft(body="\n<font color=\"red\">（2026）京0105民初12345号，赔偿 1,250,000 元</font>\n")
     _, ws = crosscheck_research(draft, research)
     assert not any("红字与来源逐字重合" in w for w in ws)
+
+
+# --- 新格式：灰字/红字逐字基准搬到 ## 摘录 节（## 信息来源 退化为纯书目） ---
+
+RESEARCH_NEW = """## 事实
+- 略[E1]。
+
+## 信息来源
+- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）
+
+## 摘录
+[E1] 信源1 · 正文原话 · 2026-08-07
+他一直都没道歉，他欠我一个道歉
+"""
+
+
+def _draft(grey):
+    return (
+        "---\ntitle: 标题\n---\n\n"
+        f'<font color="grey">{grey}</font>\n\n'
+        "## 信息来源\n- 2026.07.31，极目新闻。*甲*。https://a.example/1\n"
+    )
+
+
+def test_grey_quote_checked_against_extract_section_in_new_format():
+    _vs, ws = crosscheck_research(_draft("他一直都没道歉，他欠我一个道歉"), RESEARCH_NEW)
+    assert not [w for w in ws if "灰字引文未在研究文件" in w]
+
+
+def test_grey_quote_absent_from_extracts_warns_in_new_format():
+    _vs, ws = crosscheck_research(_draft("他从来没有跟我说过一句对不起"), RESEARCH_NEW)
+    assert any("灰字引文未在研究文件" in w for w in ws)
