@@ -52,7 +52,8 @@ Repo root: `/home/jc/Projects/auto-watcher`
 
     /home/jc/Projects/auto-watcher/src/venv/bin/python /home/jc/Projects/auto-watcher/src/srcfetch.py --event {date}-{index} --refresh <URL>
 
-`<!-- [REVIEWER] -->` 里的引文逐字取自快照，`review_linter` 会机械校。**只怀疑不要**——
+`review_linter` 只核**你引的 URL 有没有快照**，**不核引文是否逐字**——引文逐字是你自己的
+责任，`<!-- [REVIEWER] -->` 落笔前 `Read` 快照核一遍。**只怀疑不要**——
 写「这条存疑，请研究阶段核实」不需要快照。`--refresh` 是必须的：命中研究阶段几天前的
 旧快照，用来查"有没有更新进展"就是错的。
 

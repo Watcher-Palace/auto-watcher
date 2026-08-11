@@ -201,9 +201,9 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
 - **blog-researcher 体积欠账（2026-08-09 记）**：快照重构把该文件从 169 行推到约 186，
   行数帽按文件临时放宽到 190（见 `src/tests/test_docs_consistency.py` 的 `LINE_CAPS`）。
   待 `blog-curate` 压回 180 并删掉那条 `LINE_CAPS` 条目。可压处已看到三处：
-  L75 追踪账号安全闸口（两层 linter 已覆盖，长篇「为什么」可移进 casebook）、
-  L124 尾部署名/标题段（裸平台品牌与 slug 已是机械检查）、
-  L156「下『查不到』之前先读完手上材料」（评审新增的「去快照集 grep」正是接这个的）。
+  L90 追踪账号安全闸口（两层 linter 已覆盖，长篇「为什么」可移进 casebook）、
+  L137 尾部署名/标题段（裸平台品牌与 slug 已是机械检查）、
+  L174「下『查不到』之前先读完手上材料」（评审新增的「去快照集 grep」正是接这个的）。
 
 ## Keeping Docs Accurate (anti-drift)
 
