@@ -568,3 +568,82 @@ def test_grey_quoting_extract_header_metadata_no_longer_passes():
     draft = _draft_colored('<font color="grey">信源1·正文原话</font>')
     _vs, ws = crosscheck_research(draft, RESEARCH_NEW_TITLE)
     assert any("灰字引文未在研究文件" in w for w in ws)
+
+
+# ==================== final-review fix 轮 1 ====================
+#
+# F-2：灰字/红字各按自己的问题过滤，不再共用一个 grey_base——灰字只收 form ==
+# 正文原话（linter.py:320），红字维持现状（extracts() 全部形态 + 信息来源）。
+
+RESEARCH_FORM_VARIANT = """## 事实
+- 略[E1]。
+
+## 信息来源
+- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）
+
+## 摘录
+[E1] 信源1 · %s · 2026-08-07
+被给予行政拘留五日
+"""
+
+
+def test_grey_quote_of_non_verbatim_extract_now_warns():
+    # 把 标题 形态的摘录当灰字依据引用必须 WARN——此前 grey_base 不分形态，
+    # 混着标题/转述一起放行，正是"把标题当当事人原话引"这类坑的另一个入口
+    research = RESEARCH_FORM_VARIANT % "标题"
+    draft = _draft_colored('<font color="grey">被给予行政拘留五日</font>')
+    _vs, ws = crosscheck_research(draft, research)
+    assert any("灰字引文未在研究文件" in w for w in ws)
+
+
+def test_grey_quote_of_verbatim_extract_still_passes():
+    # 正例：同一句改标 正文原话，仍应放行
+    research = RESEARCH_FORM_VARIANT % "正文原话"
+    draft = _draft_colored('<font color="grey">被给予行政拘留五日</font>')
+    _vs, ws = crosscheck_research(draft, research)
+    assert not [w for w in ws if "灰字引文未在研究文件" in w]
+
+
+RESEARCH_TITLE_FORM_EXTRACT = """## 事实
+- 略[E1]。
+
+## 信息来源
+- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）
+
+## 摘录
+[E1] 信源1 · 标题 · 2026-08-07
+警方已对涉案男子作出行政拘留五日的处罚决定并通报社会公众知悉
+"""
+
+
+def test_red_base_still_covers_non_verbatim_extract_forms():
+    # F-2 的另一半：红字基准维持现状——grey_base 收窄到只认 正文原话 之后，红字
+    # （防"近乎逐字复读官方结论"）不能被连带收窄，标题形态的摘录同样要能命中，
+    # 否则复读一条标题形态摘录的官方结论会漏判
+    draft = _draft_colored(
+        '<font color="red">警方已对涉案男子作出行政拘留五日的处罚决定并通报社会公众知悉</font>'
+    )
+    _vs, ws = crosscheck_research(draft, RESEARCH_TITLE_FORM_EXTRACT)
+    assert any("红字与来源逐字重合" in w for w in ws)
+
+
+def test_grey_quote_matches_despite_markdown_emphasis_in_extract():
+    # F-7a：研究文件的摘录常把词加粗，草稿灰字没有这层 markdown，_norm_quote 与
+    # srcfetch.normalize 必须继续是"同一个函数比同一件事"——两侧同改剥除 `*`
+    research = RESEARCH_NEW.replace(
+        "他一直都没道歉，他欠我一个道歉", "**他一直都没道歉**，他欠我一个道歉"
+    )
+    draft = _draft_colored('<font color="grey">他一直都没道歉，他欠我一个道歉</font>')
+    _vs, ws = crosscheck_research(draft, research)
+    assert not [w for w in ws if "灰字引文未在研究文件" in w]
+
+
+def test_grey_quote_matches_despite_curly_quote_variant():
+    # Minor 8：_norm_quote 此前不剥弯引号 ‘ ’，而 srcfetch.normalize 剥——两个
+    # 归一化函数的剥除集必须对齐，否则同一份摘录在两条比对路径上结果不一致
+    research = RESEARCH_NEW.replace(
+        "他一直都没道歉，他欠我一个道歉", "他说：‘他一直都没道歉，他欠我一个道歉’"
+    )
+    draft = _draft_colored('<font color="grey">他一直都没道歉，他欠我一个道歉</font>')
+    _vs, ws = crosscheck_research(draft, research)
+    assert not [w for w in ws if "灰字引文未在研究文件" in w]

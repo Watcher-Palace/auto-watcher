@@ -317,8 +317,19 @@ def crosscheck_research(draft_text: str, research_text: str) -> tuple[list[str],
         # （`[E1] 信源1 · 正文原话 · 2026-08-07`），头行本身的元数据会被误判成逐字命中。
         # \x00 作分隔符 join：既不在 _norm_quote 的剥除集里（能活下来隔开相邻两条），
         # 又避免「上一条尾部＋下一条头部」拼出一句从未真实存在过的假引文。
-        grey_base = "\x00".join(_norm_quote(e.body) for e in extracts(research_text))
-        red_base = grey_base + "\x00" + _norm_quote(_secs.get("信息来源", "") or "")
+        #
+        # F-2（fix 轮 1）：灰字与红字各按自己的问题过滤，不再共用同一个 grey_base：
+        # 灰字只收 form == 正文原话——只有逐字转录的摘录能作写手灰字依据（blog-writer/
+        # blog-reviewer 已明文的规则，这里接机械面）；标题/第三人称转述/图上转录都不能，
+        # 排除它们正是堵住「把标题当当事人原话引」这类坑。红字维持现状：extracts() 的
+        # 全部形态 + 信息来源 都并进来——红字防的是「近乎逐字复读官方结论」，标题正是
+        # 最常被复读的对象，若也按 正文原话 过滤会把它漏掉（与 Task 7 fix 轮 1「不许把
+        # 标题重新塞回灰字基准」同向，不能反过来把标题也从红字基准里过滤掉）。
+        all_extracts_base = "\x00".join(_norm_quote(e.body) for e in extracts(research_text))
+        grey_base = "\x00".join(
+            _norm_quote(e.body) for e in extracts(research_text) if e.form == "正文原话"
+        )
+        red_base = all_extracts_base + "\x00" + _norm_quote(_secs.get("信息来源", "") or "")
     else:
         grey_base = red_base = _norm_quote(_secs.get("信息来源", "") or "")
     # 灰字引文须逐字命中研究文件 base_section 节（blog-writer《带色引文必须逐字回查》的
@@ -371,12 +382,15 @@ def _echo_span(a: str, b: str, k: int) -> str:
 def _norm_quote(s: str) -> str:
     """引文比对前的归一化：剥标签、空白与引号壳，保留其余标点（逐字含标点）。
 
-    引号壳含半角 `"` `'`——漏掉它们时，研究文件把说话人写进引号内
+    引号壳含半角 `"` `'` 与弯引号 `‘’`——漏掉它们时，研究文件把说话人写进引号内
     （`"邓煜：能与我…"`）的摘录会让草稿里同一句灰字判不命中，报假 WARN。
-    同一根因 2026-08-06 一天内命中两次（260721-3、260726-1）。
+    同一根因 2026-08-06 一天内命中两次（260721-3、260726-1）。剥除集须与
+    `srcfetch.normalize` 保持同形（同一函数比同一件事）：`*` 同理剥除——研究文件
+    的摘录/事实句常把词加粗，草稿灰字没有这层 markdown，逐字比对否则必然落空
+    （fix 轮 1 F-7a／Minor 8）。
     """
     s = re.sub(r"<[^>]+>", "", s)
-    return re.sub(r"[\s「」『』“”\"']", "", s)
+    return re.sub(r"[\s「」『』“”‘’\"'*]", "", s)
 
 
 def lint_file(path: Path) -> list[str]:
