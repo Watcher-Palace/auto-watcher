@@ -381,8 +381,11 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
     # F-2：只有 正文原话／图上转录 是逐字转录，能作事实层"这句有出处"的凭据——
     # 标题惯把第三人称改写成第一人称，第三人称转述同理，都不是当事人原话。
     # 图上转录必须留在内：图上文字也是逐字转录，排除它会造出一类没有合法出路的假 FAIL。
+    # 保留逐条列表（不只是 join 后的整串）——F-7b 的分段回退要挨条试"是不是同一条
+    # 摘录里的"，不能只看拼起来的整串里有没有，那样等于把两条摘录的内容焊在一起。
+    verbatim_bodies = [norm_quote(e.body) for e in es if e.form in ("正文原话", "图上转录")]
     # \x00 不在 normalize 的剥除集里，join 后不会让引文跨两条摘录拼出假命中
-    base = "\x00".join(norm_quote(e.body) for e in es if e.form in ("正文原话", "图上转录"))
+    base = "\x00".join(verbatim_bodies)
     vs: list[str] = []
     for sec in NARRATIVE_SECTIONS:
         # F-3：切句前把句末标点后的 [E] 标记搬到标点之前，脚注式与行内式归一到
@@ -437,9 +440,17 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
                 # F-7b：省略号节略的逐字引文——整串比对必然落空（省略号本来就是承认
                 # "这中间跳过了"，不是拼接），按省略号切段、每段单独命中即算命中。
                 # 短于 QUOTE_MIN 的段不检查（沿用现成常量，不新引阈值）。
+                #
+                # fix 轮 2（controller 复核发现的 Critical）：每段必须命中**同一条**
+                # 摘录，不能各段分别在 base（所有摘录拼起来的整串）里各找各的——那样
+                # 会放行"E1 命中前半段、E2 命中后半段"的跨摘录拼接假引用，而省略号
+                # 闸口原本就是防拼接的。改成对每一条摘录单独试"这条摘录是否同时包含
+                # 全部分段"，任一条全中才放行。
                 segs = [seg for seg in (t.strip() for t in ELLIPSIS_RE.split(q))
                         if len(seg) >= QUOTE_MIN]
-                if segs and all(norm_quote(seg) in base for seg in segs):
+                if segs and any(
+                    all(seg in body for seg in segs) for body in verbatim_bodies
+                ):
                     continue
                 # F-7c：只说"未命中"会让 agent 以为只能补一条假摘录——给出两条合法出路
                 vs.append(

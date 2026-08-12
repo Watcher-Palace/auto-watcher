@@ -837,6 +837,38 @@ def test_quote_span_with_ellipsis_but_fabricated_segment_still_fails(tmp_path, m
     assert any("未命中任何摘录" in v for v in vs)
 
 
+# ==================== final-review fix 轮 2（controller 复核 Critical） ====================
+
+
+def test_ellipsis_segments_must_come_from_the_same_extract_not_stitched_across_two(
+    tmp_path, monkeypatch
+):
+    # F-7b 的分段回退此前允许各段各自命中不同摘录（各段分别在 base——所有摘录拼起来
+    # 的整串——里各找各的），省略号闸口本是防拼接的，这样反而把跨摘录拼接的伪引用
+    # 放回来了。真实复现：E1 支撑前半段、E2 支撑后半段，两段各自为真，合起来是从未
+    # 出现过的一句话。改成要求全部分段命中同一条摘录后，必须 FAIL。
+    doc = NEW_DOC.replace(
+        "[E1] 信源1 · 第三人称转述 · 2026-08-07\n被给予行政拘留五日",
+        "[E1] 信源1 · 正文原话 · 2026-08-07\n以名誉权纠纷为由，起诉一名对她造黄谣的男子",
+    ).replace(
+        "自述曾有轻生念头[E2]",
+        "自述「以名誉权纠纷为由，起诉一名对她造黄谣的男子……"
+        "我有一度想从这个楼上我就直接跳下去了」[E1][E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_ellipsis_segments_from_the_same_extract_still_pass(tmp_path, monkeypatch):
+    # 正例：两段都出自同一条摘录时（F-7b 本来的场景）仍应放行——修复不能连这个也拦下
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「我有一度想从这个楼上……我就直接跳下去了」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
 def test_footnote_style_marks_are_attributed_to_the_correct_sentence(tmp_path, monkeypatch):
     # F-3：脚注式写法（[E] 挂在句末标点之后）此前会让标记随下一句被切走，出处整体
     # 错位一位——第一句因此显得"没有出处"，真正的坏引用（不存在的 [E9]）反而落进
