@@ -63,6 +63,27 @@ def _strip_trailing(url: str) -> str:
     return url
 
 
+_TRAILING_CJK_RE = re.compile(r"[一-鿿]$")
+
+
+def _snapshot_exists(load_snapshot, url: str, event: str) -> bool:
+    """`load_snapshot(url, event) is not None`，整串查不到时按尾部汉字回退重试。
+
+    HTTP_RE 不排除普通汉字（只排除中文标点），URL 紧贴中文正文、中间无标点分隔时
+    （`见https://…2817986.html这篇报道`）汉字会被整段吞进"URL"，报出的"无快照"因此
+    永远抓不掉——换哪个真 URL 抓都对不上这串脏字符串的哈希。只在**整串**查不到时
+    才逐字剥尾部汉字重试；一旦最后一字不是汉字（含维基消歧义链接这类以配平括号收尾、
+    `_strip_trailing` 已处理过的 URL）就不进这个循环，不会误伤合法带汉字的 URL。
+    """
+    u = url
+    while True:
+        if load_snapshot(u, event) is not None:
+            return True
+        if not _TRAILING_CJK_RE.search(u):
+            return False
+        u = u[:-1]
+
+
 @dataclass
 class Item:
     num: int
@@ -182,9 +203,11 @@ def check_snapshots(text: str, event: str) -> list[str]:
             for u in HTTP_RE.findall(comment)
         ]
         for url in dict.fromkeys(urls):
-            if load_snapshot(url, event) is None:
+            if not _snapshot_exists(load_snapshot, url, event):
                 v.append(
-                    f"问题 {it.num}: 引作反证的来源无快照——跑 src/srcfetch.py "
+                    f"问题 {it.num}: 引作反证的来源无快照——跑 "
+                    f"/home/jc/Projects/auto-watcher/src/venv/bin/python "
+                    f"/home/jc/Projects/auto-watcher/src/srcfetch.py "
                     f"--event {event} --refresh {url}"
                 )
     return v
@@ -246,7 +269,15 @@ def main(argv: list[str]) -> int:
 
                 from src.utils.research_doc import event_of
 
-                violations += check_snapshots(text, event_of(resolved))
+                # 文件名不含 YYMMDD-N- 前缀时 event_of 会抛裸 ValueError——与
+                # research_linter.lint_research 对称处理，改成一条正常的违规而非
+                # 让 main() 崩出 traceback（M-3 那类"看着像环境坏了"的假象）
+                try:
+                    event = event_of(resolved)
+                except ValueError as e:
+                    violations.append(str(e))
+                else:
+                    violations += check_snapshots(text, event)
             else:
                 violations.append(f"找不到同版本草稿：{draft}")
     for x in violations:

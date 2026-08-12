@@ -383,3 +383,61 @@ def test_same_url_across_two_problem_items_reported_per_item(tmp_path, monkeypat
     assert len(vs) == 2
     assert any(v.startswith("问题 1:") for v in vs)
     assert any(v.startswith("问题 2:") for v in vs)
+
+
+# ==================== final-review fix 轮 1 ====================
+
+
+def test_url_glued_to_trailing_chinese_text_falls_back_by_stripping_cjk_tail(
+    tmp_path, monkeypatch
+):
+    # F-6（I-3）：HTTP_RE 不排除普通汉字，URL 紧贴中文正文、中间无标点时
+    # （见https://…2817986.html这篇报道）汉字会被整段吞进"URL"，报出的"无快照"
+    # 因此永远抓不掉——不管替真 URL 抓多少次快照都对不上这串脏字符串的哈希。
+    # 只在整串查不到时才逐字剥尾部汉字重试。
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    p = srcfetch.snapshot_path("https://c.example/2817986.html", "260731-1")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# SOURCE: x\n# FETCHED: y\n\n正文", encoding="utf-8")
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+        "<!-- [REVIEWER]: 见https://c.example/2817986.html这篇报道 -->\n处理：\n"
+    )
+    assert check_snapshots(review, "260731-1") == []
+
+
+def test_glued_fallback_does_not_mask_a_genuinely_missing_snapshot(tmp_path, monkeypatch):
+    # 正例：回退只在剥到某个前缀真的有快照时才放行——真没有快照（连剥空都没有）
+    # 仍要报违规，不能因为加了回退就变成"怎么剥都放行"
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    review = (
+        "STATUS: ISSUES\n\n## 问题 1\n类型：事实\n原文：`x`\n"
+        "<!-- [REVIEWER]: 见https://c.example/2817986.html这篇报道 -->\n处理：\n"
+    )
+    vs = check_snapshots(review, "260731-1")
+    assert any("无快照" in v for v in vs)
+
+
+def test_snapshot_violation_message_has_absolute_path(tmp_path, monkeypatch):
+    # F-5：消息里的命令统一成绝对路径解释器形式，与仓库"绝对路径解释器"约定一致
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "snapshots")
+    vs = check_snapshots(REVIEW_WITH_COUNTER_SOURCE, "260731-1")
+    msg = next(v for v in vs if "无快照" in v)
+    assert "/home/jc/Projects/auto-watcher/src/venv/bin/python" in msg
+    assert "/home/jc/Projects/auto-watcher/src/srcfetch.py" in msg
+
+
+def test_default_mode_filename_without_event_prefix_is_a_violation_not_a_traceback(tmp_path):
+    # F-9（M-3）：与 research_linter.lint_research 对称处理——文件名不含 YYMMDD-N-
+    # 前缀时 event_of() 此前会抛裸 ValueError，main() 是给人跑的，不该崩出 traceback，
+    # 该是一条正常的违规
+    review_dir = tmp_path / "review"
+    draft_dir = tmp_path / "draft"
+    review_dir.mkdir(); draft_dir.mkdir()
+    rp = review_dir / "测试-v1.md"           # 没有 YYMMDD-N- 前缀
+    (draft_dir / "测试-v1.md").write_text(DRAFT, encoding="utf-8")
+    rp.write_text(VALID, encoding="utf-8")
+    bad = subprocess.run([sys.executable, "src/review_linter.py", str(rp)],
+                         capture_output=True, text=True)
+    assert bad.returncode == 1, bad.stdout + bad.stderr
+    assert "事件标识" in bad.stdout
