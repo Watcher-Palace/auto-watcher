@@ -759,3 +759,137 @@ def test_bold_label_line_is_not_treated_as_a_markdown_heading(tmp_path, monkeypa
     )
     vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
     assert any("无 [E] 出处" in v for v in vs)
+
+
+# ==================== final-review fix 轮 1 ====================
+
+
+def test_fact_quote_of_title_form_extract_fails(tmp_path, monkeypatch):
+    # F-2：事实层的逐字凭据只认 正文原话／图上转录——标题惯把第三人称改写成第一
+    # 人称，把 标题 形态的摘录当直接引语引用必须 FAIL（此前 base 不分形态会静默放行）
+    doc = NEW_DOC.replace(
+        "[E1] 信源1 · 第三人称转述 · 2026-08-07",
+        "[E1] 信源1 · 标题 · 2026-08-07",
+    ).replace(
+        "自述曾有轻生念头[E2]。",
+        "自述「被给予行政拘留五日」[E2]。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_fact_quote_of_verbatim_form_extract_passes(tmp_path, monkeypatch):
+    # 正例：同一句改标 正文原话，仍应放行
+    doc = NEW_DOC.replace(
+        "[E1] 信源1 · 第三人称转述 · 2026-08-07",
+        "[E1] 信源1 · 正文原话 · 2026-08-07",
+    ).replace(
+        "自述曾有轻生念头[E2]。",
+        "自述「被给予行政拘留五日」[E2]。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
+def test_quote_span_violation_message_gives_a_legal_alternative(tmp_path, monkeypatch):
+    # F-7c：只说"未命中任何摘录"会让 agent 以为只能补一条假摘录——消息须给出
+    # 两条合法出路（去掉引号写成转述，或补一条摘录）
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「我当时真的撑不下去了」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    msg = next(v for v in vs if "未命中任何摘录" in v)
+    assert "转述" in msg and "补一条摘录" in msg
+
+
+def test_quote_span_with_markdown_emphasis_still_matches_extract(tmp_path, monkeypatch):
+    # F-7a：叙述节引用摘录内容时若混进了 markdown 强调符（真实语料：**合成聊天记录**
+    # 并散布至互联网），整串比对若不剥 ** 必然落空——摘录/快照原文没有这层 markdown，
+    # 问题出在叙述节引用时手滑带上了，不是编造
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「**我有一度想从这个楼上我就直接跳下去了**」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
+def test_quote_span_with_ellipsis_elision_still_matches_by_segment(tmp_path, monkeypatch):
+    # F-7b：省略号节略的逐字引文——转述时用「……」跳过中间内容是正常写法，整串
+    # 比对必然落空，不是编造。按省略号切段，每段单独达到 QUOTE_MIN 且命中即算命中。
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「我有一度想从这个楼上……我就直接跳下去了」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
+def test_quote_span_with_ellipsis_but_fabricated_segment_still_fails(tmp_path, monkeypatch):
+    # 正例边界：省略号回退只在"每段都命中"时生效——若某一段本身是编的，仍要 FAIL，
+    # 不能因为整句挂了个省略号就整体免检
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「我有一度想从这个楼上……哭着说都是他逼的」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_footnote_style_marks_are_attributed_to_the_correct_sentence(tmp_path, monkeypatch):
+    # F-3：脚注式写法（[E] 挂在句末标点之后）此前会让标记随下一句被切走，出处整体
+    # 错位一位——第一句因此显得"没有出处"，真正的坏引用（不存在的 [E9]）反而落进
+    # 过短的残留片段被悄悄漏检。切句前把标记搬到标点之前后，三句应各自正确归因：
+    # 句 1/2 的合法引用不受影响，句 3 的坏引用被正确报出、且报的是句 3 的内容。
+    doc = NEW_DOC.replace(
+        "**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。",
+        "青岛保时捷中心销售一职多年负责该品牌门店业务。[E1]"
+        "她自述曾经产生过轻生的念头并非虚言。[E2]"
+        "另据其本人陈述遭遇过多次言语侮辱行为。[E9]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("无 [E] 出处" in v for v in vs)
+    assert any("不存在的 [E9]" in v and "侮辱行为" in v for v in vs)
+
+
+def test_inline_style_marks_unaffected_by_reordering(tmp_path, monkeypatch):
+    # 正例：行内式（[E] 挂在句末标点之前，NEW_DOC 默认写法）不受这次改动影响
+    assert lint_research(_new_doc(tmp_path, monkeypatch)) == []
+
+
+def test_mixed_footnote_and_inline_style_do_not_crash(tmp_path, monkeypatch):
+    # 混写不炸：相邻两句一句行内式、一句脚注式，都应正确归因
+    doc = NEW_DOC.replace(
+        "**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。",
+        "青岛保时捷中心销售一职多年负责该品牌门店业务[E1]。"
+        "她自述曾经产生过轻生的念头并非虚言。[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("无 [E] 出处" in v for v in vs)
+
+
+def test_missing_snapshot_warn_message_has_runnable_command(tmp_path, monkeypatch):
+    # F-5：WARN 消息此前漏了 --event，实跑会直接打 usage 退出 2；命令须是绝对路径、
+    # 能照抄直接跑
+    from src import srcfetch
+
+    monkeypatch.setattr(srcfetch, "SNAPSHOTS", tmp_path / "empty")
+    text = GOOD.replace(" — 摘录", " — 「我不认识他，他欠我一个道歉」（正文原话）")
+    vs = lint_research(_mk(tmp_path, text, event="260731-1"))
+    msg = next(v for v in vs if "无原文快照" in v)
+    assert "--event 260731-1" in msg
+    assert "/home/jc/Projects/auto-watcher/src/venv/bin/python" in msg
+
+
+def test_new_format_source_line_format_hint_matches_new_format_tail(tmp_path, monkeypatch):
+    # F-5：新格式的来源行提示语此前照抄旧格式的"— 摘录"结尾——新格式行尾禁止长
+    # 引文（见 _lint_new_source_quotes），照它写会立刻撞上另一条闸口
+    doc = NEW_DOC.replace(
+        "- 2026.07.31，极目新闻。*甲*。https://a.example/1 — 快照 2026-08-07（900字）",
+        "- 2026.07.31，极目新闻报道了",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    msg = next(v for v in vs if "来源行格式不符" in v)
+    assert "摘录" not in msg
+    assert "快照" in msg

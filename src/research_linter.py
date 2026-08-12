@@ -115,6 +115,17 @@ FORMAL_MARK_RE = re.compile(r"\*\*(?:查证失败|检索记录)[^*]*\*\*|\*\*更
 # 独立残留片段被判"该句无 [E] 出处"。只认 `#` 语法——`**加粗小标题**：` 是另一种写法，
 # 后面常跟着需要出处的事实主张，不在此列（同 F-2 第二条边界，不能顺手放过）。
 HEADING_LINE_RE = re.compile(r"^#{1,6}\s")
+# fix 轮 1 F-3：[E] 标记若跟在句末标点**之后**（脚注式 `甲。[E1] 乙。[E2]`），
+# SENT_SPLIT_RE 按标点切句时标记会随下一句被切走——句 1 的出处丢失、错记到句 2 头上，
+# 依此类推整份错位一位。切句前把标记搬到它前面那个标点之前，脚注式与行内式
+# （`甲[E1]。乙[E2]。`）就归一到同一语义。收全半角方括号（沿用 E_REF_LOOSE_RE
+# 的理由：中文输入法容易敲出 ［］）——E_REF_RE 本身不放宽，全角标记搬完位置后
+# 仍不会被当作合法引用，只是不再连累下一句。
+MARK_AFTER_PUNCT_RE = re.compile(r"([。！？])(\s*(?:[\[［]E\d+[\]］]\s*)+)")
+# fix 轮 1 F-7b：省略号节略的逐字引文——`## 事实`／`## 当事方` 转述时用「……」跳过
+# 无关内容是正常写法（转发……照片图文并搭配不雅视频），整串比对必然落空，不是编造。
+# 按省略号切段、每段单独达到 QUOTE_MIN 门槛且命中即算命中。
+ELLIPSIS_RE = re.compile(r"…+|\.{3,}")
 
 
 def _slug_tokens(url: str) -> list[str]:
@@ -144,27 +155,35 @@ def _verify_quotes(tail: str, url: str, event: str) -> list[str]:
         return []
     snap = load_snapshot(url, event)
     if snap is None:
-        # 抓不到快照 ≠ 引文有问题：形态标注照页面实况，不许因工具抓不到而改标
-        return [f"WARN：无原文快照，`正文原话` 无法机械核对——跑 src/srcfetch.py "
-                f"落快照；抓不到不改形态标注：{url}"]
+        # 抓不到快照 ≠ 引文有问题：形态标注照页面实况，不许因工具抓不到而改标。
+        # 命令必须能照着直接跑——绝对路径解释器 + --event（漏了 --event 实跑会
+        # 直接打 usage 退出 2，agent 会以为是自己命令写错了）
+        return [f"WARN：无原文快照，`正文原话` 无法机械核对——跑 "
+                f"/home/jc/Projects/auto-watcher/src/venv/bin/python "
+                f"/home/jc/Projects/auto-watcher/src/srcfetch.py --event {event} {url} "
+                f"落快照；抓不到不改形态标注"]
     body = norm_quote(snap)
     return [f"摘录自称 `正文原话`，但该句不在原文快照里（拼接/改写/张冠李戴）：{q[:30]}"
             for q in quotes if norm_quote(q) not in body]
 
 
-def _lint_source_lines(src_text: str) -> list[str]:
+def _lint_source_lines(src_text: str, new_format: bool = False) -> list[str]:
     """来源行格式 ＋ 裸平台品牌 ＋ slug ＋ 追踪账号——新旧格式共用的书目行检查。
 
     「摘录带引号但缺形态标注」不在此列——新格式的来源行不再带内嵌摘录，那条检查
     只在旧格式（`_lint_legacy`）里启用。
     """
+    # 新格式行尾不许放长引文（见 _lint_new_source_quotes），提示语跟着分岔——旧格式
+    # 提示照抄一段摘录到行尾是对的，新格式下那样做会立刻撞上另一条闸口，是把 agent
+    # 指向一件它做不到的事
+    tail_hint = "— 快照 YYYY-MM-DD（N字）／快照失败：<原因>" if new_format else "— 摘录"
     vs: list[str] = []
     for ln in src_text.splitlines():
         ln = ln.strip()
         if not ln or ln.startswith("<!--"):
             continue
         if not SRC_RE.match(ln) and UNVERIFIED not in ln:
-            vs.append(f"来源行格式不符（- YYYY.MM.DD，来源。*标题*。URL — 摘录）：{ln[:40]}")
+            vs.append(f"来源行格式不符（- YYYY.MM.DD，来源。*标题*。URL {tail_hint}）：{ln[:40]}")
             continue
         m2 = SRC_PARSE_RE.match(ln)
         if not m2:
@@ -318,7 +337,9 @@ def _lint_extracts(path: Path, text: str) -> tuple[list[str], dict[int, bool]]:
         snap = load_snapshot(src.url, event)
         if snap is None:
             vs.append(
-                f"[E{e.eid}] 信源{src.num} 无快照——跑 src/srcfetch.py --event {event} "
+                f"[E{e.eid}] 信源{src.num} 无快照——跑 "
+                f"/home/jc/Projects/auto-watcher/src/venv/bin/python "
+                f"/home/jc/Projects/auto-watcher/src/srcfetch.py --event {event} "
                 f"--from-research：{src.url}"
             )
             continue
@@ -357,11 +378,18 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
     """
     secs = _doc_sections(text)
     es = extracts(text)
+    # F-2：只有 正文原话／图上转录 是逐字转录，能作事实层"这句有出处"的凭据——
+    # 标题惯把第三人称改写成第一人称，第三人称转述同理，都不是当事人原话。
+    # 图上转录必须留在内：图上文字也是逐字转录，排除它会造出一类没有合法出路的假 FAIL。
     # \x00 不在 normalize 的剥除集里，join 后不会让引文跨两条摘录拼出假命中
-    base = "\x00".join(norm_quote(e.body) for e in es)
+    base = "\x00".join(norm_quote(e.body) for e in es if e.form in ("正文原话", "图上转录"))
     vs: list[str] = []
     for sec in NARRATIVE_SECTIONS:
-        body = secs.get(sec) or ""
+        # F-3：切句前把句末标点后的 [E] 标记搬到标点之前，脚注式与行内式归一到
+        # 同一语义——否则脚注式的标记会随下一句被切走，出处整体错位一位
+        body = MARK_AFTER_PUNCT_RE.sub(
+            lambda m: m.group(2).strip() + m.group(1), secs.get(sec) or ""
+        )
         for raw in SENT_SPLIT_RE.split(body):
             s = raw.strip()
             if not s:
@@ -404,10 +432,20 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
                     body[max(0, qm.start() - CORRECTION_LOOKBEHIND):qm.start()]
                 ):
                     continue
-                if norm_quote(q) not in base:
-                    vs.append(
-                        f"## {sec} 的引号跨度未命中任何摘录（摘录层是唯一逐字来源）：{q[:30]}"
-                    )
+                if norm_quote(q) in base:
+                    continue
+                # F-7b：省略号节略的逐字引文——整串比对必然落空（省略号本来就是承认
+                # "这中间跳过了"，不是拼接），按省略号切段、每段单独命中即算命中。
+                # 短于 QUOTE_MIN 的段不检查（沿用现成常量，不新引阈值）。
+                segs = [seg for seg in (t.strip() for t in ELLIPSIS_RE.split(q))
+                        if len(seg) >= QUOTE_MIN]
+                if segs and all(norm_quote(seg) in base for seg in segs):
+                    continue
+                # F-7c：只说"未命中"会让 agent 以为只能补一条假摘录——给出两条合法出路
+                vs.append(
+                    f"## {sec} 的引号跨度未命中任何摘录（摘录层是唯一逐字来源）——去掉"
+                    f"引号写成不带引号的转述，或补一条摘录：{q[:30]}"
+                )
     return vs
 
 
@@ -466,7 +504,7 @@ def _lint_new(path: Path, text: str) -> list[str]:
                 f"出现未知章节 ## {name}——## 摘录 节内误加二级标题会让其后内容连带"
                 "从摘录里蒸发、无报错无痕迹；若是笔误请改回已知章节名，不要在这几节内用 ## 标题"
             )
-    vs += _lint_source_lines(secs.get("信息来源") or "")
+    vs += _lint_source_lines(secs.get("信息来源") or "", new_format=True)
     vs += _lint_new_source_quotes(secs.get("信息来源") or "")
     ex_vs, failed = _lint_extracts(path, text)
     vs += ex_vs
