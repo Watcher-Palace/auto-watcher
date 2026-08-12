@@ -198,7 +198,7 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
   清洗时一并纠 `## 前情`/`## 后续` 的用法漂移：template 规定这两节**只放站内已发布前后篇
   的链接**，但 260121、260123、260330、260326-10 把它们当外部来源行或散文节在用（2026-08-05 记）。
 
-- **blog-researcher 体积欠账（2026-08-09 记）**：快照重构把该文件从 169 行推到约 186，
+- **blog-researcher 体积欠账（2026-08-09 记）**：快照重构把该文件从 169 行推到 187，
   行数帽按文件临时放宽到 190（见 `src/tests/test_docs_consistency.py` 的 `LINE_CAPS`）。
   待 `blog-curate` 压回 180 并删掉那条 `LINE_CAPS` 条目。可压处已看到三处：
   L90 追踪账号安全闸口（两层 linter 已覆盖，长篇「为什么」可移进 casebook）、
