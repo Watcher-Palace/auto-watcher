@@ -198,12 +198,14 @@ When the Stage 1 tracker fails, surface the specific error immediately and wait 
   清洗时一并纠 `## 前情`/`## 后续` 的用法漂移：template 规定这两节**只放站内已发布前后篇
   的链接**，但 260121、260123、260330、260326-10 把它们当外部来源行或散文节在用（2026-08-05 记）。
 
-- **blog-researcher 体积欠账（2026-08-09 记）**：快照重构把该文件从 169 行推到 187，
-  行数帽按文件临时放宽到 190（见 `src/tests/test_docs_consistency.py` 的 `LINE_CAPS`）。
-  待 `blog-curate` 压回 180 并删掉那条 `LINE_CAPS` 条目。可压处已看到三处：
+- **blog-researcher 体积欠账（2026-08-09 记；行号与行数 2026-08-12 fix 轮 2 核对更新）**：
+  快照重构把该文件从 169 行推到 187；final-review fix 轮 1 合并 Lint gate 段落的
+  排版换行后压到**现 182 行**，行数帽仍按文件临时放宽到 190（见
+  `src/tests/test_docs_consistency.py` 的 `LINE_CAPS`）。待 `blog-curate` 压回 180
+  并删掉那条 `LINE_CAPS` 条目。可压处已看到三处：
   L90 追踪账号安全闸口（两层 linter 已覆盖，长篇「为什么」可移进 casebook）、
   L137 尾部署名/标题段（裸平台品牌与 slug 已是机械检查）、
-  L174「下『查不到』之前先读完手上材料」（评审新增的「去快照集 grep」正是接这个的）。
+  L169「下『查不到』之前先读完手上材料」（评审新增的「去快照集 grep」正是接这个的）。
 
 ## Keeping Docs Accurate (anti-drift)
 
