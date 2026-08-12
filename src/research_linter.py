@@ -446,10 +446,13 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
                 # 会放行"E1 命中前半段、E2 命中后半段"的跨摘录拼接假引用，而省略号
                 # 闸口原本就是防拼接的。改成对每一条摘录单独试"这条摘录是否同时包含
                 # 全部分段"，任一条全中才放行。
+                # 分段仍要走 norm_quote 再比对——body 是 norm_quote(e.body) 过的，
+                # 段内混进 markdown 强调/引号壳（F-7a 刚修过的那一类）不归一化会被
+                # 误判成不命中（fix 轮 2 R-1 复核发现：上一版比对漏了这一步）
                 segs = [seg for seg in (t.strip() for t in ELLIPSIS_RE.split(q))
                         if len(seg) >= QUOTE_MIN]
                 if segs and any(
-                    all(seg in body for seg in segs) for body in verbatim_bodies
+                    all(norm_quote(seg) in body for seg in segs) for body in verbatim_bodies
                 ):
                     continue
                 # F-7c：只说"未命中"会让 agent 以为只能补一条假摘录——给出两条合法出路

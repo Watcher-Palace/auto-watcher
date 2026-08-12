@@ -869,6 +869,29 @@ def test_ellipsis_segments_from_the_same_extract_still_pass(tmp_path, monkeypatc
     assert not any("未命中任何摘录" in v for v in vs)
 
 
+def test_ellipsis_segment_with_markdown_emphasis_still_passes(tmp_path, monkeypatch):
+    # R-1 复核：分段回退此前比对时漏了 norm_quote(seg)——段内混进 markdown 强调
+    # （F-7a 刚修过的那一类）会被原样拿去和已归一化的 body 比，必然落空，等于把
+    # F-7a 从省略号这一侧又打回去了。两段仍出自同一条摘录（E2），只是其中一段
+    # 带了 ** 强调符。
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「**我有一度想从这个楼上**……我就直接跳下去了」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
+def test_ellipsis_segment_with_embedded_quote_mark_still_passes(tmp_path, monkeypatch):
+    # R-1 复核：同一个漏归一化的坑，换成段内嵌引号壳（“”）——同样出自同一条摘录 E2。
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]",
+        "自述「我有一度想从这个楼上……“我就直接跳下去了”」[E2]",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
 def test_footnote_style_marks_are_attributed_to_the_correct_sentence(tmp_path, monkeypatch):
     # F-3：脚注式写法（[E] 挂在句末标点之后）此前会让标记随下一句被切走，出处整体
     # 错位一位——第一句因此显得"没有出处"，真正的坏引用（不存在的 [E9]）反而落进
