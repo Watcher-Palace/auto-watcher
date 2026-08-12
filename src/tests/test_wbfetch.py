@@ -66,3 +66,14 @@ def test_fetch_post_raises_after_retries():
     with patch("src.wbfetch.sync_playwright", return_value=cm):
         with pytest.raises(WbFetchError):
             fetch_post("https://weibo.com/1/x", retries=2)
+
+
+def test_launch_has_a_timeout():
+    # F-8：launch() 此前没有 timeout——只有 page.goto/wait_for_selector 有；
+    # 浏览器进程本身起不来时会无限挂起（srcfetch._fetch_rendered 同一个缺口，
+    # 一并补上，这是生产在用的那一侧）
+    cm = make_pw()
+    with patch("src.wbfetch.sync_playwright", return_value=cm):
+        fetch_post("https://weibo.com/1/x", timeout_ms=12345)
+    _, kwargs = cm.__enter__.return_value.chromium.launch.call_args
+    assert kwargs.get("timeout") == 12345

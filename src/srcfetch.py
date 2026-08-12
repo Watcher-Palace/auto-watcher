@@ -49,8 +49,10 @@ CHROME_TOKENS = {
 CHROME_EXACT = {"header", "hot", "top", "bottom", "menu", "logo"}
 _SPLIT_ATTR_RE = re.compile(r"[-_\s]+")
 # 逐字比对前两边同样归一：空白（含全角空格）与各式引号在转载/渲染中极不稳定，
-# 把它们算进"逐字"只会制造假阳性；标点与用字一律不动，那才是要比的东西。
-_STRIP_RE = re.compile(r"[\s　「」『』“”‘’\"']+")
+# 把它们算进"逐字"只会制造假阳性；标点与用字一律不动，那才是要比的东西。`*` 同理
+# 收进剥除集——研究文件的 ## 事实／## 当事方 常把引文里的词加粗（`**合成聊天记录**`），
+# 快照正文没有这层 markdown，整串比对必然落空，误判成"编造"（fix 轮 1 F-7a）。
+_STRIP_RE = re.compile(r"[\s　「」『』“”‘’\"'*]+")
 
 
 class SrcFetchError(Exception):
@@ -119,12 +121,17 @@ def _fetch_http(url: str) -> str:
 
 
 def _fetch_rendered(url: str) -> str:
-    """JS 渲染页兜底：同 wbfetch 的无头 Chrome，同样不经任何模型。"""
+    """JS 渲染页兜底：同 wbfetch 的无头 Chrome，同样不经任何模型。
+
+    launch() 此前没有 timeout——只有下面的 page.goto 有；浏览器进程本身起不来时
+    （沙箱/环境限制）会无限挂起，不是"抓这条 URL 慢"而是"整个函数永不返回"。
+    与 page.goto 用同一个 TIMEOUT 常量，两段合起来就是每条 URL 的总时限。
+    """
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(
-            channel="chrome", headless=True,
+            channel="chrome", headless=True, timeout=TIMEOUT * 1000,
             args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
         )
         try:
@@ -188,17 +195,31 @@ def main(argv: list[str]) -> int:
     event = argv[i]
     check_only, refresh = "--check" in argv, "--refresh" in argv
     urls = [a for a in argv if a.startswith("http")]
+    from_research_doc: Path | None = None
     if "--from-research" in argv:
-        from src.utils.research_doc import sources
+        from src.utils.research_doc import sections, sources
 
         j = argv.index("--from-research") + 1
         if j >= len(argv) or argv[j].startswith("-"):
             print(USAGE)
             return 2
-        doc = Path(argv[j])
-        urls += [s.url for s in sources(doc.read_text(encoding="utf-8"))]
+        from_research_doc = Path(argv[j])
+        if not from_research_doc.is_file():
+            print(f"研究文件不存在：{from_research_doc}")
+            return 2
+        doc_text = from_research_doc.read_text(encoding="utf-8")
+        urls += [s.url for s in sources(doc_text)]
     if not urls:
-        print(USAGE)
+        # `--from-research` 给了文件、但一条来源都没解析出来，跟"命令写错"是两回事——
+        # 后者才该打 usage；前者得说清楚是研究文件 ## 信息来源 没有可解析的来源行，
+        # 并给出原始行数，agent 才知道问题在研究文件那边，不是在这条命令本身
+        if from_research_doc is not None:
+            raw = [l for l in (sections(doc_text).get("信息来源") or "").splitlines()
+                   if l.strip() and not l.strip().startswith("<!--")]
+            print(f"研究文件 ## 信息来源 没有解析得出的来源行（{len(raw)} 行未能解析）："
+                  f"{from_research_doc}")
+        else:
+            print(USAGE)
         return 2
     rc = 0
     for u in dict.fromkeys(urls):          # 去重且保序：CLI 直给的 URL 与研究文件里的可能重叠

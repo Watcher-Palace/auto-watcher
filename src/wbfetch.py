@@ -39,9 +39,14 @@ def fetch_post(
     for _ in range(retries):
         try:
             with sync_playwright() as pw:
+                # launch() 此前没有 timeout（同 srcfetch._fetch_rendered 的缺口，
+                # fix 轮 1 F-8 一并补上）——只有下面的 page.goto/wait_for_selector 有；
+                # 浏览器进程本身起不来时会无限挂起，与 timeout_ms 共用同一个值，
+                # 两段合起来是每次尝试的总时限。
                 browser = pw.chromium.launch(
                     channel="chrome",
                     headless=headless,
+                    timeout=timeout_ms,
                     args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
                 )
                 try:

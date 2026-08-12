@@ -196,3 +196,60 @@ def test_refresh_overwrites_an_existing_snapshot(monkeypatch):
     assert load(URL, EVENT) == "旧正文"          # 无 --refresh：已有快照跳过
     srcfetch.main(["--event", EVENT, "--refresh", URL])
     assert load(URL, EVENT) == "新正文"
+
+
+# ==================== final-review fix 轮 1 ====================
+
+
+def test_normalize_strips_markdown_emphasis():
+    # F-7a：研究文件的摘录/事实句常把词加粗（**合成聊天记录**），快照正文没有
+    # 这层 markdown，逐字比对若不剥 `*` 必然落空——两侧同改（linter._norm_quote
+    # 必须保持同形，见 Minor 8）
+    assert normalize("**合成聊天记录**并散布至互联网") == normalize("合成聊天记录并散布至互联网")
+
+
+def test_from_research_nonexistent_file_gives_a_clear_message_not_a_traceback(capsys):
+    # F-9：--from-research 指向不存在的文件此前会抛裸 FileNotFoundError
+    rc = main(["--event", EVENT, "--from-research", "/no/such/file.md"])
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "不存在" in out
+
+
+def test_from_research_with_zero_parseable_sources_gives_a_clear_message(tmp_path, capsys):
+    # F-9：研究文件里一条来源都解析不出来时，此前打的是 usage:，agent 会以为是
+    # 自己命令写错了——应改成说清楚是研究文件 ## 信息来源 没有可解析的来源行，
+    # 并给出原始行数
+    doc = tmp_path / "260731-1-标题.md"
+    doc.write_text("## 信息来源\n- 澎湃新闻报道了\n- 另一条脏行\n", encoding="utf-8")
+    rc = main(["--event", EVENT, "--from-research", str(doc)])
+    assert rc == 2
+    out = capsys.readouterr().out
+    assert "没有解析得出的来源行" in out and "2 行" in out
+    assert out.strip() != USAGE
+
+
+def test_main_with_event_but_no_url_still_prints_bare_usage(capsys):
+    # 回归：--from-research 没给的普通用法错误仍应打原样 USAGE，不受上面那条改动影响
+    assert main(["--event", "260731-1"]) == 2
+    assert capsys.readouterr().out.strip() == USAGE
+
+
+def test_fetch_rendered_launch_has_a_timeout(monkeypatch):
+    # F-8：launch() 此前没有 timeout——只有 page.goto 有；浏览器进程本身起不来时
+    # 会无限挂起。与 wbfetch 共用同一条路径，一并加。
+    from unittest.mock import MagicMock
+    import playwright.sync_api as pw_api
+
+    pw = MagicMock()
+    page = pw.chromium.launch.return_value.new_context.return_value.new_page.return_value
+    page.locator.return_value.inner_text.return_value = "正文"
+    cm = MagicMock()
+    cm.__enter__.return_value = pw
+    cm.__exit__.return_value = False
+    monkeypatch.setattr(pw_api, "sync_playwright", lambda: cm)
+
+    srcfetch._fetch_rendered(URL)
+
+    _, kwargs = pw.chromium.launch.call_args
+    assert kwargs.get("timeout")
