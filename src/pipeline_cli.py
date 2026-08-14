@@ -6,6 +6,7 @@
   python src/pipeline_cli.py abort  <收录日期> <N...>
   python src/pipeline_cli.py staged <收录日期> <N...>   # 终态：值得关注但暂无可靠来源/相关性未定；草稿移入 source/_drafts 存查
   python src/pipeline_cli.py add    <收录日期> <N> <标题>
+  python src/pipeline_cli.py retitle <收录日期> <N> <新标题>   # tracker 判错标题、人裁定后改题（建档前用）
   python src/pipeline_cli.py archive [<收录日期> [N]]
   python src/pipeline_cli.py harvest [done <收录日期> <N>]
   python src/pipeline_cli.py ping-due
@@ -84,6 +85,11 @@ def main(argv: list[str]) -> int:
         date_str, n, title = args[0], int(args[1]), args[2]
         added = ledger.add_event(date_str, n, title, state="selected")
         print(f"{date_str}-{n}: {'已补录 (selected)' if added else '已存在，未改动'}")
+        return 0
+    if cmd == "retitle":
+        date_str, n, title = args[0], int(args[1]), args[2]
+        old = ledger.record_retitled(date_str, n, title)
+        print(f"{date_str}-{n}: 标题 {old} → {title}")
         return 0
     if cmd == "archive":
         if len(args) >= 2:

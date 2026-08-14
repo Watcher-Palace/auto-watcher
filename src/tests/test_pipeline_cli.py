@@ -91,3 +91,11 @@ def test_dedup_scans_ledger_posts_research(pipe, tmp_path, monkeypatch, capsys):
     assert main(["dedup", "张某"]) == 0
     out = capsys.readouterr().out
     assert "250101" in out and "990101-1" in out and "李某" not in out
+
+
+def test_retitle_updates_ledger_title(pipe, capsys):
+    ledger.add_event("990103", 1, "错的题", pipeline_dir=pipe)
+    assert main(["retitle", "990103", "1", "对的题"]) == 0
+    assert ledger.get_row("990103", 1, pipeline_dir=pipe)["标题"] == "对的题"
+    out = capsys.readouterr().out
+    assert "错的题" in out and "对的题" in out

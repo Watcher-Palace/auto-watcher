@@ -229,3 +229,24 @@ def test_record_staged_refuses_other_terminals(tmp_path):
         ledger.record_staged("990101", 1, pipeline_dir=tmp_path)
     with pytest.raises(RuntimeError):
         ledger.record_staged("990101", 2, pipeline_dir=tmp_path)
+
+
+def test_record_retitled_replaces_title_and_returns_old(tmp_path):
+    # tracker 的标题由 Haiku 判定、出过错，文档规定的处置是"停下报回、由人裁定改题"
+    # （casebook 三次复现）。此前账本没有落地改题的入口：add 对已存在的行 no-op，
+    # 只剩裸改 CSV 一条路，而那是 CLAUDE.md 明令禁止的。
+    _seed(tmp_path)
+    old = ledger.record_retitled("990101", 1, "改过的标题", pipeline_dir=tmp_path)
+    assert old == "标题一"
+    assert ledger.get_row("990101", 1, pipeline_dir=tmp_path)["标题"] == "改过的标题"
+
+
+def test_record_retitled_guards(tmp_path):
+    # 终态行不许改题：已发布的行标题要与站上文章对得上，改了就对不上账
+    _seed(tmp_path)
+    ledger.record_published("990101", 1, pub_title="发布题",
+                            pub_date="260712", pipeline_dir=tmp_path)
+    with pytest.raises(RuntimeError):
+        ledger.record_retitled("990101", 1, "别的题", pipeline_dir=tmp_path)
+    with pytest.raises(KeyError):
+        ledger.record_retitled("990101", 9, "无此行", pipeline_dir=tmp_path)

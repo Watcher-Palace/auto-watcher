@@ -122,6 +122,28 @@ def record_aborted(date_str: str, n: int, pipeline_dir: Path | None = None) -> N
     update_row(date_str, n, pipeline_dir, **{"状态": "abort"})
 
 
+def record_retitled(date_str: str, n: int, title: str,
+                    pipeline_dir: Path | None = None) -> str:
+    """改事件标题，返回旧标题。
+
+    tracker 的标题/brief 由 Haiku 判定，只是线索不是事实（casebook 三次复现）。研究
+    agent 发现对不上时按规矩停下报回、由人裁定改题——但此前账本没有落地入口：add 对
+    已存在的行 no-op，只剩裸改 CSV 一条路，而那是 CLAUDE.md 明令禁止的。
+
+    只改账本这一行。建档之后再改题会与研究/草稿文件名的 slug 脱节，用在建档之前。
+    """
+    row = get_row(date_str, n, pipeline_dir)
+    if row is None:
+        raise KeyError(f"账本中无 {date_str}-{n} 行")
+    if row["状态"] in EVENT_TERMINAL_STATES:
+        raise RuntimeError(
+            f"{date_str}-{n} 已是终态 {row['状态']}，不能改题——已发布行的标题要与站上"
+            f"文章对得上")
+    old = row["标题"]
+    update_row(date_str, n, pipeline_dir, **{"标题": title})
+    return old
+
+
 def record_staged(date_str: str, n: int, pipeline_dir: Path | None = None) -> None:
     """终态 staged：暂无可靠来源/相关性未定但值得关注，等后续报道。幂等。"""
     row = get_row(date_str, n, pipeline_dir)
