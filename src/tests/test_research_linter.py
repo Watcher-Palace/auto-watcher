@@ -1045,3 +1045,27 @@ def test_quote_near_correction_mark_without_trail_cue_still_fails(tmp_path, monk
     vs = lint_research(_new_doc(tmp_path, monkeypatch, doc := NEW_DOC.replace(
         "自述曾有轻生念头[E2]。", trail)))
     assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_multi_sentence_quote_is_not_split_apart(tmp_path, monkeypatch):
+    # 演练发现（剩余 2/29 条）：切句用 (?<=[。！？]) 不认引号嵌套，跨句的逐字引语
+    # 会被切成两半，前半截判"无 [E] 出处"。两条出路都不通——把 [E] 焊进引语内部
+    # ＝污染原文（演练里 agent 先这么干了，被自己发现改回），把长引语拆成两段各挂
+    # 一个 [E] ＝伪造出两句从未分开说过的话。逐字引语跨句是常态，不该由它买单。
+    quote = "我正常的工作都已经没有办法去进行了。我有一度想从这个楼上我就直接跳下去了"
+    doc = NEW_DOC.replace(
+        "[E2] 信源1 · 正文原话 · 2026-08-07\n我有一度想从这个楼上我就直接跳下去了",
+        f"[E2] 信源1 · 正文原话 · 2026-08-07\n{quote}",
+    ).replace("自述曾有轻生念头[E2]。", f"她说「{quote}」[E2]。")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc, snap=f"她说 {quote}"))
+    assert not any("无 [E] 出处" in v for v in vs)
+
+
+def test_plain_second_sentence_without_mark_still_fails(tmp_path, monkeypatch):
+    # 守护：不许因为上一条就把句级归因整个关掉——引号外的第二句缺 [E] 仍须 FAIL
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]。",
+        "自述曾有轻生念头[E2]。她随后向警方报案并提交了相关证据材料。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("无 [E] 出处" in v for v in vs)

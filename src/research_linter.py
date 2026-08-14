@@ -106,6 +106,37 @@ TRAIL_CUE_LOOKBEHIND = 25
 # 小标题、分组行、日期前缀会被误报成"无出处"。
 SENT_SPLIT_RE = re.compile(r"(?<=[。！？])")
 SENT_MIN_CJK = 8
+SENT_END = "。！？"
+# 引号成对表：「」“” 计深度，直引号 " 对称、只能开关
+QUOTE_OPEN, QUOTE_CLOSE = "「“", "」”"
+
+
+def split_sentences(text: str) -> list[str]:
+    """按 。！？ 切句，但**不在引号内部切**。
+
+    260731-1 受控演练：逐字引语跨句是常态（当事人连说两句、文书连写两段），此前
+    切句不认引号嵌套，跨句引语被拦腰截断、前半截判"无 [E] 出处"。agent 的两条出路
+    都是错的——把 [E] 焊进引语内部＝污染原文，拆成两段各挂一个 [E]＝伪造出两句
+    从未分开说过的话。句级归因本身不变，只是引号内不算句界。
+    """
+    out: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    straight = False
+    for ch in text:
+        buf.append(ch)
+        if ch in QUOTE_OPEN:
+            depth += 1
+        elif ch in QUOTE_CLOSE:
+            depth = max(0, depth - 1)
+        elif ch == '"':
+            straight = not straight
+        elif ch in SENT_END and depth == 0 and not straight:
+            out.append("".join(buf))
+            buf = []
+    if buf:
+        out.append("".join(buf))
+    return out
 CJK_RE = re.compile(r"[一-鿿]")
 # 两种句子豁免 [E]：查证失败（定义上就没有出处）、检索记录（对自身检索行为的陈述，
 # 任何信源都无法作证）。此外没有第三种。判据锚在"加粗且紧跟在 ** 之后"——140 份存量
@@ -414,7 +445,7 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
         body = MARK_AFTER_PUNCT_RE.sub(
             lambda m: m.group(2).strip() + m.group(1), secs.get(sec) or ""
         )
-        for raw in SENT_SPLIT_RE.split(body):
+        for raw in split_sentences(body):
             s = raw.strip()
             if not s:
                 continue
