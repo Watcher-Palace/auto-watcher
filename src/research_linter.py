@@ -80,6 +80,10 @@ NARRATIVE_SECTIONS = ("事实", "当事方")
 QUOTE_RES = (re.compile(r"「([^」]+)」"), re.compile(r'"([^"]+)"'), re.compile(r"“([^”]+)”"))
 QUOTE_MIN = 8          # 短词（案由、状态）撞上标题不算伪引用
 FORM_LOOKAHEAD = 30    # 引号后多远内出现「正文原话」＝作了这个声明
+# 事实层引号跨度认哪些形态作逐字凭据（理由见 _lint_facts 的 F-2 注释）：摘录四种形态都
+# 逐字取自快照，只排除 标题。将来若给 FORMS 添形态，默认按"可作凭据"收——新形态若同
+# 标题一样是被媒体改写过的文本，须在这里显式排除。
+FACT_VERBATIM_FORMS = FORMS - {"标题"}
 # 标着 `正文原话` 的摘录拿 srcfetch 快照逐字核（快照走裸 HTTP／无头浏览器，模型不介入；
 # WebFetch 返回的是小模型对页面的答复，拿它比对＝两次改写互比，核不出伪引用）。
 # 抓不到快照的信源（JS 壳、反爬、付费墙）旧格式只给 WARN——机械核不了是事实，不能假装
@@ -88,6 +92,16 @@ VERIFY_MIN = 6
 # update 模式的更正说明要原样引回被推翻的错句（"原稿…误标正文原话"），那是留痕不是主张
 CORRECTION_RE = re.compile(r"更正（|误标|原稿|伪引用|查证失败")
 CORRECTION_LOOKBEHIND = 60
+# 260731-1 受控演练：文档规定的更正格式是
+# `**更正（评审vN-问题K）**：正确表述（原错误信息：原句）`——被推翻的旧错句结构上就排在
+# 正确表述之后，距标记天然超过 60（实测 63／81／105，三条留痕全落窗外）。旧错句按定义
+# 在快照里查不到（查得到就不叫错），窗口盖不住＝逼 agent 删掉评审留痕。
+# 但**不能靠放宽字符数解决**：实测把窗口推到 150 会顺带豁免掉挨着更正标记的标签化引号
+# （"本人自述，见信源1" 这类本该拦的），而句号判据同样分不开——留痕引文与邻近标签的
+# 区别是语义的，不是位置的。改判"引文前紧邻留痕提示词"：演练那 6 条正反例 6/6 分开。
+# 窗口留 25 字符——提示词与被引旧句之间通常只隔"：""为""写成"等一两个连接词。
+TRAIL_CUE_RE = re.compile(r"原错误信息|原稿|原句|原摘录|原表述|误标|误概括|该合并句|伪引用")
+TRAIL_CUE_LOOKBEHIND = 25
 # 事实层每句必须挂出处。切句后去掉 [E] 与加粗标记，汉字不足这个数的不算句子——
 # 小标题、分组行、日期前缀会被误报成"无出处"。
 SENT_SPLIT_RE = re.compile(r"(?<=[。！？])")
@@ -378,12 +392,19 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
     """
     secs = _doc_sections(text)
     es = extracts(text)
-    # F-2：只有 正文原话／图上转录 是逐字转录，能作事实层"这句有出处"的凭据——
-    # 标题惯把第三人称改写成第一人称，第三人称转述同理，都不是当事人原话。
+    # F-2：四种形态的摘录**都**逐字取自快照，能作事实层"这句有出处"的凭据——只排除
+    # 标题：媒体惯把第三人称改写成第一人称当标题，标题文本本身就可能是被制造出来的
+    # "原话"，拿它背书直接引语＝把媒体的改写升格成当事人的话。
+    # 260731-1 受控演练更正：此前连 第三人称转述 一并排除（理由写的是"转述同理，都不是
+    # 当事人原话"），但事实层要引的大量是行政处罚决定书措辞与记者叙述，它们逐字躺在快照
+    # 里、摘录层也照收，却没有任何合法出路——去掉引号＝把文书原文降格成转述，补一条摘录
+    # ＝同一段再抄一遍改标 正文原话，等于教 agent 伪造形态。人称篡改不需要形态白名单挡：
+    # 逐字比对本身就挡住了，转述摘录里没有的第一人称引文照样落空。
+    # 写手层（linter.py 的灰字/红字基准）仍只认 正文原话——"这话是谁说的"归那里管。
     # 图上转录必须留在内：图上文字也是逐字转录，排除它会造出一类没有合法出路的假 FAIL。
     # 保留逐条列表（不只是 join 后的整串）——F-7b 的分段回退要挨条试"是不是同一条
     # 摘录里的"，不能只看拼起来的整串里有没有，那样等于把两条摘录的内容焊在一起。
-    verbatim_bodies = [norm_quote(e.body) for e in es if e.form in ("正文原话", "图上转录")]
+    verbatim_bodies = [norm_quote(e.body) for e in es if e.form in FACT_VERBATIM_FORMS]
     # \x00 不在 normalize 的剥除集里，join 后不会让引文跨两条摘录拼出假命中
     base = "\x00".join(verbatim_bodies)
     vs: list[str] = []
@@ -433,6 +454,12 @@ def _lint_facts(text: str, eids: set[int], failed: dict[int, bool]) -> list[str]
                 # 那种词面裸匹配——旧格式的 CORRECTION_RE/_lint_legacy 不动，见常量定义处注释
                 if FORMAL_MARK_RE.search(
                     body[max(0, qm.start() - CORRECTION_LOOKBEHIND):qm.start()]
+                ):
+                    continue
+                # 演练补：被推翻的旧错句排在正确表述之后，离标记远得超出上面的窗口，
+                # 但紧跟着"原错误信息／原稿／误标"这类留痕提示词（见常量定义处注释）
+                if TRAIL_CUE_RE.search(
+                    body[max(0, qm.start() - TRAIL_CUE_LOOKBEHIND):qm.start()]
                 ):
                     continue
                 if norm_quote(q) in base:

@@ -948,3 +948,100 @@ def test_new_format_source_line_format_hint_matches_new_format_tail(tmp_path, mo
     msg = next(v for v in vs if "来源行格式不符" in v)
     assert "摘录" not in msg
     assert "快照" in msg
+
+
+# ==================== 受控演练（260731-1）暴露的两处闸口缺口 ====================
+
+
+def test_fact_quote_of_third_person_extract_passes(tmp_path, monkeypatch):
+    # 演练发现（12/29 条违规）：事实层要引的大量是行政处罚决定书措辞与记者叙述，
+    # 它们逐字躺在快照里、摘录层也照收了，但形态是 第三人称转述 → 此前一律判"未
+    # 命中任何摘录"，没有合法出路（去掉引号＝把文书原文降格成转述，补摘录＝同一条
+    # 再抄一遍改标 正文原话，等于教 agent 伪造形态）。
+    # 人称篡改由逐字比对本身挡住：转述摘录里没有的第一人称引文照样落空，不需要
+    # 再拿形态白名单挡一道。标题另论（见下一个用例）——媒体惯把第三人称改写成第
+    # 一人称当标题，标题文本本身就可能是被制造出来的"原话"。
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]。",
+        "自述「被给予行政拘留五日」[E1]。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
+def test_fact_quote_of_title_extract_still_fails_after_widening(tmp_path, monkeypatch):
+    # 放宽到 第三人称转述 之后，标题 必须仍然拦住——这是 F-2 当初唯一站得住的那半。
+    doc = NEW_DOC.replace(
+        "[E1] 信源1 · 第三人称转述 · 2026-08-07",
+        "[E1] 信源1 · 标题 · 2026-08-07",
+    ).replace(
+        "自述曾有轻生念头[E2]。",
+        "自述「被给予行政拘留五日」[E1]。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_ellipsis_segments_from_third_person_extract_pass(tmp_path, monkeypatch):
+    # 省略号分段回退走的是同一份 verbatim_bodies，演练里两条节略引文因此连带落空。
+    doc = NEW_DOC.replace(
+        "[E1] 信源1 · 第三人称转述 · 2026-08-07\n被给予行政拘留五日",
+        "[E1] 信源1 · 第三人称转述 · 2026-08-07\n"
+        "转发牟某文照片图文并搭配不雅视频，对其侮辱，被给予行政拘留五日",
+    ).replace(
+        "自述曾有轻生念头[E2]。",
+        "自述「转发牟某文照片图文……对其侮辱」[E1]。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
+def test_correction_trail_quote_past_sixty_chars_is_exempt(tmp_path, monkeypatch):
+    # 演练发现（3/29 条）：豁免窗口 60 字符与文档规定的更正格式对不上——
+    # `**更正（评审vN-问题K）**：正确表述（原错误信息：原句）` 里被推翻的旧错句
+    # 结构上就排在正确表述之后，距离天然超过 60（实测 63／81／105）。旧错句按
+    # 定义查不到（查得到就不叫错），窗口没盖住＝逼 agent 删掉留痕。
+    trail = (
+        "**更正（评审v2-问题1）**：该说法应以信源1正文为准，此前把两句掐头去尾"
+        "拼接成一句并误标形态，经重新核对原文，该合并句在任何来源中均不存在"
+        "（原错误信息：「我不认识他，他欠我一个道歉」）[E2]。"
+    )
+    doc = NEW_DOC.replace("自述曾有轻生念头[E2]。", trail)
+    # 本用例要压住的是"落在标记窗口之外、靠留痕提示词豁免"这一段——距离必须真的
+    # 超出 CORRECTION_LOOKBEHIND，否则测的是旧窗口、放宽与否都能过
+    mark_end = trail.index("**：") + 2
+    dist = trail.index("「我不认识他") - mark_end
+    assert dist > 60, f"用例失去意义：距离 {dist} 仍在标记窗口内"
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("未命中任何摘录" in v for v in vs)
+
+
+def test_quote_far_beyond_correction_mark_still_fails(tmp_path, monkeypatch):
+    # 放宽不等于取消：标记之后隔着一大段叙述才出现的引文仍须命中摘录，否则
+    # "本行开头挂过一个更正标记"就成了整行的逐字豁免。
+    doc = NEW_DOC.replace(
+        "自述曾有轻生念头[E2]。",
+        "**更正（评审v2-问题1）**：该说法应以信源1正文为准。" + "补充说明。" * 32
+        + "她说「我当时真的撑不下去了」[E2]。",
+    )
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("未命中任何摘录" in v for v in vs)
+
+
+def test_quote_near_correction_mark_without_trail_cue_still_fails(tmp_path, monkeypatch):
+    # 演练实测：把标记窗口放宽到 150 会顺带豁免掉挨着更正标记的标签化引号（研究者
+    # 拿引号当标注用的那类，本该拦）。豁免改挂"留痕提示词"而不是字符数，就是为了
+    # 分开这两者——同样距标记 60~150 字符、但前面没有提示词的引文必须仍然 FAIL。
+    trail = (
+        "**更正（评审v2-问题1）**：该说法应以信源1正文为准，此处的处置意见与本站既有"
+        "表述一致，经复核无需改动，相关判断已在评审第三轮记录在案，另附一句说明"
+        "「我当时真的撑不下去了」[E2]。"
+    )
+    # 距离必须落在 (60, 150]：60 以内会被原有的标记窗口豁免（测不到本用例的点），
+    # 超过 150 则连被否掉的"放宽到 150"方案也能过，同样测不出两者的差别
+    mark_end = trail.index("**：") + 2
+    dist = trail.index("「我当时") - mark_end
+    assert 60 < dist <= 150, f"用例失去意义：距离 {dist} 不在区分区间内"
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc := NEW_DOC.replace(
+        "自述曾有轻生念头[E2]。", trail)))
+    assert any("未命中任何摘录" in v for v in vs)
