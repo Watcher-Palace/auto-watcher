@@ -1090,3 +1090,48 @@ def test_empty_narrative_section_fails_legacy(tmp_path):
 def test_whitespace_only_narrative_section_fails(tmp_path):
     vs = lint_research(_mk(tmp_path, GOOD.replace("## 当事方\n某人\n", "## 当事方\n   \n")))
     assert any("当事方" in v and "空节" in v for v in vs)
+
+
+def test_whole_page_dumped_as_one_extract_fails(tmp_path, monkeypatch):
+    # 260804-3 实测：5 条摘录就是 5 篇整文（占各自快照 73%–98%），一个 [E] 覆盖整篇。
+    # 叙述层挂 [E2][E4] 时并没有定位到具体段落，逐字闸口只能核"在不在这篇文章里"。
+    long_body = "他表示这是一起生活琐事引发的连续冲突，两次冲突升级间隔极短，应当整体评判。" * 12
+    doc = NEW_DOC.replace("被给予行政拘留五日", long_body)
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc, snap=long_body + "另有少量无关内容。"))
+    assert any("[E1]" in v and "整篇" in v for v in vs)
+
+
+def test_long_extract_that_is_a_small_part_of_the_page_passes(tmp_path, monkeypatch):
+    # 守护：长引文本身不是错——占比低说明它是从长文里摘的一段，正是要的形态
+    long_body = "他表示这是一起生活琐事引发的连续冲突，两次冲突升级间隔极短，应当整体评判。" * 12
+    doc = NEW_DOC.replace("被给予行政拘留五日", long_body)
+    snap = long_body + "无关内容。" * 400
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc, snap=snap))
+    assert not any("整篇" in v for v in vs)
+
+
+def test_short_page_quoted_in_full_passes(tmp_path, monkeypatch):
+    # 守护：短通报/短帖逐字全引是正当写法，不该因"占比高"被拦
+    vs = lint_research(_new_doc(tmp_path, monkeypatch))
+    assert not any("整篇" in v for v in vs)
+
+
+def test_all_sources_reposts_without_note_fails(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("极目新闻。", "赣南日报（转载自极目新闻）。")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("原件未取" in v for v in vs)
+
+
+def test_all_sources_reposts_with_note_passes(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace("极目新闻。", "赣南日报（转载自极目新闻）。").replace(
+        "## 事实", "原件未取：极目新闻原页面已下架，仅存转载版。\n\n## 事实")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("原件未取" in v for v in vs)
+
+
+def test_one_primary_source_among_reposts_passes(tmp_path, monkeypatch):
+    doc = NEW_DOC.replace(
+        "## 摘录",
+        "- 2026.07.31，赣南日报（转载自极目新闻）。*乙*。https://a.example/2 — 快照失败：反爬\n\n## 摘录")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("原件未取" in v for v in vs)

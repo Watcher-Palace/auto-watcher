@@ -300,6 +300,32 @@ def _lint_blue(text: str) -> list[str]:
     return vs
 
 
+# 摘录颗粒度（260804-3 实测：5 条摘录＝5 篇整文，占各自快照 73%–98%）。一个 [E] 覆盖
+# 整篇的后果不是引文有假，是**定位失效**：叙述层挂 [E2][E4] 时并没有指到具体段落，逐字
+# 闸口也只能核"在不在这篇文章里"。两条件必须同时成立才拦——长引文本身不是错（占比低＝
+# 从长文里摘的一段，正是要的形态），短通报/短帖逐字全引也不是错（字数低于下限）。
+EXCERPT_MIN_CHARS = 400
+EXCERPT_WHOLE_RATIO = 0.6
+# 来源行「来源名」字段里的转载/转发标记。语料 423 条来源行里 128 条带标记，写法稳定。
+REPOST_RE = re.compile(r"转载|转发|经@")
+# 全部来源都是转载时的留痕标记。取不到原件是合法结局（页面下架、付费墙），但必须写明
+# 而不是沉默——与 `快照失败：<原因>` 同一形态：要么把事做了，要么写清为什么做不了。
+NO_ORIGINAL = "原件未取："
+
+
+def _lint_source_provenance(text: str, srcs: list) -> list[str]:
+    """全部来源都是转载/转发＝事实基里没有一份原件，要么取原件，要么留痕。"""
+    if not srcs or NO_ORIGINAL in text:
+        return []
+    if all(REPOST_RE.search(s.name) for s in srcs):
+        return [
+            f"全部 {len(srcs)} 条来源都标着转载/转发，事实基里没有一份原件——"
+            f"先取原始出处（媒体自有渠道、原帖、判决书/通报原件）入来源；"
+            f"确实取不到就在文件里写明「{NO_ORIGINAL}<原因>」，不要沉默略过"
+        ]
+    return []
+
+
 def _lint_narrative_nonempty(secs: dict[str, str]) -> list[str]:
     """`## 事实`／`## 当事方` 不许是空节——新旧格式共用。
 
@@ -405,9 +431,16 @@ def _lint_extracts(path: Path, text: str) -> tuple[list[str], dict[int, bool]]:
                 f"--from-research：{src.url}"
             )
             continue
-        if norm_quote(e.body) not in norm_quote(snap):
+        nb, ns = norm_quote(e.body), norm_quote(snap)
+        if nb not in ns:
             vs.append(
                 f"[E{e.eid}] 摘录不在原文快照里（拼接/改写/张冠李戴）：{e.body[:30]}"
+            )
+        elif len(nb) >= EXCERPT_MIN_CHARS and ns and len(nb) / len(ns) >= EXCERPT_WHOLE_RATIO:
+            vs.append(
+                f"[E{e.eid}] 整篇入摘录（{len(nb)} 字，占快照 {len(nb) / len(ns):.0%}）——"
+                f"一个 [E] 覆盖整篇，叙述层挂它等于没定位；按主张切成多条摘录，"
+                f"每条只放支撑一句话的那段原文"
             )
     # ] 后缺空格、· 两侧缺空格、行首多 - 、eid 非纯数字——这四类手误原实现会静默丢弃
     # 整条摘录、并把它的正文并进上一条的 body（那不是漏判是误挂：属于 E2 的引文会拿
@@ -600,6 +633,7 @@ def _lint_new(path: Path, text: str) -> list[str]:
     vs += _lint_facts(text, {e.eid for e in extracts(text)}, failed)
     vs += _lint_blue(text)
     vs += _lint_narrative_nonempty(secs)
+    vs += _lint_source_provenance(text, doc_sources(text))
     vs += _lint_assets(path, secs)
     return vs
 
@@ -649,6 +683,7 @@ def _lint_legacy(path: Path, text: str) -> list[str]:
                     )
     vs += _lint_blue(text)
     vs += _lint_narrative_nonempty(secs)
+    vs += _lint_source_provenance(text, doc_sources(text))
     vs += _lint_assets(path, secs)
     return vs
 
