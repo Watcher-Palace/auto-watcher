@@ -20,11 +20,8 @@ def test_human_section_single_spelling():
 
 
 DEFAULT_LINE_CAP = 180
-# blog-researcher 的职责在 2026-08-09 的快照重构里整体改写（抓快照存档＋整合），
-# 新增的流程说明抵不过可删的旧叮嘱（可删的只有 5 行）。按文件临时放宽，不抬全局帽——
-# 抬全局帽等于顺带给 blog-writer 松了 27 行的绳。欠账记在 CLAUDE.md ## 待办，
-# 由 blog-curate 压回 180 后删掉这一条。
-LINE_CAPS = {"blog-researcher.md": 190}
+# 2026-08-16 curate 把 blog-researcher 压回 179 行，快照重构期的临时放宽（190）已删除。
+LINE_CAPS: dict[str, int] = {}
 
 
 def test_agent_files_within_line_cap():
