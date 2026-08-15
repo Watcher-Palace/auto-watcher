@@ -300,6 +300,23 @@ def _lint_blue(text: str) -> list[str]:
     return vs
 
 
+def _lint_narrative_nonempty(secs: dict[str, str]) -> list[str]:
+    """`## 事实`／`## 当事方` 不许是空节——新旧格式共用。
+
+    260804-3 实测：`## 当事方` 整节留空仍拿 LINT OK。既有两道闸口都盖不住它——
+    REQUIRED 只核标题在不在；孤儿检查按 [E] 编号算，某条摘录只要在 `## 事实` 里
+    被引用过就不算孤儿，哪怕它独有的内容（当事人及家属表态之类）没被任何叙述句
+    消费。而写手的叙述只取这两节，摘录层是逐字凭据、不是叙述来源，所以空节＝该节
+    材料整批漏出流水线，且不留痕迹。
+    """
+    return [
+        f"## {sec} 是空节——叙述层只有 事实/当事方 两节（摘录是逐字凭据层，不是叙述来源），"
+        f"空节等于该节材料整批不进草稿"
+        for sec in NARRATIVE_SECTIONS
+        if sec in secs and not secs[sec].strip()
+    ]
+
+
 def _lint_assets(path: Path, secs: dict[str, str]) -> list[str]:
     """资产双向一致——新旧格式共用。"""
     vs: list[str] = []
@@ -582,6 +599,7 @@ def _lint_new(path: Path, text: str) -> list[str]:
     vs += ex_vs
     vs += _lint_facts(text, {e.eid for e in extracts(text)}, failed)
     vs += _lint_blue(text)
+    vs += _lint_narrative_nonempty(secs)
     vs += _lint_assets(path, secs)
     return vs
 
@@ -630,6 +648,7 @@ def _lint_legacy(path: Path, text: str) -> list[str]:
                         f"（标题惯把第三人称改写成第一人称）：{q[:30]}"
                     )
     vs += _lint_blue(text)
+    vs += _lint_narrative_nonempty(secs)
     vs += _lint_assets(path, secs)
     return vs
 

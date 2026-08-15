@@ -1069,3 +1069,24 @@ def test_plain_second_sentence_without_mark_still_fails(tmp_path, monkeypatch):
     )
     vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
     assert any("无 [E] 出处" in v for v in vs)
+
+
+def test_empty_narrative_section_fails_new_format(tmp_path, monkeypatch):
+    # 260804-3 实测：`## 当事方` 整节留空仍拿 LINT OK——REQUIRED 只核标题在不在，
+    # 孤儿检查按 [E] 编号算（E2 只要在 `## 事实` 里被引用过就不算孤儿），两道闸口
+    # 叠起来盖不住空节。后果是家属表态一类只在摘录里逐字躺着的材料整批不进草稿：
+    # 写手的叙述只取 `## 事实`／`## 当事方` 两节。
+    doc = NEW_DOC.replace(
+        "**牟倩文**：青岛保时捷中心销售，自述曾有轻生念头[E2]。", "")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert any("当事方" in v and "空节" in v for v in vs)
+
+
+def test_empty_narrative_section_fails_legacy(tmp_path):
+    vs = lint_research(_mk(tmp_path, GOOD.replace("## 当事方\n某人\n", "## 当事方\n")))
+    assert any("当事方" in v and "空节" in v for v in vs)
+
+
+def test_whitespace_only_narrative_section_fails(tmp_path):
+    vs = lint_research(_mk(tmp_path, GOOD.replace("## 当事方\n某人\n", "## 当事方\n   \n")))
+    assert any("当事方" in v and "空节" in v for v in vs)
