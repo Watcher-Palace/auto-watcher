@@ -647,3 +647,16 @@ def test_grey_quote_matches_despite_curly_quote_variant():
     draft = _draft_colored('<font color="grey">他一直都没道歉，他欠我一个道歉</font>')
     _vs, ws = crosscheck_research(draft, research)
     assert not [w for w in ws if "灰字引文未在研究文件" in w]
+
+
+def test_research_layer_e_marks_must_not_reach_the_draft(tmp_path):
+    # 260804-3 v1 实测：新格式研究文件叙述层每句挂 [E]，写手改写进草稿时把标记一起带了
+    # 过来（11 行 57 处），三道防线全漏——linter 不查、评审当成正常写法只质疑该挂哪几个
+    # 编号、写手自己没觉得不对。template 全篇没有 [E] 的位置，source/_posts/ 命中为 0。
+    from src.linter import lint_text
+    good = "**2024年**：两人经人介绍相恋。\n"
+    assert not any("[E" in v for v in lint_text(good, None, date.today()))
+    for bad in ("**2024年**：两人经人介绍相恋。[E2][E4]\n",
+                "**2024年**：两人经人介绍相恋。［E2］\n"):
+        vs = lint_text(bad, None, date.today())
+        assert any("研究层" in v and "[E" in v for v in vs), bad

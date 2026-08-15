@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.publisher import read_frontmatter, load_tag_registry, load_tag_group
-from src.utils.research_doc import extracts, is_new_format
+from src.utils.research_doc import E_REF_LOOSE_RE, extracts, is_new_format
 
 VALID_CATEGORIES = {"S", "A", "B", "C", "D", "M", "N"}
 # 犯罪 tag 必须同时带一个具体罪名，或说明为什么没有罪名（用户裁定 2026-07-20）
@@ -119,6 +119,15 @@ def lint_text(content: str, registry: set[str] | None, today: date) -> list[str]
     prose = re.sub(r"<!--.*?-->", "", content, flags=re.S)
     if "—" in _dash_scan_text(content):
         violations.append("破折号 — 出现（风格规则：重组句子，不用破折号）")
+    # 研究层的 [E] 出处回指不进读者可见正文（template 全篇没有它的位置，已发布语料命中
+    # 为 0）。新格式研究文件的叙述层每句都挂 [E]，改写进草稿时极易连标记一起带过来——
+    # 260804-3 v1 就是这样带进 11 行 57 处，linter 不查、评审当成正常写法、写手自己也
+    # 没觉得不对，三道防线同时漏。判据取注释剥离后的全文，含全角方括号变体。
+    if (m := E_REF_LOOSE_RE.search(prose)):
+        violations.append(
+            f"正文出现研究层出处标记 {m.group(0)}——[E] 只用于研究文件内部回指，"
+            "成文必须剥离（内容仍须可追溯到某条摘录，那是要求不是排版语法）"
+        )
 
     secs = _sections(body)
     for required in ("概述", "信息来源"):
