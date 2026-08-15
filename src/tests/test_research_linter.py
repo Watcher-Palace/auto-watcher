@@ -1135,3 +1135,11 @@ def test_one_primary_source_among_reposts_passes(tmp_path, monkeypatch):
         "- 2026.07.31，赣南日报（转载自极目新闻）。*乙*。https://a.example/2 — 快照失败：反爬\n\n## 摘录")
     vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
     assert not any("原件未取" in v for v in vs)
+
+
+def test_no_original_note_accepts_bold_house_style(tmp_path, monkeypatch):
+    # 留痕惯例是把冒号放在加粗之外（`**补充（评审vN-问题K）**：`），闸口不能被一对星号卡死
+    doc = NEW_DOC.replace("极目新闻。", "赣南日报（转载自极目新闻）。").replace(
+        "## 事实", "**原件未取**：原页面已下架，仅存转载版。\n\n## 事实")
+    vs = lint_research(_new_doc(tmp_path, monkeypatch, doc))
+    assert not any("原件未取" in v for v in vs)

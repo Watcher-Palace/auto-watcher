@@ -310,12 +310,15 @@ EXCERPT_WHOLE_RATIO = 0.6
 REPOST_RE = re.compile(r"转载|转发|经@")
 # 全部来源都是转载时的留痕标记。取不到原件是合法结局（页面下架、付费墙），但必须写明
 # 而不是沉默——与 `快照失败：<原因>` 同一形态：要么把事做了，要么写清为什么做不了。
+# 认 `原件未取：` 与本仓库既有留痕惯例的加粗写法 `**原件未取**：`（update 轮的
+# `**补充（评审vN-问题K）**：` 就是把冒号放在加粗之外），别让一对星号把闸口卡死。
 NO_ORIGINAL = "原件未取："
+NO_ORIGINAL_RE = re.compile(r"原件未取\s*\*{0,2}\s*[:：]")
 
 
 def _lint_source_provenance(text: str, srcs: list) -> list[str]:
     """全部来源都是转载/转发＝事实基里没有一份原件，要么取原件，要么留痕。"""
-    if not srcs or NO_ORIGINAL in text:
+    if not srcs or NO_ORIGINAL_RE.search(text):
         return []
     if all(REPOST_RE.search(s.name) for s in srcs):
         return [
