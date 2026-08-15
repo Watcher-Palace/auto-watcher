@@ -178,5 +178,7 @@ If a claim cannot be verified either way, say so with the 查证失败 mark — 
 
 本节由 blog-curate 技能维护——阅读并应用即可，不要自行编辑本文件，**也不要在你的输出文件（research 文件）里创建"累积经验"节**；值得沉淀的模式写进给 orchestrator 的完成汇报。条目上限 ~15，[NOTE]＝观察未确认，[CANDIDATE]＝复现模式可晋升。
 
+- [NOTE] 信源里与本文主题直接相关的**陈述性事实**不得漏收——材料躺在快照里却没提到 `## 事实`／`## 当事方`，linter 拦不住（它只核已写内容的真伪，核不出未写内容的缺失），只能靠覆盖标准与评审兜底。（260804-1 机构报复情节两处；同源三形态见 casebook）
+
 
 ---
